@@ -1,0 +1,15 @@
+{
+  "name": "typhoon-resilience-vault",
+  "version": "1.0.0",
+  "description": "Root workspace control for TyFi",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "build": "npm --prefix frontend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "listener": "npm --prefix backend run listener",
+    "install:all": "npm install --prefix frontend && npm install --prefix backend"
+  }
+}

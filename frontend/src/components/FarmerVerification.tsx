@@ -1,0 +1,1095 @@
+import React, { useState } from 'react';
+import { 
+  User, 
+  MapPin, 
+  Sprout, 
+  Calendar, 
+  Maximize2, 
+  DollarSign, 
+  ShieldCheck, 
+  ArrowRight, 
+  ArrowLeft,
+  Search,
+  CheckCircle2,
+  Phone,
+  Trash2,
+  Plus,
+  Shield,
+  Upload,
+  Loader2,
+  FileText,
+  TrendingUp
+} from 'lucide-react';
+import type { FarmData } from '../types';
+import { registerPolicyOnChain } from '../lib/stellar';
+import { estimateCropMetrics } from '../services/aiService';
+import { PHILIPPINE_REGIONS } from '../constants';
+
+// Leaflet & React-Leaflet Imports
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { renderToStaticMarkup } from 'react-dom/server';
+
+// Helper components for Leaflet map interaction
+const FlyToCenter = ({ center }: { center: [number, number] }) => {
+  const map = useMap();
+  React.useEffect(() => {
+    map.flyTo(center, map.getZoom());
+  }, [center[0], center[1], map]);
+  return null;
+};
+
+const MapEventsHandler = ({ onChange }: { onChange: (lat: number, lng: number) => void }) => {
+  useMapEvents({
+    click(e) {
+      onChange(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+};
+
+
+interface FarmerVerificationProps {
+  onVerificationComplete: (farms: FarmData[]) => void;
+  walletAddress: string;
+  network?: 'testnet' | 'mainnet';
+}
+
+const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'testnet' }) => {
+  const [step, setStep] = useState(1);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isUploadingRsbsa, setIsUploadingRsbsa] = useState(false);
+  const [uploadedRsbsa, setUploadedRsbsa] = useState<string | null>(null);
+  const [isUploadingValidId, setIsUploadingValidId] = useState(false);
+  const [uploadedValidId, setUploadedValidId] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const isMainnet = network === 'mainnet';
+
+  // Farmer Common Info
+  const [farmerInfo, setFarmerInfo] = useState({
+    farmerName: '',
+    rsbsaNumber: '',
+    region: 'Central Luzon',
+    phoneNumber: ''
+  });
+
+  // Farms List
+  const [farms, setFarms] = useState<FarmData[]>([]);
+
+  // Current Farm being edited
+  const [currentFarm, setCurrentFarm] = useState<{
+    farmName: string;
+    cropType: string;
+    plantingDate: string;
+    farmSize: number;
+    initialInvestment: number;
+    expectedHarvestValue: number;
+    season: string;
+    latitude?: number;
+    longitude?: number;
+  }>({
+    farmName: '',
+    cropType: 'Rice',
+    plantingDate: new Date().toISOString().split('T')[0],
+    season: 'Wet Season 2026',
+    farmSize: 1.5,
+    initialInvestment: 1000,
+    expectedHarvestValue: 3000,
+  });
+
+  // Per-farm land document upload state
+  const [landDocType, setLandDocType] = useState<'deed_of_sale' | 'land_title'>('land_title');
+  const [isUploadingLandDoc, setIsUploadingLandDoc] = useState(false);
+  const [uploadedLandDoc, setUploadedLandDoc] = useState<string | null>(null);
+
+  const [isValuing, setIsValuing] = useState(false);
+  const [valuationExplanation, setValuationExplanation] = useState<string>('');
+  const [valuationConfidence, setValuationConfidence] = useState<number>(100);
+
+  React.useEffect(() => {
+    // Only run if we are on step 2 and have a valid farm size
+    if (step !== 2 || !currentFarm.farmSize || currentFarm.farmSize <= 0) return;
+
+    let active = true;
+    const fetchValuation = async () => {
+      setIsValuing(true);
+      try {
+        const result = await estimateCropMetrics(
+          currentFarm.cropType,
+          currentFarm.farmSize,
+          farmerInfo.region
+        );
+        if (active) {
+          setCurrentFarm(prev => ({
+            ...prev,
+            initialInvestment: result.initialInvestment,
+            expectedHarvestValue: result.expectedHarvestValue
+          }));
+          setValuationExplanation(result.explanation);
+          setValuationConfidence(result.confidenceScore);
+        }
+      } catch (err) {
+        console.error('Error auto-valuing crop:', err);
+      } finally {
+        if (active) {
+          setIsValuing(false);
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      fetchValuation();
+    }, 600);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [currentFarm.cropType, currentFarm.farmSize, farmerInfo.region, step]);
+
+
+  const regionCoordinates: Record<string, { lat: number, lng: number }> = PHILIPPINE_REGIONS.reduce((acc, r) => {
+    acc[r.name] = { lat: r.coordinates[0], lng: r.coordinates[1] };
+    return acc;
+  }, {} as Record<string, { lat: number, lng: number }>);
+
+  const handleFarmerInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name === 'rsbsaNumber') {
+      const cleaned = value.replace(/[^A-Za-z0-9]/g, '');
+      const limited = cleaned.slice(0, 14);
+      let formatted = '';
+      
+      for (let i = 0; i < limited.length; i++) {
+        if (i === 2 || i === 4 || i === 6 || i === 9) {
+          formatted += '-';
+        }
+        formatted += limited[i];
+      }
+      setFarmerInfo(prev => ({ ...prev, rsbsaNumber: formatted }));
+    } else {
+      setFarmerInfo(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleFarmInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCurrentFarm(prev => ({
+      ...prev,
+      [name]: name === 'farmSize' || name.includes('Value') || name.includes('Investment') ? Number(value) : value
+    }));
+  };
+
+  const addFarm = () => {
+    if (!currentFarm.farmName) return;
+    
+    const coords = regionCoordinates[farmerInfo.region] || regionCoordinates['Bicol Region'];
+    const totalCropValue = currentFarm.expectedHarvestValue + (currentFarm.farmSize * 500);
+    
+    const newFarm: FarmData = {
+      id: `FARM-${Math.floor(Math.random() * 10000)}`,
+      ...farmerInfo,
+      ...currentFarm,
+      latitude: currentFarm.latitude ?? (coords.lat + (Math.random() - 0.5) * 0.1),
+      longitude: currentFarm.longitude ?? (coords.lng + (Math.random() - 0.5) * 0.1),
+      totalCropValue,
+      ...(uploadedLandDoc ? {
+        landDocument: {
+          fileName: uploadedLandDoc,
+          docType: landDocType,
+          uploadedAt: new Date().toISOString()
+        }
+      } : {})
+    };
+
+    setFarms([...farms, newFarm]);
+    setCurrentFarm({
+      farmName: '',
+      cropType: 'Rice',
+      plantingDate: new Date().toISOString().split('T')[0],
+      season: 'Wet Season 2026',
+      farmSize: 1.5,
+      initialInvestment: 1000,
+      expectedHarvestValue: 3000,
+      latitude: undefined,
+      longitude: undefined
+    });
+    // Reset per-farm land document after adding
+    setUploadedLandDoc(null);
+    setLandDocType('land_title');
+  };
+
+  const removeFarm = (id: string | undefined) => {
+    setFarms(farms.filter(f => f.id !== id));
+  };
+
+  // Files are uploaded using inline handlers to manage separate state variables for RSBSA and Valid ID
+
+  const startAnalysis = () => {
+    if (farms.length === 0 && currentFarm.farmName) {
+        addFarm();
+    }
+    
+    setIsAnalyzing(true);
+    setTimeout(() => {
+      setIsAnalyzing(false);
+      setStep(3);
+    }, 4000);
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      for (const farm of farms) {
+        const premium = Math.round(farm.expectedHarvestValue * 0.1);
+        await registerPolicyOnChain(
+          walletAddress,
+          farm.latitude,
+          farm.longitude,
+          premium, // Pass premium instead of total value
+          farm.season || 'Wet Season 2026'
+        );
+      }
+      console.log('All farms registered on Stellar blockchain');
+    } catch (error) {
+      console.error('Failed to register on blockchain:', error);
+    }
+
+    try {
+      const pubkey = localStorage.getItem('stellar_pubkey') || walletAddress;
+      await fetch('http://localhost:3001/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: pubkey,
+          fcmToken: `demo-fcm-${farmerInfo.phoneNumber}`
+        })
+      });
+      console.log('Registered for notifications');
+    } catch (error) {
+      console.error('Failed to register for notifications:', error);
+    }
+
+    setIsSubmitting(false);
+    onVerificationComplete(farms);
+  };
+
+  return (
+    <div className={`mx-auto px-4 py-6 relative z-10 transition-all duration-500 ${step === 2 ? 'max-w-6xl' : 'max-w-4xl'}`}>
+      <div className="glass-panel border-t border-l border-white/10 shadow-2xl relative overflow-hidden">
+        {/* Glow effect in background */}
+        <div className={`absolute top-0 right-0 w-64 h-64 rounded-full filter blur-[80px] -z-10 translate-x-1/2 -translate-y-1/2 transition-colors duration-1000 ${
+          isMainnet ? 'bg-emerald-500/20' : 'bg-sky-500/20'
+        }`}></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full filter blur-[80px] -z-10 -translate-x-1/2 translate-y-1/2"></div>
+
+        <div className="absolute top-0 right-0 p-6 hidden md:block">
+           <div className={`rsbsa-badge border ${
+             isMainnet 
+               ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' 
+               : 'text-sky-400 border-sky-500/20 bg-sky-500/5'
+           }`}>
+             <Shield size={12} />
+             Verified DA System
+           </div>
+        </div>
+        
+        {/* Progress Stepper */}
+        <div className="flex justify-between mb-16 relative px-8 pt-8">
+          <div className="absolute top-[calc(50%+16px)] left-8 right-8 h-[2px] bg-white/5 -translate-y-1/2 z-0 rounded-full"></div>
+          <div className={`absolute top-[calc(50%+16px)] left-8 h-[2px] -translate-y-1/2 z-0 rounded-full transition-all duration-1000 ${
+            isMainnet ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : 'bg-gradient-to-r from-sky-400 to-indigo-500'
+          }`} style={{ width: `${(step - 1) * 50}%` }}></div>
+          {[1, 2, 3].map((s) => (
+            <div 
+              key={s} 
+              className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-500 ${
+                step >= s 
+                  ? (isMainnet 
+                      ? 'bg-gradient-to-br from-emerald-400 to-teal-600 text-white scale-110 shadow-[0_0_30px_rgba(16,185,129,0.4)] ring-4 ring-emerald-500/20' 
+                      : 'bg-gradient-to-br from-sky-400 to-blue-600 text-white scale-110 shadow-[0_0_30px_rgba(56,189,248,0.4)] ring-4 ring-sky-500/20')
+                  : 'bg-slate-800 text-slate-500 ring-4 ring-slate-800/50'
+              }`}
+            >
+              {step > s ? <CheckCircle2 size={24} /> : s}
+            </div>
+          ))}
+        </div>
+
+        {step === 1 && (
+          <div className="animate-fade-in p-8 pt-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
+                  <Shield size={24} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white tracking-tight uppercase italic">Identity Verification</h3>
+                  <p className="text-slate-400 font-medium">Link your government RSBSA profile and upload credentials.</p>
+                </div>
+              </div>
+              
+              {!isMainnet && (
+                <button
+                  onClick={() => {
+                    setFarmerInfo({
+                      farmerName: 'Juan Dela Cruz (Demo)',
+                      rsbsaNumber: '04-21-02-001-00012',
+                      region: 'Central Luzon',
+                      phoneNumber: '+63 912 345 6789'
+                    });
+                    setUploadedRsbsa('demo-rsbsa-form.pdf');
+                    setUploadedValidId('demo-passport-id.png');
+                    setCurrentFarm({
+                      farmName: 'Albay Paradise Farm',
+                      cropType: 'Rice',
+                      plantingDate: new Date().toISOString().split('T')[0],
+                      farmSize: 5.0,
+                      initialInvestment: 5000,
+                      expectedHarvestValue: 15000,
+                      season: 'Wet Season 2026',
+                      latitude: 13.421,
+                      longitude: 123.413
+                    });
+                    alert("Demo profile details pre-populated! Please verify them and click 'Continue to Farm Details'.");
+                  }}
+                  className="px-4 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 hover:border-sky-500/50 text-sky-400 text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 shadow-[0_0_15px_rgba(14,165,233,0.1)] self-start sm:self-center cursor-pointer"
+                >
+                  ⚡ Pre-populate (Demo Mode)
+                </button>
+              )}
+            </div>
+            
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="form-group">
+                  <label>Farmer's Full Name</label>
+                  <input 
+                    type="text" 
+                    name="farmerName"
+                    className="premium-input focus:border-emerald-500" 
+                    placeholder="Juan Dela Cruz" 
+                    value={farmerInfo.farmerName}
+                    onChange={handleFarmerInfoChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="flex items-center gap-2">
+                    RSBSA ID Number
+                  </label>
+                  <input 
+                    type="text" 
+                    name="rsbsaNumber"
+                    className="premium-input" 
+                    placeholder="05-16-01-000-00000" 
+                    value={farmerInfo.rsbsaNumber}
+                    onChange={handleFarmerInfoChange}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="form-group">
+                  <label>Region</label>
+                  <select 
+                    name="region"
+                    className="premium-input"
+                    value={farmerInfo.region}
+                    onChange={handleFarmerInfoChange}
+                  >
+                    {PHILIPPINE_REGIONS.map(r => (
+                      <option key={r.name}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="flex items-center gap-2">
+                    <Phone size={14} className={isMainnet ? 'text-emerald-400' : 'text-sky-400'} />
+                    Phone Number (for SMS Alerts)
+                  </label>
+                  <input 
+                    type="tel" 
+                    name="phoneNumber"
+                    className="premium-input" 
+                    placeholder="+63 9XX XXX XXXX" 
+                    value={farmerInfo.phoneNumber}
+                    onChange={handleFarmerInfoChange}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* RSBSA Upload */}
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    id="rsbsa-upload" 
+                    className="hidden" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setIsUploadingRsbsa(true);
+                        setTimeout(() => {
+                          setIsUploadingRsbsa(false);
+                          setUploadedRsbsa(file.name);
+                        }, 1500);
+                      }
+                    }}
+                    accept=".pdf,.jpg,.png"
+                  />
+                  <label 
+                    htmlFor="rsbsa-upload"
+                    className={`file-upload-container group block ${uploadedRsbsa ? 'active' : ''}`}
+                  >
+                    {isUploadingRsbsa ? (
+                      <div className="py-2">
+                        <div className="scanner mb-4"></div>
+                        <Loader2 className={`animate-spin mx-auto mb-2 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} size={32} />
+                        <p className={`font-bold text-sm animate-pulse ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>Verifying RSBSA Credentials...</p>
+                      </div>
+                    ) : uploadedRsbsa ? (
+                      <div className="py-2 animate-success">
+                        <CheckCircle2 className="text-emerald-500 mx-auto mb-2" size={32} />
+                        <p className="text-white font-bold text-sm truncate max-w-full">{uploadedRsbsa}</p>
+                        <p className="text-emerald-400 text-xs font-bold">✓ Credentials Verified by DA-OCR</p>
+                      </div>
+                    ) : (
+                      <div className="py-4">
+                        <Upload className={`upload-icon mx-auto mb-2 transition-colors ${isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'}`} size={32} />
+                        <p className="text-white font-bold text-sm mb-0.5">Upload RSBSA Proof</p>
+                        <p className="text-slate-500 text-xs">PDF or Image of enrollment form</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+
+                {/* Valid ID Upload */}
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    id="valid-id-upload" 
+                    className="hidden" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setIsUploadingValidId(true);
+                        setTimeout(() => {
+                          setIsUploadingValidId(false);
+                          setUploadedValidId(file.name);
+                        }, 1500);
+                      }
+                    }}
+                    accept=".pdf,.jpg,.png"
+                  />
+                  <label 
+                    htmlFor="valid-id-upload"
+                    className={`file-upload-container group block ${uploadedValidId ? 'active' : ''}`}
+                  >
+                    {isUploadingValidId ? (
+                      <div className="py-2">
+                        <div className="scanner mb-4"></div>
+                        <Loader2 className={`animate-spin mx-auto mb-2 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} size={32} />
+                        <p className={`font-bold text-sm animate-pulse ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>Verifying Valid ID...</p>
+                      </div>
+                    ) : uploadedValidId ? (
+                      <div className="py-2 animate-success">
+                        <CheckCircle2 className="text-emerald-500 mx-auto mb-2" size={32} />
+                        <p className="text-white font-bold text-sm truncate max-w-full">{uploadedValidId}</p>
+                        <p className="text-emerald-400 text-xs font-bold">✓ Valid ID Verified</p>
+                      </div>
+                    ) : (
+                      <div className="py-4">
+                        <Upload className={`upload-icon mx-auto mb-2 transition-colors ${isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'}`} size={32} />
+                        <p className="text-white font-bold text-sm mb-0.5">Upload Valid ID</p>
+                        <p className="text-slate-500 text-xs">Gov ID: Passport, Driver's, UMID</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setStep(2)}
+                disabled={!farmerInfo.farmerName || !farmerInfo.rsbsaNumber || !uploadedRsbsa || !uploadedValidId || !farmerInfo.phoneNumber}
+                className={`w-full py-3.5 rounded-xl font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  isMainnet 
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
+                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_0_20px_rgba(14,165,233,0.2)]'
+                }`}
+              >
+                Continue to Farm Details
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="animate-fade-in p-8 pt-0">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-xl ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
+                        <Sprout size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-black text-white tracking-tight uppercase italic">Manage Your Farms</h3>
+                        <p className="text-slate-400 font-medium">Add one or more farms to protect.</p>
+                    </div>
+                </div>
+                {farms.length > 0 && (
+                     <div className={`px-3 py-1 rounded-full text-sm font-black border transition-all duration-700 ${
+                       isMainnet 
+                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+                         : 'bg-sky-500/20 text-sky-400 border-sky-500/30'
+                     }`}>
+                        {farms.length} Farm{farms.length > 1 ? 's' : ''} Added
+                     </div>
+                )}
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                {/* Form Side */}
+                <div className="lg:col-span-3 space-y-6 bg-white/5 p-6 rounded-3xl border border-white/10">
+                    <h4 className="text-white font-black uppercase text-sm tracking-widest flex items-center gap-2">
+                        <Plus size={16} className={isMainnet ? 'text-emerald-400' : 'text-sky-400'} />
+                        Add New Farm
+                    </h4>
+                    
+                    <div className="form-group">
+                        <label>Farm Name / Location Alias</label>
+                        <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                        <input 
+                            type="text" 
+                            name="farmName"
+                            className="premium-input pl-12" 
+                            placeholder="e.g. North Rice Field, Purok 7" 
+                            value={currentFarm.farmName}
+                            onChange={handleFarmInputChange}
+                        />
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="flex items-center justify-between text-xs mb-1.5">
+                          <span className="text-slate-300 font-bold uppercase tracking-wider">📍 Precise Farm Location (Global Geocoder)</span>
+                          {currentFarm.latitude !== undefined && (
+                            <span className="text-[10px] text-emerald-400 font-extrabold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 animate-fade-in">
+                              Resolved: {currentFarm.latitude.toFixed(4)}, {currentFarm.longitude?.toFixed(4)}
+                            </span>
+                          )}
+                        </label>
+                        <div className="flex gap-2">
+                          <input 
+                              type="text" 
+                              id="location-search-input"
+                              className="premium-input flex-1" 
+                              placeholder="e.g. Guinobatan, Albay, Philippines" 
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  document.getElementById("location-search-btn")?.click();
+                                }
+                              }}
+                          />
+                          <button
+                              type="button"
+                              id="location-search-btn"
+                              onClick={async () => {
+                                  const input = document.getElementById("location-search-input") as HTMLInputElement;
+                                  const btn = document.getElementById("location-search-btn") as HTMLButtonElement;
+                                  const query = input?.value?.trim();
+                                  if (!query) return;
+                                  
+                                  const originalText = btn.innerHTML;
+                                  btn.innerHTML = '<span class="animate-spin inline-block">⏳</span>';
+                                  btn.disabled = true;
+                                  
+                                  try {
+                                      // Free Nominatim API — no key required, Philippines biased
+                                      const res = await fetch(
+                                        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Philippines')}&format=json&limit=1&countrycodes=ph`,
+                                        { headers: { 'Accept-Language': 'en', 'User-Agent': 'TyphoonResilienceVault/1.0' } }
+                                      );
+                                      const data = await res.json();
+                                      if (data && data.length > 0) {
+                                          const lat = parseFloat(data[0].lat);
+                                          const lng = parseFloat(data[0].lon);
+                                          const displayName = data[0].display_name;
+                                          setCurrentFarm(prev => ({
+                                              ...prev,
+                                              latitude: lat,
+                                              longitude: lng
+                                          }));
+                                          input.value = displayName;
+                                          input.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                                          setTimeout(() => { input.style.borderColor = ''; }, 2000);
+                                      } else {
+                                          input.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                                          const originalPlaceholder = input.placeholder;
+                                          input.value = "";
+                                          input.placeholder = "Location not found. Try adding city/province.";
+                                          setTimeout(() => { 
+                                            input.style.borderColor = ''; 
+                                            input.placeholder = originalPlaceholder;
+                                          }, 3000);
+                                      }
+                                  } catch (err) {
+                                      console.error("Geocoding error:", err);
+                                      input.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                                  } finally {
+                                      btn.innerHTML = originalText;
+                                      btn.disabled = false;
+                                  }
+                              }}
+                              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center min-w-[80px] ${
+                                isMainnet 
+                                  ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/20' 
+                                  : 'bg-sky-500 hover:bg-sky-400 text-white shadow-lg shadow-sky-500/20'
+                              }`}
+                          >
+                              Search
+                          </button>
+                        </div>
+                    </div>
+
+                    {/* Interactive Manual Pin Map */}
+                    <div className="form-group mt-2">
+                        <label className="text-xs mb-1.5 block text-slate-300 font-bold uppercase tracking-wider">
+                          🗺️ Manual Drag-and-Drop Pin Map
+                        </label>
+                        <p className="text-[10px] text-slate-400 mb-2">
+                          Not finding the location? Click anywhere on the map or drag the pin to place your farm boundary manually.
+                        </p>
+                        <div className="h-[200px] w-full rounded-2xl overflow-hidden border border-white/10 relative z-10 shadow-inner">
+                          <MapContainer
+                            center={[
+                              currentFarm.latitude ?? (regionCoordinates[farmerInfo.region]?.lat ?? 13.421),
+                              currentFarm.longitude ?? (regionCoordinates[farmerInfo.region]?.lng ?? 123.413)
+                            ]}
+                            zoom={12}
+                            scrollWheelZoom={false}
+                            className="w-full h-full"
+                          >
+                            <TileLayer
+                              attribution='© Google Maps'
+                              url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+                            />
+                            <MapEventsHandler 
+                              onChange={(lat, lng) => {
+                                setCurrentFarm(prev => ({ ...prev, latitude: lat, longitude: lng }));
+                              }}
+                            />
+                            <FlyToCenter 
+                              center={[
+                                currentFarm.latitude ?? (regionCoordinates[farmerInfo.region]?.lat ?? 13.421),
+                                currentFarm.longitude ?? (regionCoordinates[farmerInfo.region]?.lng ?? 123.413)
+                              ]} 
+                            />
+                            <Marker
+                              position={[
+                                currentFarm.latitude ?? (regionCoordinates[farmerInfo.region]?.lat ?? 13.421),
+                                currentFarm.longitude ?? (regionCoordinates[farmerInfo.region]?.lng ?? 123.413)
+                              ]}
+                              draggable={true}
+                              eventHandlers={{
+                                dragend(e) {
+                                  const marker = e.target;
+                                  if (marker) {
+                                    const latLng = marker.getLatLng();
+                                    setCurrentFarm(prev => ({
+                                      ...prev,
+                                      latitude: latLng.lat,
+                                      longitude: latLng.lng
+                                    }));
+                                  }
+                                }
+                              }}
+                              icon={L.divIcon({
+                                html: renderToStaticMarkup(
+                                  <div style={{ color: isMainnet ? '#10b981' : '#0ea5e9', filter: `drop-shadow(0 0 6px ${isMainnet ? '#10b98180' : '#0ea5e980'})` }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                  </div>
+                                ),
+                                className: '',
+                                iconSize: [28, 28],
+                                iconAnchor: [14, 28],
+                              })}
+                            />
+                          </MapContainer>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="form-group">
+                            <label>Primary Crop</label>
+                            <select 
+                                name="cropType"
+                                className="premium-input"
+                                value={currentFarm.cropType}
+                                onChange={handleFarmInputChange}
+                            >
+                                <option>Rice</option>
+                                <option>Corn</option>
+                                <option>Coconut</option>
+                                <option>Sugarcane</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>Planting Season</label>
+                            <select 
+                                name="season"
+                                className="premium-input"
+                                value={currentFarm.season}
+                                onChange={handleFarmInputChange}
+                            >
+                                <option>Wet Season 2026</option>
+                                <option>Dry Season 2026</option>
+                                <option>Wet Season 2027</option>
+                                <option>Dry Season 2027</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="form-group">
+                            <label>Farm Size (Hectares)</label>
+                            <input 
+                                type="number" 
+                                name="farmSize"
+                                className="premium-input" 
+                                value={currentFarm.farmSize}
+                                onChange={handleFarmInputChange}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="form-group relative">
+                            <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                                Production Cost (XLM)
+                            </label>
+                            <div className="relative">
+                                <input 
+                                    type="number" 
+                                    name="initialInvestment"
+                                    className="premium-input read-only bg-slate-900/50 border-white/5 text-slate-300 focus:border-white/5 cursor-not-allowed pl-10"
+                                    value={currentFarm.initialInvestment}
+                                    readOnly
+                                />
+                                <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                            </div>
+                        </div>
+                        <div className="form-group relative">
+                            <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                                Expected Harvest (XLM)
+                            </label>
+                            <div className="relative">
+                                <input 
+                                    type="number" 
+                                    name="expectedHarvestValue"
+                                    className="premium-input read-only bg-slate-900/50 border-white/5 text-slate-300 focus:border-white/5 cursor-not-allowed pl-10"
+                                    value={currentFarm.expectedHarvestValue}
+                                    readOnly
+                                />
+                                <TrendingUp className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Seasonal Premium Deposit Info */}
+                    <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-indigo-500/20 rounded-lg text-indigo-400">
+                                    <ShieldCheck size={16} />
+                                </div>
+                                <span className="text-xs font-black text-white uppercase tracking-wider">Seasonal Protection Deposit</span>
+                            </div>
+                            <span className="text-[10px] text-indigo-300 font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30">
+                                10% Coverage Rate
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">
+                            To activate protection for this {currentFarm.season}, a premium deposit of **{Math.round(currentFarm.expectedHarvestValue * 0.1)} XLM** is required. This covers up to **{currentFarm.expectedHarvestValue} XLM** in potential typhoon damages.
+                        </p>
+                    </div>
+
+                    {/* ─── Land Ownership Document Upload ─── */}
+                    <div className="space-y-3 pt-1">
+                      <label className="text-xs text-slate-300 font-black uppercase tracking-wider flex items-center gap-2">
+                        <FileText size={13} className={isMainnet ? 'text-emerald-400' : 'text-sky-400'} />
+                        Land Ownership Proof
+                        <span className="text-rose-400">*</span>
+                        <span className="text-slate-500 text-[9px] font-medium normal-case tracking-normal">— required to verify farm ownership</span>
+                      </label>
+
+                      {/* Doc-type selector */}
+                      <div className="flex bg-slate-950 p-1 rounded-xl border border-white/5 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setLandDocType('land_title')}
+                          className={`w-1/2 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${
+                            landDocType === 'land_title'
+                              ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20')
+                              : 'text-slate-500 hover:text-white'
+                          }`}
+                        >
+                          🏛️ Land Title
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLandDocType('deed_of_sale')}
+                          className={`w-1/2 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${
+                            landDocType === 'deed_of_sale'
+                              ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20')
+                              : 'text-slate-500 hover:text-white'
+                          }`}
+                        >
+                          📄 Deed of Sale
+                        </button>
+                      </div>
+
+                      {/* File picker */}
+                      <input
+                        type="file"
+                        id="land-doc-upload"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setIsUploadingLandDoc(true);
+                            setTimeout(() => {
+                              setIsUploadingLandDoc(false);
+                              setUploadedLandDoc(file.name);
+                            }, 1500);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="land-doc-upload"
+                        className={`file-upload-container group block cursor-pointer ${uploadedLandDoc ? 'active' : ''}`}
+                      >
+                        {isUploadingLandDoc ? (
+                          <div className="py-3 flex flex-col items-center">
+                            <div className="scanner mb-3" />
+                            <Loader2
+                              className={`animate-spin mb-2 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}
+                              size={28}
+                            />
+                            <p className={`font-bold text-xs animate-pulse ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>
+                              Scanning Document...
+                            </p>
+                          </div>
+                        ) : uploadedLandDoc ? (
+                          <div className="py-3 animate-success flex flex-col items-center">
+                            <CheckCircle2 className="text-emerald-500 mb-2" size={28} />
+                            <p className="text-white font-bold text-xs truncate max-w-[220px]">
+                              {uploadedLandDoc}
+                            </p>
+                            <p className="text-emerald-400 text-[10px] font-bold mt-0.5">
+                              ✓ {landDocType === 'land_title' ? 'Land Title' : 'Deed of Sale'} Verified
+                            </p>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); setUploadedLandDoc(null); }}
+                              className="mt-1 text-[9px] text-slate-500 hover:text-rose-400 font-bold uppercase transition-colors"
+                            >
+                              Replace file
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="py-3 flex flex-col items-center">
+                            <Upload
+                              className={`upload-icon mb-2 transition-colors ${isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'}`}
+                              size={28}
+                            />
+                            <p className="text-white font-bold text-xs mb-0.5">
+                              Upload {landDocType === 'land_title' ? 'Land Title' : 'Deed of Sale'}
+                            </p>
+                            <p className="text-slate-500 text-[10px]">PDF, JPG, or PNG — max 10 MB</p>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+
+                    <button 
+                        onClick={addFarm}
+                        disabled={!currentFarm.farmName || !uploadedLandDoc}
+                        className={`w-full py-3 rounded-xl font-bold border transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                          isMainnet 
+                            ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 disabled:hover:bg-emerald-500/10' 
+                            : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border-sky-500/30 disabled:hover:bg-sky-500/10'
+                        }`}
+                    >
+                        <Plus size={18} />
+                        {!uploadedLandDoc ? 'Upload Land Document to Continue' : 'Add Farm to List'}
+                    </button>
+                </div>
+
+                {/* List Side */}
+                <div className="lg:col-span-2 space-y-4">
+                     <h4 className="text-slate-400 font-black uppercase text-xs tracking-widest">Added Farms</h4>
+                     
+                     <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        {farms.length === 0 ? (
+                            <div className="h-32 rounded-2xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-slate-600 gap-2">
+                                <Sprout size={32} opacity={0.2} />
+                                <span className="text-xs font-bold">No farms added yet</span>
+                            </div>
+                        ) : (
+                            farms.map((farm, index) => (
+                            <div key={farm.id || index} className={`p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex flex-col gap-3 group transition-all ${
+                                  isMainnet ? 'hover:border-emerald-500/30' : 'hover:border-sky-500/30'
+                                }`}>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-all ${
+                                            isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'
+                                          }`}>
+                                              <Sprout size={20} />
+                                          </div>
+                                          <div>
+                                              <div className="text-white font-bold text-sm">{farm.farmName}</div>
+                                              <div className="text-slate-500 text-[10px] uppercase font-black tracking-tighter">
+                                                  {farm.cropType} • {farm.season} • {farm.farmSize} Hectares
+                                              </div>
+                                          </div>
+                                      </div>
+                                      <button 
+                                          onClick={() => removeFarm(farm.id)}
+                                          className="p-2 text-slate-600 hover:text-red-400 transition-colors flex-shrink-0"
+                                      >
+                                          <Trash2 size={16} />
+                                      </button>
+                                    </div>
+
+                                    {/* Land document badge */}
+                                    {farm.landDocument ? (
+                                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                        <CheckCircle2 size={12} className="text-emerald-400 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-emerald-400 text-[9px] font-black uppercase tracking-wider">
+                                            {farm.landDocument.docType === 'land_title' ? '🏛️ Land Title' : '📄 Deed of Sale'}
+                                          </p>
+                                          <p className="text-slate-400 text-[9px] truncate font-mono">
+                                            {farm.landDocument.fileName}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                        <Upload size={12} className="text-amber-400 flex-shrink-0" />
+                                        <p className="text-amber-400 text-[9px] font-black uppercase tracking-wider">
+                                          No land document uploaded
+                                        </p>
+                                      </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                     </div>
+
+                     <div className="pt-4 border-t border-white/5 space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Total Seasonal Coverage</span>
+                            <span className="text-white font-black text-sm">{farms.reduce((acc, f) => acc + (f.expectedHarvestValue || 0), 0).toLocaleString()} XLM</span>
+                        </div>
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-indigo-400 text-[10px] font-black uppercase tracking-wider">Total Premium Deposit</span>
+                            <span className="text-indigo-400 font-black text-lg">{Math.round(farms.reduce((acc, f) => acc + (f.expectedHarvestValue || 0), 0) * 0.1).toLocaleString()} XLM</span>
+                        </div>
+                        
+                        <div className="flex gap-3 pt-2">
+                            <button 
+                                onClick={() => setStep(1)}
+                                className="p-4 bg-white/5 text-white rounded-xl font-bold hover:bg-white/10 transition-all border border-white/10"
+                            >
+                                <ArrowLeft size={20} />
+                            </button>
+                            <button 
+                                onClick={startAnalysis}
+                                disabled={farms.length === 0 && !currentFarm.farmName}
+                                className={`flex-1 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all ${
+                                  isMainnet 
+                                    ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
+                                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_0_20px_rgba(14,165,233,0.2)]'
+                                }`}
+                            >
+                                {isAnalyzing ? (
+                                    <>
+                                    <Loader2 className="animate-spin" />
+                                    Analyzing Satellite Polygons...
+                                    </>
+                                ) : (
+                                    'Register All Farms'
+                                )}
+                            </button>
+                        </div>
+                     </div>
+                </div>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="animate-fade-in text-center py-8 px-8">
+            <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-8 relative">
+              <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping"></div>
+              <CheckCircle2 className="text-emerald-500" size={48} />
+            </div>
+            
+            <h3 className="text-3xl font-black text-white mb-2 tracking-tight uppercase italic">Vaults Secured!</h3>
+            <p className="text-slate-400 mb-12 max-w-md mx-auto font-medium">
+              Your {farms.length} farm{farms.length > 1 ? 's have' : ' has'} been registered in the Resilience Vault. The smart contract is now monitoring weather triggers for each location.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                <FileText className={`${isMainnet ? 'text-emerald-400' : 'text-sky-400'} mx-auto mb-2`} size={24} />
+                <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Policies Active</div>
+                <div className="text-xl text-white font-black">{farms.length}</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                <TrendingUp className="text-emerald-400 mx-auto mb-2" size={24} />
+                <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Total Coverage</div>
+                <div className="text-xl text-white font-black">{farms.reduce((acc, f) => acc + (f.totalCropValue || 0), 0).toLocaleString()} XLM</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                <Shield className="text-indigo-400 mx-auto mb-2" size={24} />
+                <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Oracle Trigger</div>
+                <div className="text-lg text-white font-black">Enabled</div>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className={`w-full py-5 rounded-2xl font-black text-xl transition-all transform tracking-tight uppercase italic ${
+                isSubmitting 
+                  ? 'bg-slate-700 cursor-not-allowed' 
+                  : (isMainnet 
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_20px_50px_rgba(16,185,129,0.3)] hover:scale-[1.02]' 
+                      : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_20px_50px_rgba(14,165,233,0.3)] hover:scale-[1.02]')
+              }`}
+            >
+              {isSubmitting ? (
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="animate-spin" size={24} />
+                  Anchoring to Stellar...
+                </div>
+              ) : (
+                "Enter Resilience Dashboard"
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default FarmerVerification;
