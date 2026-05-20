@@ -165,9 +165,9 @@ graph TB
 
     Oracle -->|Wind & Rain data| Vault
     AI -->|Damage % estimate| Vault
-    UI -->|subscribe()| Vault
+    UI -->|"subscribe()"| Vault
     Wallet -->|Auth & Sign| Vault
-    Vault -->|claim_payout()| Payout
+    Vault -->|"claim_payout()"| Payout
     Payout -->|XLM| Wallet
     Listener -->|Payout events| FCM
     FCM -->|Push alerts| UI
