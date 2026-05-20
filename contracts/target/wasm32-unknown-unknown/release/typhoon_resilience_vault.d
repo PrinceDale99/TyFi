@@ -1,1 +1,0 @@
-C:\Users\princ\.gemini\antigravity\scratch\typhoon-resilience-vault\contracts\target\wasm32-unknown-unknown\release\typhoon_resilience_vault.wasm: C:\Users\princ\.gemini\antigravity\scratch\typhoon-resilience-vault\contracts\typhoon_resilience_vault\src\lib.rs

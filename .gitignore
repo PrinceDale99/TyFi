@@ -9,6 +9,10 @@ build/
 .next/
 out/
 
+# Rust compiled artifacts
+contracts/target/
+target/
+
 # Environment variables
 .env
 .env.local
