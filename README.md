@@ -9,6 +9,8 @@
 > *"Kung hagupit ang bagyo, ikaw ay babayaran."*
 > — If the typhoon strikes, you will be paid.
 
+ ![Site Screenshot](public/page.png)
+
 ---
 
 ## 🧩 Problem & Solution
