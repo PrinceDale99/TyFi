@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "ts-node server.ts",
     "build": "tsc",
+    "postinstall": "tsc",
     "start": "node dist/server.js",
     "listener": "ts-node listener.ts"
   },
