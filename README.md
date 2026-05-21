@@ -11,11 +11,21 @@
 
 ---
 
-## 🧩 Problem
-Traditional crop insurance in the Philippines has **80%+ claim rejection rates**, takes **3–6 months** to settle, and is bureaucratically inaccessible to the 1.6 million smallholder farmers who need it most. A single typhoon can erase a season's income, leaving farmers in deep debt without immediate recourse for recovery.
+## 🧩 Problem & Solution
 
-## 🌟 Vision
-To build the financial rails that give Filipino farmers a fighting chance against a warming world. We aim to provide global infrastructure for climate survival through fast, cheap, and accessible decentralized parametric insurance that scales across all disaster-prone regions.
+### The Problem
+Meet **Mang Kanor**, a 56-year-old rice farmer in Albay, a province far away from the city and directly in the path of the Pacific typhoon belt. He earns just ₱200/day and plants his crops once a season. When Typhoon Odette struck, the floodwaters wiped out his entire harvest overnight. 
+
+Mang Kanor had traditional crop insurance, but because he lives remotely, filing the claim required a 3-hour bus ride to the city. Even after submitting his paperwork, it took **4 months to process**, only to be **rejected** due to a technicality in his missing documentation. Without his harvest and with his claim denied, his family lost their entire income and was forced deep into debt just to survive the recovery period.
+
+Traditional crop insurance in the Philippines has **80%+ claim rejection rates**, takes **3–6 months** to settle, and is bureaucratically inaccessible to the 1.6 million smallholder farmers like Mang Kanor who need it most.
+
+### The Solution
+**TyFi (Typhoon Finance)** solves this by completely eliminating the claim forms, the adjusters, and the waiting period. 
+
+Using **TyFi**, Mang Kanor simply registers his farm once on his mobile phone and pays a micro-premium in XLM. The moment a PAGASA-verified weather oracle detects that a typhoon's wind speed has exceeded the 100 km/h threshold directly over his exact GPS coordinates in Albay, a **Stellar Soroban smart contract automatically triggers his payout**.
+
+Within seconds of the typhoon hitting, the XLM funds are disbursed directly into Mang Kanor's Freighter wallet—meaning he has the money to buy food, rebuild his roof, and replant his seeds *the very next morning*, not 6 months later. Stellar's sub-cent fees make this micro-insurance economically viable for farmers like Mang Kanor for the very first time.
 
 ## 🎯 Purpose
 TyFi was built to eliminate the middleman and the waiting game in disaster recovery. By leveraging Stellar's high-speed, low-cost blockchain and Soroban smart contracts, we provide a transparent, automated insurance protocol that pays out the moment disaster strikes—not months later.
