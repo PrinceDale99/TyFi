@@ -24,15 +24,8 @@ export interface NetworkConfig {
   passphrase: string;
 }
 
-export const NETWORK_CONFIGS: Record<'demo' | 'testnet' | 'mainnet', NetworkConfig> = {
-  demo: {
-    name: 'Demo Sandbox',
-    xlmTokenId: 'CDLZFC3SYJYDZT7KMGCCEEH45FAZ6COCYPIBA67KEHWOAAZ5KVHQ64VL',
-    vaultContractId: 'CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN',
-    horizonUrl: 'https://horizon-testnet.stellar.org',
-    sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
-    passphrase: Networks.TESTNET,
-  },
+export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
+
   testnet: {
     name: 'Testnet',
     // Native XLM SAC on Testnet
@@ -49,14 +42,18 @@ export const NETWORK_CONFIGS: Record<'demo' | 'testnet' | 'mainnet', NetworkConf
     name: 'Mainnet',
     // Native XLM SAC on Mainnet
     xlmTokenId: 'CAS3J7AVONGEJ757545DG5TZAT24DQZGX357FBCT6UW674ATCQZ3E367',
-    // ⚠️  Replace with mainnet contract ID after deployment
-    vaultContractId: 'PLACEHOLDER_MAINNET_CONTRACT_ID',
+    // ✅ Deployed 2026-05-21
+    vaultContractId: 'CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK',
     horizonUrl: 'https://horizon.stellar.org',
     sorobanRpcUrl: 'https://soroban-rpc.stellar.org',
     passphrase: Networks.PUBLIC,
   }
 };
 
+// Helper to ensure strings are valid Soroban symbols (max 32 chars, a-zA-Z0-9_)
+const sanitizeSymbol = (str: string) => {
+  return str.replace(/[^a-zA-Z0-9_]/g, '_').substring(0, 32);
+};
 export const connectWallet = async () => {
   try {
     if (await isConnected()) {
@@ -87,10 +84,10 @@ export const registerPolicyOnChain = async (
   region: string,
   cropValue: number,
   season: string = 'Wet Season 2026',
-  network: 'demo' | 'testnet' | 'mainnet' = 'testnet'
+  network: 'testnet' | 'mainnet' = 'testnet'
 ) => {
   try {
-    const config = NETWORK_CONFIGS[network as 'demo' | 'testnet' | 'mainnet'];
+    const config = NETWORK_CONFIGS[network as 'testnet' | 'mainnet'];
     const server = new rpc.Server(config.sorobanRpcUrl);
     
     // Construct the actual Soroban subscription call:
@@ -114,9 +111,9 @@ export const registerPolicyOnChain = async (
         "subscribe",
         ...[
           farmerAddress.toScVal(),
-          xdr.ScVal.scvSymbol(farmId),
-          xdr.ScVal.scvSymbol(region),
-          xdr.ScVal.scvSymbol(season),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(region)),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
           nativeToScVal(BigInt(cropValue), { type: 'i128' })
         ]
       )
@@ -124,8 +121,10 @@ export const registerPolicyOnChain = async (
     .setTimeout(30)
     .build();
 
+    const preparedTx = await server.prepareTransaction(tx) as Transaction;
+
     console.log(`[${config.name}] Requesting Freighter signature for: subscribe`);
-    const signResult = await signTransaction(tx.toXDR(), {
+    const signResult = await signTransaction(preparedTx.toXDR(), {
       networkPassphrase: config.passphrase,
     });
     
@@ -140,7 +139,7 @@ export const registerPolicyOnChain = async (
     // Wait for result
     let status: string = result.status;
     let txResult;
-    while (status === "PENDING") {
+    while (status === "PENDING" || status === "NOT_FOUND") {
       await new Promise(r => setTimeout(r, 2000));
       txResult = await server.getTransaction(result.hash);
       status = txResult.status;
@@ -158,15 +157,73 @@ export const registerPolicyOnChain = async (
   }
 };
 
+export const submitWeatherReportOnChain = async (
+  oracle: string,
+  typhoonId: string,
+  region: string,
+  damagePercentage: number,
+  network: 'testnet' | 'mainnet' = 'testnet'
+) => {
+  try {
+    const config = NETWORK_CONFIGS[network as 'testnet' | 'mainnet'];
+    const server = new rpc.Server(config.sorobanRpcUrl);
+    const contract = new Contract(config.vaultContractId);
+    const account = await server.getAccount(oracle);
+
+    let tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+      .addOperation(
+        contract.call(
+          "submit_weather_report",
+          ...[
+            Address.fromString(oracle).toScVal(),
+            nativeToScVal(sanitizeSymbol(typhoonId), { type: 'symbol' }),
+            nativeToScVal(sanitizeSymbol(region), { type: 'symbol' }),
+            nativeToScVal(damagePercentage, { type: 'u32' })
+          ]
+        )
+      )
+      .setTimeout(30)
+      .build();
+
+    const preparedTx = await server.prepareTransaction(tx) as Transaction;
+    console.log(`[${config.name}] Requesting Freighter signature for Oracle Submission...`);
+    const signResult = await signTransaction(preparedTx.toXDR(), { networkPassphrase: config.passphrase });
+    
+    const signedXdr = typeof signResult === 'string' ? signResult : signResult.signedTxXdr;
+    const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
+    const result = await server.sendTransaction(transaction);
+    
+    if (result.status !== "PENDING") {
+      throw new Error(`Transaction failed: ${JSON.stringify(result)}`);
+    }
+
+    let status: string = result.status;
+    while (status === "PENDING" || status === "NOT_FOUND") {
+      await new Promise(r => setTimeout(r, 2000));
+      const txResult = await server.getTransaction(result.hash);
+      status = txResult.status;
+    }
+
+    if (status === "SUCCESS") {
+      console.log(`[${config.name}] Oracle submission completed. Hash: ${result.hash}`);
+      return true;
+    } else {
+      throw new Error(`Transaction failed: ${status}`);
+    }
+  } catch (error: any) {
+    console.error(`[${network.toUpperCase()}] Blockchain oracle error:`, error);
+    throw error;
+  }
+};
 export const claimPayoutOnChain = async (
   farmer: string, 
   farmId: string, 
   season: string, 
-  network: 'demo' | 'testnet' | 'mainnet' = 'testnet',
+  network: 'testnet' | 'mainnet' = 'testnet',
   typhoonId: string = 'DEFAULT_TYPHOON'
 ) => {
   try {
-    const config = NETWORK_CONFIGS[network as 'demo' | 'testnet' | 'mainnet'];
+    const config = NETWORK_CONFIGS[network as 'testnet' | 'mainnet'];
     const server = new rpc.Server(config.sorobanRpcUrl);
     const farmerAddress = Address.fromString(farmer);
     const contract = new Contract(config.vaultContractId);
@@ -186,16 +243,18 @@ export const claimPayoutOnChain = async (
         "claim_payout",
         ...[
           farmerAddress.toScVal(),
-          xdr.ScVal.scvSymbol(farmId),
-          xdr.ScVal.scvSymbol(season),
-          xdr.ScVal.scvSymbol(typhoonId)
+          xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId))
         ]
       )
     )
     .setTimeout(30)
     .build();
 
-    const signResult = await signTransaction(tx.toXDR(), {
+    const preparedTx = await server.prepareTransaction(tx) as Transaction;
+
+    const signResult = await signTransaction(preparedTx.toXDR(), {
       networkPassphrase: config.passphrase,
     });
     
@@ -208,7 +267,7 @@ export const claimPayoutOnChain = async (
     }
 
     let status: string = result.status;
-    while (status === "PENDING") {
+    while (status === "PENDING" || status === "NOT_FOUND") {
       await new Promise(r => setTimeout(r, 2000));
       const txResult = await server.getTransaction(result.hash);
       status = txResult.status;
@@ -249,7 +308,7 @@ export const getContractTvl = async (network: 'testnet' | 'mainnet' = 'testnet')
     if (rpc.Api.isSimulationSuccess(result)) {
       const val = result.result?.retval;
       if (val) {
-        return Number(scValToNative(val));
+        return Number(scValToNative(val)) / 10000000;
       }
     }
     return 0;
@@ -281,7 +340,7 @@ export const getContractSubsidy = async (network: 'testnet' | 'mainnet' = 'testn
     if (rpc.Api.isSimulationSuccess(result)) {
       const val = result.result?.retval;
       if (val) {
-        return Number(scValToNative(val));
+        return Number(scValToNative(val)) / 10000000;
       }
     }
     return 0;
@@ -300,7 +359,7 @@ export interface LedgerTx {
   operationCount: number;
 }
 
-export const fetchRecentTransactions = async (network: 'demo' | 'testnet' | 'mainnet' = 'testnet'): Promise<LedgerTx[]> => {
+export const fetchRecentTransactions = async (network: 'testnet' | 'mainnet' = 'testnet'): Promise<LedgerTx[]> => {
   try {
     const config = NETWORK_CONFIGS[network];
     const url = `${config.horizonUrl}/transactions?limit=8&order=desc`;
@@ -324,4 +383,78 @@ export const fetchRecentTransactions = async (network: 'demo' | 'testnet' | 'mai
   }
 };
 
+export const contributeLiquidityOnChain = async (
+  user: string,
+  amount: number,
+  type: 'lp' | 'subsidy',
+  stakingMode: 'deposit' | 'withdraw' = 'deposit',
+  network: 'testnet' | 'mainnet' = 'testnet'
+) => {
+  try {
+    const config = NETWORK_CONFIGS[network as 'testnet' | 'mainnet'];
+    const server = new rpc.Server(config.sorobanRpcUrl);
+    const userAddress = Address.fromString(user);
+    const contract = new Contract(config.vaultContractId);
+    
+    let methodName = 'deposit_subsidy';
+    if (type === 'lp') {
+      methodName = stakingMode === 'withdraw' ? 'withdraw_reinsurance' : 'deposit_reinsurance';
+    }
+
+    const stroops = Math.floor(amount * 10000000);
+
+    const account = await server.getAccount(user);
+    const tx = new TransactionBuilder(
+      account,
+      {
+        fee: BASE_FEE,
+        networkPassphrase: config.passphrase,
+      }
+    )
+    .addOperation(
+      contract.call(
+        methodName,
+        ...[
+          userAddress.toScVal(),
+          nativeToScVal(BigInt(stroops), { type: 'i128' })
+        ]
+      )
+    )
+    .setTimeout(30)
+    .build();
+
+    const preparedTx = await server.prepareTransaction(tx) as Transaction;
+
+    console.log(`[${config.name}] Requesting Freighter signature for: ${methodName}`);
+    const signResult = await signTransaction(preparedTx.toXDR(), {
+      networkPassphrase: config.passphrase,
+    });
+    
+    const signedXdr = typeof signResult === 'string' ? signResult : signResult.signedTxXdr;
+    const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
+    const result = await server.sendTransaction(transaction);
+    
+    if (result.status !== "PENDING") {
+      throw new Error(`Transaction failed: ${JSON.stringify(result)}`);
+    }
+
+    let status: string = result.status;
+    let txResult;
+    while (status === "PENDING" || status === "NOT_FOUND") {
+      await new Promise(r => setTimeout(r, 2000));
+      txResult = await server.getTransaction(result.hash);
+      status = txResult.status;
+    }
+
+    if (status === "SUCCESS") {
+      console.log(`[${config.name}] Liquidity operation successful. Hash: ${result.hash}`);
+      return result.hash;
+    } else {
+      throw new Error(`Transaction failed: ${status}`);
+    }
+  } catch (error) {
+    console.error(`[${network.toUpperCase()}] Blockchain liquidity error:`, error);
+    throw error;
+  }
+};
 

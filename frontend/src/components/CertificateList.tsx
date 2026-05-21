@@ -29,7 +29,8 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network }) =
       
       setIsLoading(true);
       try {
-        const response = await fetch(`http://localhost:3001/api/certificates/${address}`);
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+        const response = await fetch(`${BACKEND_URL}/api/certificates/${address}`);
         const result = await response.json();
         
         if (result.success) {
@@ -85,7 +86,7 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network }) =
         <FileText size={40} opacity={0.2} />
         <p className="text-sm font-bold">No active insurance certificates found.</p>
         <p className="text-[10px] uppercase tracking-widest font-black text-slate-700">Subscribe to a policy to generate proof of coverage</p>
-        {network === 'demo' && (
+        {network === 'testnet' && (
           <button 
             onClick={handleGenerateDemoCert}
             className="mt-4 px-4 py-2 rounded-xl bg-sky-500/20 text-sky-400 text-xs font-bold uppercase tracking-wider hover:bg-sky-500/30 transition-all border border-sky-500/30"
@@ -104,7 +105,7 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network }) =
           <Award size={14} className="text-sky-400" />
           Official Insurance Certificates ({certificates.length})
         </h3>
-        {network === 'demo' && (
+        {network === 'testnet' && (
           <button 
             onClick={handleGenerateDemoCert}
             className="px-3 py-1 rounded-lg bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-wider hover:bg-sky-500/20 transition-all border border-sky-500/20 flex items-center gap-1"

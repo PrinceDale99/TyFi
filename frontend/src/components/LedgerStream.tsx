@@ -3,7 +3,7 @@ import { Activity, ExternalLink, RefreshCw, Cpu, Layers } from 'lucide-react';
 import { fetchRecentTransactions, type LedgerTx } from '../lib/stellar';
 
 interface LedgerStreamProps {
-  network: 'demo' | 'testnet' | 'mainnet';
+  network: 'testnet' | 'mainnet';
 }
 
 const LedgerStream: React.FC<LedgerStreamProps> = ({ network }) => {

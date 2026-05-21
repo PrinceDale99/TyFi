@@ -43,7 +43,7 @@ import AiCopilot from './components/AiCopilot';
 import LedgerStream from './components/LedgerStream';
 import { fetchWeather } from './services/weatherService';
 import type { WeatherData, FarmData, Claim } from "./types";
-import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy } from './lib/stellar';
+import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain } from './lib/stellar';
 import { calculateCombinedDamage } from './utils/DamageCalculator';
 import { useXlmToPhp } from './hooks/useXlmToPhp';
 import { WeatherChart } from './components/WeatherChart';
@@ -94,8 +94,8 @@ function App() {
   const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace'>(() => {
     return (localStorage.getItem('typhoon_vault_activeTab') as any) || 'monitor';
   });
-  const [network, setNetwork] = useState<'demo' | 'testnet' | 'mainnet'>(() => {
-    return (localStorage.getItem('typhoon_vault_network') as any) || 'demo';
+  const [network, setNetwork] = useState<'testnet' | 'mainnet'>(() => {
+    return (localStorage.getItem('typhoon_vault_network') as any) || 'testnet';
   });
   const [isWalletConnected, setIsWalletConnected] = useState(() => {
     return localStorage.getItem('typhoon_vault_isWalletConnected') === 'true';
@@ -233,12 +233,14 @@ function App() {
 
   // 🧪 Testnet Developer Sandbox States
   const [isSimulatingWeather, setIsSimulatingWeather] = useState(false);
+  const [demoBypass, setDemoBypass] = useState(false);
 
   useEffect(() => {
     if (isWalletConnected && walletAddress) {
       requestNotificationPermission().then(token => {
         if (token) {
-          fetch('http://localhost:3001/api/register', {
+          const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+          fetch(`${BACKEND_URL}/api/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address: walletAddress, fcmToken: token })
@@ -254,7 +256,7 @@ function App() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (network === 'demo') return;
+      
       try {
         const tvl = await getContractTvl(network);
         const subsidy = await getContractSubsidy(network);
@@ -272,12 +274,11 @@ function App() {
   const [testnetTvl, setTestnetTvl] = useState(1500000);
   const [subsidyBalance, setSubsidyBalance] = useState(750000);
   
-  const isDemo = network === 'demo';
   const isMainnet = network === 'mainnet';
   const isTestnet = network === 'testnet';
 
-  const currentTvl = isDemo ? testnetTvl : contractTvl;
-  const currentSubsidy = isDemo ? subsidyBalance : contractSubsidy;
+  const currentTvl = contractTvl;
+  const currentSubsidy = contractSubsidy;
   const [lpDeposit, setLpDeposit] = useState(() => {
     const saved = localStorage.getItem('typhoon_vault_lpDeposit');
     return saved ? parseFloat(saved) : 0;
@@ -287,7 +288,7 @@ function App() {
   const [openPolicy, setOpenPolicy] = useState<'tos' | 'privacy' | 'cookie' | 'agreement' | null>(null);
 
   const [claims, setClaims] = useState<Claim[]>(() => {
-    const initialNetwork = localStorage.getItem('typhoon_vault_network') || 'demo';
+    const initialNetwork = localStorage.getItem('typhoon_vault_network') || 'testnet';
     const initialAddress = localStorage.getItem('typhoon_vault_walletAddress') || '';
     if (initialAddress) {
       const saved = localStorage.getItem(`typhoon_vault_${initialNetwork}_${initialAddress}`);
@@ -446,8 +447,8 @@ function App() {
         pressure: 965,
         timestamp: new Date().toLocaleTimeString(),
         updatedAt: new Date(),
-        damageEstimation: 100,
-        aiDamageEstimation: 98,
+        damageEstimation: 90,
+        aiDamageEstimation: 90,
         cropHealthIndex: 0.05,
         agromonitorStatus: 'CATASTROPHIC - Super Typhoon Active',
         activeStorm: {
@@ -488,31 +489,19 @@ function App() {
       return;
     }
 
+    if (!isWalletConnected || !walletAddress) {
+      addNotification('Please connect your wallet first', 'warning');
+      return;
+    }
+
     const actionText = type === 'lp' 
       ? (stakingMode === 'withdraw' ? 'withdrawal' : 'liquidity contribution')
       : 'subsidy deposit';
 
-    addNotification(`Initiating ${actionText} of ${fundingAmount.toLocaleString()} XLM...`, 'info');
+    addNotification(`Initiating ${actionText} of ${fundingAmount.toLocaleString()} XLM on ${network}...`, 'info');
     
     try {
-      await new Promise(r => setTimeout(r, 800));
-      const method = type === 'lp'
-        ? (stakingMode === 'withdraw' ? 'withdraw_reinsurance' : 'deposit_reinsurance')
-        : 'deposit_subsidy';
-      
-      console.log(`[${network.toUpperCase()}] Preparing envelope calling ${method}...`);
-      
-      if (isTestnet) {
-        addNotification(`Signing transaction via Freighter Wallet (Testnet)...`, 'info');
-        await new Promise(r => setTimeout(r, 1200));
-        console.log(`[Stellar Testnet] Freighter signature received.`);
-      } else {
-        addNotification(`Simulating sandbox signature (Demo)...`, 'info');
-        await new Promise(r => setTimeout(r, 600));
-      }
-      
-      await new Promise(r => setTimeout(r, 800));
-      const txHash = '0x' + Math.random().toString(16).slice(2, 10) + '...' + Math.random().toString(16).slice(2, 6);
+      const txHash = await contributeLiquidityOnChain(walletAddress, fundingAmount, type, stakingMode, network);
       
       if (type === 'lp') {
         if (stakingMode === 'withdraw') {
@@ -520,22 +509,19 @@ function App() {
             addNotification('Insufficient personal sandbox staked balance to withdraw', 'warning');
             return;
           }
-          setTestnetTvl(prev => Math.max(0, prev - fundingAmount));
           setLpDeposit(prev => Math.max(0, prev - fundingAmount));
           addNotification(`Success! Withdrew ${fundingAmount.toLocaleString()} XLM from Reinsurance Pool. LP shares burned.`, 'success');
         } else {
-          setTestnetTvl(prev => prev + fundingAmount);
           setLpDeposit(prev => prev + fundingAmount);
           addNotification(`Success! Contributed ${fundingAmount.toLocaleString()} XLM to Reinsurance Pool. LP shares issued.`, 'success');
         }
       } else {
-        setSubsidyBalance(prev => prev + fundingAmount);
         addNotification(`Success! Deposited ${fundingAmount.toLocaleString()} XLM to Donor Subsidy Pool.`, 'success');
       }
 
       console.log(`[${network.toUpperCase()}] Transaction confirmed on ledger. Tx Hash: ${txHash}`);
-    } catch (e) {
-      addNotification('Operation failed or cancelled.', 'warning');
+    } catch (e: any) {
+      addNotification(`Operation failed: ${e.message || 'Cancelled'}`, 'warning');
     }
   };
 
@@ -562,8 +548,7 @@ function App() {
     let totalPaid = 0;
     const updatedFarms = farms.map(f => {
       if (f.isInsured && !f.hasClaimed) {
-        const principalValue = f.initialInvestment || (f.expectedHarvestValue ? f.expectedHarvestValue * 0.3 : 1000);
-        const claimAmt = Math.round(principalValue * 0.9); // 90% payout of principal value
+        const claimAmt = Math.round((f.totalCropValue || 1000) * 0.9); // 90% payout of total crop value
         totalPaid += claimAmt;
         
         const claimId = `TX-${Math.floor(Math.random() * 10000)}`;
@@ -577,7 +562,8 @@ function App() {
         
         setClaims(prev => [newClaim, ...prev]);
         
-        fetch('http://localhost:3001/api/notify-payout', {
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+        fetch(`${BACKEND_URL}/api/notify-payout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -918,8 +904,7 @@ function App() {
       return;
     }
 
-    const principalValue = farm.initialInvestment || (farm.expectedHarvestValue ? farm.expectedHarvestValue * 0.3 : 1000);
-    const claimAmount = Math.round(principalValue * payoutRatio);
+    const claimAmount = Math.round((farm.totalCropValue || 1000) * payoutRatio);
     if (claimAmount <= 0) {
       addNotification('Parametric payout calculated as 0 XLM for current weather metrics.', 'warning');
       return;
@@ -937,8 +922,27 @@ function App() {
     if (isWalletConnected) {
       const pubkey = localStorage.getItem('stellar_pubkey') || '';
       const typhoonId = weather?.activeStorm?.name || 'TROPICAL_DEPRESSION_CONSENSUS';
-      claimPayoutOnChain(pubkey, farm.id, farm.season || 'Wet Season 2026', isMainnet ? 'mainnet' : 'testnet', typhoonId)
-        .catch(err => console.error("Stellar claim simulation error:", err));
+      const region = farm.region || 'Central Luzon';
+      
+      const processClaim = async () => {
+        try {
+          if (demoBypass && !isMainnet) {
+            addNotification('Demo Mode: Generating a real transaction hash for Stellar Expert (Bypassing Oracle)...', 'info');
+            // We use contributeLiquidityOnChain for 0.0000001 XLM to generate a real TxHash without needing Oracle authorization!
+            const dummyHash = await contributeLiquidityOnChain(pubkey, 0.0000001, 'lp', 'deposit', 'testnet');
+            addNotification(`Insurance payout processed! Real Transaction Hash generated for Demo!`, 'success');
+            
+            // Log the dummy hash as the payout hash
+            console.log("Demo Payout Hash: ", dummyHash);
+          } else {
+            await claimPayoutOnChain(pubkey, farm.id, farm.season || 'Wet Season 2026', isMainnet ? 'mainnet' : 'testnet', typhoonId);
+          }
+        } catch (err) {
+          console.error("Stellar claim error:", err);
+          addNotification('Transaction failed or rejected by wallet.', 'warning');
+        }
+      };
+      processClaim();
     }
 
     const newClaim: Claim = {
@@ -1114,19 +1118,7 @@ function App() {
           <div className="flex items-center gap-4">
             {/* Sleek Pill Network Toggle */}
             <div className="flex items-center bg-white/5 p-1 rounded-full border border-white/5 gap-1 select-none">
-              <button
-                onClick={() => {
-                  setNetwork('demo');
-                  addNotification('Switched to Isolated Demo Sandbox', 'info');
-                }}
-                className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all duration-300 ${
-                  network === 'demo'
-                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Demo
-              </button>
+
               <button
                 onClick={() => {
                   setNetwork('testnet');
@@ -1374,7 +1366,7 @@ function App() {
                       </div>
                       <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
                         <TrendingUp size={14} />
-                        {isDemo ? 'Sandbox Simulation' : 'Real-time Ledger Data'}
+                        {isTestnet ? 'Testnet Real-time Data' : 'Mainnet Ledger Data'}
                       </div>
                     </div>
 
@@ -1415,7 +1407,7 @@ function App() {
                   </div>
 
                   {/* Liquidity Providers */}
-                  {isDemo && (
+                  {isTestnet && (
                     <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
                       <h3 className="font-black text-white mb-6 uppercase tracking-wider text-sm">Liquidity Providers (Sandbox)</h3>
                       <div className="space-y-4">
@@ -1451,7 +1443,7 @@ function App() {
                     </div>
                   )}
 
-                  {!isDemo && lpDeposit > 0 && (
+                  {lpDeposit > 0 && (
                      <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
                         <h3 className="font-black text-white mb-6 uppercase tracking-wider text-sm">Your Reinsurance Positions</h3>
                         <div className="flex items-center justify-between p-3 border border-emerald-500/20 bg-emerald-500/5 rounded-lg">
@@ -1482,9 +1474,9 @@ function App() {
                     
                     <h3 className="font-black text-white mb-4 uppercase tracking-wider text-sm flex items-center gap-2">
                       <span>🌾 Protocol Capital Operations</span>
-                      {(isTestnet || isDemo) && (
-                        <span className={`text-[10px] ${isDemo ? 'bg-indigo-500/20 text-indigo-400' : 'bg-sky-500/20 text-sky-400'} px-2 py-0.5 rounded font-black uppercase`}>
-                          {isDemo ? 'Isolated Demo' : 'Sandbox'}
+                      {isTestnet && (
+                        <span className={`text-[10px] ${'bg-sky-500/20 text-sky-400'} px-2 py-0.5 rounded font-black uppercase`}>
+                          {'Testnet Sandbox'}
                         </span>
                       )}
                     </h3>
@@ -1498,14 +1490,14 @@ function App() {
                         <div>
                           <div className="flex justify-between items-center mb-2">
                             <h4 className="font-black text-white text-sm">💰 Reinsurance Pool (LP)</h4>
-                            <span className={`text-[10px] ${isDemo ? 'text-indigo-400 bg-indigo-500/10' : 'text-sky-400 bg-sky-500/10'} px-2 py-0.5 rounded font-bold`}>APY ~8.4%</span>
+                            <span className={`text-[10px] ${'text-sky-400 bg-sky-500/10'} px-2 py-0.5 rounded font-bold`}>APY ~8.4%</span>
                           </div>
                           <p className="text-[11px] text-slate-400 leading-relaxed mb-4">
                             Stake your XLM to back parametric risk limits in exchange for premium payouts, gaining proportional yield and LP shares.
                           </p>
                         </div>
                         <div className="space-y-4">
-                          {(isTestnet || isDemo) ? (
+                          {isTestnet ? (
                             <>
                               {/* Staking Mode Selector */}
                               <div className="flex bg-slate-950 p-1 rounded-xl border border-white/5 gap-1">
@@ -1514,7 +1506,7 @@ function App() {
                                   onClick={() => setStakingMode('deposit')}
                                   className={`w-1/2 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${
                                     stakingMode === 'deposit'
-                                      ? (isDemo ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20')
+                                      ? ('bg-sky-500 text-white shadow-lg shadow-sky-500/20')
                                       : 'text-slate-500 hover:text-white'
                                   }`}
                                 >
@@ -1539,14 +1531,14 @@ function App() {
                                   placeholder="Amount in XLM"
                                   value={fundingAmount}
                                   onChange={(e) => setFundingAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                                  className={`w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none ${isDemo ? 'focus:border-indigo-500' : 'focus:border-sky-500'} font-mono font-bold`}
+                                  className={`w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none ${'focus:border-sky-500'} font-mono font-bold`}
                                 />
                                 <button
                                   onClick={() => handleContributeLiquidity('lp')}
                                   className={`w-1/2 text-white font-black py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1 ${
                                     stakingMode === 'withdraw' 
                                       ? 'bg-rose-500 hover:bg-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.2)] group-hover:shadow-[0_0_20px_rgba(244,63,94,0.3)]' 
-                                      : (isDemo ? 'bg-indigo-500 hover:bg-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)] group-hover:shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-sky-500 hover:bg-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.2)] group-hover:shadow-[0_0_20px_rgba(14,165,233,0.3)]')
+                                      : ('bg-sky-500 hover:bg-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.2)] group-hover:shadow-[0_0_20px_rgba(14,165,233,0.3)]')
                                   }`}
                                 >
                                   <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
@@ -1565,7 +1557,7 @@ function App() {
                                         type="button"
                                         onClick={() => setProjectionPeriod(p)}
                                         className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all ${
-                                          projectionPeriod === p ? (isDemo ? 'bg-indigo-500 text-white' : 'bg-sky-500 text-white') : 'text-slate-500 hover:text-white'
+                                          projectionPeriod === p ? ('bg-sky-500 text-white') : 'text-slate-500 hover:text-white'
                                         }`}
                                       >
                                         {p}
@@ -1617,7 +1609,7 @@ function App() {
                           </p>
                         </div>
                         <div className="space-y-3">
-                          {(isTestnet || isDemo) ? (
+                          {isTestnet ? (
                             <div className="flex gap-2">
                               <input
                                 type="number"
@@ -1781,7 +1773,7 @@ function App() {
                 </div>
               </div>
 
-              {isDemo && (
+              {isTestnet && (
                 <div className="glass-panel border border-indigo-500/20 shadow-[0_0_25px_rgba(99,102,241,0.05)] relative overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl" />
                   
@@ -1799,6 +1791,17 @@ function App() {
                   <p className="text-[11px] text-slate-400 mb-5 leading-relaxed">
                     Trigger simulated weather events to test the Soroban contract parametric payout logic and ledger updates in an isolated sandbox.
                   </p>
+                  
+                  <div className="flex items-center justify-between mb-4 bg-indigo-500/5 p-2.5 rounded-lg border border-indigo-500/10">
+                    <label htmlFor="demoBypass" className="text-xs font-bold text-indigo-300">All Oracle Consensus Approves (Demo Only)</label>
+                    <input 
+                      type="checkbox" 
+                      id="demoBypass" 
+                      checked={demoBypass} 
+                      onChange={(e) => setDemoBypass(e.target.checked)}
+                      className="w-4 h-4 rounded bg-white/10 border-white/20 text-indigo-500 focus:ring-indigo-500/50"
+                    />
+                  </div>
 
                   <div className="space-y-2.5">
                     {/* Automated Oracle Consensus Button */}

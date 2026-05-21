@@ -55,10 +55,10 @@ const MapEventsHandler = ({ onChange }: { onChange: (lat: number, lng: number) =
 interface FarmerVerificationProps {
   onVerificationComplete: (farms: FarmData[]) => void;
   walletAddress: string;
-  network?: 'demo' | 'testnet' | 'mainnet';
+  network?: 'testnet' | 'mainnet';
 }
 
-const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'demo' }) => {
+const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'testnet' }) => {
   const [step, setStep] = useState(1);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isUploadingRsbsa, setIsUploadingRsbsa] = useState(false);
@@ -270,12 +270,13 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
       }
 
       const pubkey = localStorage.getItem('stellar_pubkey') || walletAddress;
-      await fetch('http://localhost:3001/api/register', {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      await fetch(`${BACKEND_URL}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           address: pubkey,
-          fcmToken: `demo-fcm-${farmerInfo.phoneNumber}`
+          fcmToken: `testnet-fcm-${farmerInfo.phoneNumber}`
         })
       });
       console.log('Registered for notifications');
@@ -351,8 +352,8 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                       region: 'Central Luzon',
                       phoneNumber: '+63 912 345 6789'
                     });
-                    setUploadedRsbsa('demo-rsbsa-form.pdf');
-                    setUploadedValidId('demo-passport-id.png');
+                    setUploadedRsbsa('testnet-rsbsa-form.pdf');
+                    setUploadedValidId('testnet-passport-id.png');
                     setCurrentFarm({
                       farmName: 'Albay Paradise Farm',
                       cropType: 'Rice',

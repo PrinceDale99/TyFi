@@ -34,7 +34,7 @@ interface SubsidyRequest {
 
 interface SubsidyMarketplaceProps {
   sponsorAddress: string;
-  network?: 'demo' | 'testnet' | 'mainnet';
+  network?: 'testnet' | 'mainnet';
   addNotification: (text: string, type?: 'info' | 'success' | 'warning') => void;
 }
 

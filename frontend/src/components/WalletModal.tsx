@@ -6,10 +6,10 @@ interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConnect: (address: string) => void;
-  network?: 'demo' | 'testnet' | 'mainnet';
+  network?: 'testnet' | 'mainnet';
 }
 
-const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, network = 'demo' }) => {
+const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, network = 'testnet' }) => {
   if (!isOpen) return null;
 
   const isMainnet = network === 'mainnet';
