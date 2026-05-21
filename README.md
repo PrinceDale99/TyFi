@@ -3,7 +3,7 @@
 [![Stellar](https://img.shields.io/badge/Stellar-Soroban-blue.svg)](https://stellar.org)
 [![Testnet](https://img.shields.io/badge/Testnet-Live-brightgreen.svg)](https://lab.stellar.org/r/testnet/contract/CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > *"Kung hagupit ang bagyo, ikaw ay babayaran."*
@@ -11,134 +11,177 @@
 
 ---
 
-## 🧩 The Problem: A Climate Credit Gap
-Traditional crop insurance in the Philippines is broken. Smallholder farmers face:
-- **High Rejection Rates**: 80%+ of claims are denied due to complex paperwork or subjective damage assessment.
-- **Liquidity Lag**: Payouts take 3–6 months—long after the farmer needs seeds for the next season.
-- **Micro-Scale Inaccessibility**: 1.6M+ farmers earning ₱150–250/day are "uninsurable" by traditional banks.
+## 🧩 Problem
+Traditional crop insurance in the Philippines has **80%+ claim rejection rates**, takes **3–6 months** to settle, and is bureaucratically inaccessible to the 1.6 million smallholder farmers who need it most. A single typhoon can erase a season's income, leaving farmers in deep debt without immediate recourse for recovery.
 
-## 🌟 The Solution: TyFi
-TyFi is a decentralized parametric insurance protocol built on **Stellar Soroban**. It replaces manual claims with objective data. If a typhoon's wind speed exceeds a contract-defined threshold (verified by oracles), the payout is triggered **instantly and automatically**.
+## 🌟 Vision
+To build the financial rails that give Filipino farmers a fighting chance against a warming world. We aim to provide global infrastructure for climate survival through fast, cheap, and accessible decentralized parametric insurance that scales across all disaster-prone regions.
 
----
+## 🎯 Purpose
+TyFi was built to eliminate the middleman and the waiting game in disaster recovery. By leveraging Stellar's high-speed, low-cost blockchain and Soroban smart contracts, we provide a transparent, automated insurance protocol that pays out the moment disaster strikes—not months later.
 
-## 🏗️ Technical Architecture
+## 👥 Target Users
+- **Filipino Smallholder Farmers**: RSBSA-registered rice, corn, and sugarcane farmers earning ₱150–250/day in typhoon-prone provinces.
+- **DeFi Liquidity Providers (Reinsurers)**: Global yield seekers looking for real-world asset (RWA) exposure with 8.4% APY.
+- **Donors & NGOs**: Climate-focused organizations (USAID, WFP) seeking transparent mechanisms to subsidize farmer premiums.
 
-### 1. Soroban Smart Contract (`contracts/`)
-The "Source of Truth" for the insurance vault.
-- **Consensus Oracle Mechanism**: Implements a multi-oracle quorum. Payouts are only triggered when a majority of authorized oracles report consistent damage data for a specific Typhoon ID and Region.
-- **Sliding-Scale Damage Curve**: Instead of binary "hit/miss," the contract uses a damage percentage (0–100%) to calculate payouts proportional to the storm's severity.
-- **State Management**: Uses efficient `DataKey` mapping to track:
-    - **RSBSA Verification**: Farmers must be verified (Admin-gated) to prevent sybil attacks.
-    - **Reinsurance Pool**: A yield-bearing vault where Liquidity Providers (LPs) deposit XLM to back the risk in exchange for premium-based yield.
-    - **Subsidy Pool**: A dedicated balance for NGOs/Donors to pay premiums on behalf of verified farmers.
-
-### 2. AI Risk Engine (`frontend/src/services/aiService.ts`)
-Powered by **Google Gemini API**, our AI Copilot acts as a "Smart Surveyor."
-- **Multimodal Assessment**: Analyzes live weather metrics (Wind Speed, Rainfall, Gusts) against farm coordinates and crop types.
-- **Crop Vulnerability Modeling**: Differentiates risk between Rice (lodging/flooding), Bananas (shallow roots), and Coconuts (wind resistance).
-- **Proactive Advisories**: Provides farmers with actionable steps (e.g., "Harvest early," "Clear drainage") based on the predicted storm trajectory.
-
-### 3. Real-Time Infrastructure (`backend/` & `functions/`)
-- **Stellar Event Listener**: A Node.js service that monitors the Soroban ledger for `payout_triggered` events.
-- **Notification Engine**: Bridges blockchain events to real-world alerts via **Firebase Cloud Messaging (FCM)**.
-- **Certificate Service**: Automatically generates tamper-proof PDF insurance certificates (via `pdfkit`) containing the contract hash and policy details.
-
----
+## ✨ Features
+- **🚀 Parametric Payouts** — Automated payouts triggered by objective PAGASA-verified wind speed thresholds—no claim forms required. The contract uses a sliding-scale damage curve to ensure fairness.
+- **🛰️ Live Typhoon Tracking** — Interactive dashboard tracking storm paths in real-time within the Philippine Area of Responsibility (PAR), featuring multi-farm proximity detection.
+- **🌾 Farmer Verification** — RSBSA and land title verification gate to ensure legitimate policy registration. Farmers upload Deeds of Sale or Land Titles which are verified by admins.
+- **🏦 LP Reinsurance Pool** — Yield-bearing liquidity pool (8.4% APY) lets DeFi users back agricultural risk. Premiums paid by farmers flow directly to LPs as yield.
+- **⚡ Oracle Consensus Simulator** — A built-in testnet sandbox to simulate the full end-to-end oracle → consensus → disbursal pipeline for demonstration and testing.
+- **📊 Parametric Analytics** — High-fidelity telemetry charts overlaying real wind/rain data against contract trigger thresholds for transparent risk assessment.
+- **📱 FCM Push Notifications** — Real-time mobile alerts for farmers before, during, and after typhoon events, keeping them informed of their policy status.
 
 ## 📊 Parametric Payout Scale
 
-The smart contract executes payouts based on objective wind speed data from the Philippine Area of Responsibility (PAR).
+The smart contract executes payouts based on objective wind speed data. This eliminates the need for manual damage assessments.
 
-| Wind Speed | Category | Damage Estimate | Payout % |
+| Wind Speed | Category | Oracle Damage % | Payout |
 |---|---|---|---|
-| < 100 km/h | Tropical Storm | 0% | **0%** |
-| 100–119 km/h | Typhoon | ~30% | **30%** |
-| 120–149 km/h | Severe Typhoon | ~70% | **70%** |
-| ≥ 150 km/h | Super Typhoon | 100% | **100%** |
+| < 100 km/h | No trigger | 0% | 0 XLM |
+| 100–119 km/h | Typhoon | ~30% | **30% of coverage** |
+| 120–149 km/h | Severe Typhoon | ~70% | **70% of coverage** |
+| ≥ 150 km/h | Super Typhoon | 100% | **Full coverage** |
 
----
+## 🛠️ Tech Stack
+- **Frontend**: React 19, TypeScript, Vite, Vanilla CSS, Leaflet.js
+- **Backend**: Node.js (Express), Firebase (Functions, Firestore, Auth, Hosting)
+- **Blockchain**: Stellar (Soroban, Rust SDK v20.5.0, XLM native asset)
+- **AI/ML**: Gemini API (via Firebase Genkit) for parametric damage estimation and AI Copilot assistance.
 
-## 📂 Project Structure
+## 🏗️ Architecture
+The system consists of three main layers: the user interface, the off-chain infrastructure (oracles and listeners), and the on-chain insurance vault.
 
-```text
-typhoon-resilience-vault/
-├── contracts/                  # Soroban Smart Contracts (Rust)
-│   └── typhoon_resilience_vault/
-│       ├── src/                # Contract logic & tests
-│       └── test_snapshots/     # Verified execution traces
-├── frontend/                   # React 19 Dashboard (Vite + TS)
-│   ├── src/components/         # Modular UI (Map, Copilot, Wallet)
-│   ├── src/services/           # AI, Weather, and Stellar integration
-│   └── src/locales/            # Multi-dialect support (Tagalog, Cebuano, Waray)
-├── backend/                    # Node.js Middleware & Event Listener
-│   ├── server.ts               # API for FCM & Certificates
-│   └── listener.ts             # Soroban Ledger observer
-└── functions/                  # Firebase Cloud Functions (Auto-scaling)
+```mermaid
+graph TB
+    subgraph "Frontend (React 19)"
+        UI[Dashboard & Monitor]
+        Map[PAR Typhoon Map]
+        Wallet[Freighter Wallet]
+    end
+
+    subgraph "Oracle & Infra Layer"
+        Oracle[PAGASA + Open-Meteo]
+        FCM[Firebase Cloud Messaging]
+        Listener[Soroban Event Listener]
+        AI[Gemini AI Assessment]
+    end
+
+    subgraph "Blockchain (Stellar Soroban)"
+        Vault[TRV Smart Contract]
+        Pool[Reinsurance LP Pool]
+        Payout[Parametric Payout Engine]
+    end
+
+    Oracle -->|Wind & Rain data| Vault
+    AI -->|Damage % estimate| Vault
+    UI -->|"subscribe()"| Vault
+    Wallet -->|Auth & Sign| Vault
+    Vault -->|"claim_payout()"| Payout
+    Payout -->|XLM| Wallet
+    Listener -->|Payout events| FCM
+    FCM -->|Push alerts| UI
 ```
 
----
+## 📖 Roadmap
 
-## 🚀 Getting Started
+### ✅ Phase 1 — Testnet (Current)
+- [x] Core Soroban contract with sliding-scale parametric payouts.
+- [x] Multi-oracle quorum consensus mechanism.
+- [x] RSBSA + Land Title / Deed of Sale verification gate.
+- [x] LP reinsurance staking portal with yield projections.
+- [x] Live typhoon tracking map and parametric weather analytics.
+- [x] FCM push notification infrastructure.
 
-### Prerequisites
-- **Rust/Cargo**: `stable` (v1.74+)
-- **Stellar CLI**: `v20.x`
-- **Node.js**: `v18.x`+
-- **Freighter Wallet**: [Installed Extension](https://www.freighter.app/)
+### 🎯 Phase 2 — Mainnet Pilot (Q3 2026)
+- [ ] Mainnet deployment with authorized PAGASA oracle feeds.
+- [ ] 500–1,000 farmer pilot in Albay, Leyte, and Eastern Samar.
+- [ ] GCash / Maya bridge integration for off-ramping XLM to local currency.
+- [ ] Department of Agriculture RSBSA data partnership.
 
-### Installation & Development
+### 🚀 Phase 3 — Scale (2027+)
+- [ ] Expansion to all 18 Philippine regions and neighboring SE Asian countries.
+- [ ] Climate DAO governance — community-driven adjustment of premium rates and thresholds.
+- [ ] Carbon credit integration for climate-resilient farming practices.
 
-1. **Clone the repo**
-   ```bash
-   git clone https://github.com/PrinceDale99/TyFi.git
-   cd typhoon-resilience-vault
-   ```
 
-2. **Setup Dependencies**
-   ```bash
-   npm run install:all
-   ```
+## Prerequisites 
 
-3. **Build & Test Contracts**
-   ```bash
-   cd contracts/typhoon_resilience_vault
-   stellar contract build
-   cargo test
-   ```
-
-4. **Launch Application**
-   ```bash
-   # Run frontend (Root script)
-   npm run dev
-   
-   # Run backend listener
-   npm run listener
-   ```
-
----
-
-## 🧪 Testing Suite
-We use a combination of unit tests and snapshot testing to ensure payout safety.
-- **Double Payout Prevention**: Ensures a farmer cannot claim twice for the same storm.
-- **Subsidy Depletion**: Tests contract behavior when the donor pool is empty.
-- **Oracle Quorum**: Validates that 2/3 oracles must agree before state mutation.
-
-Run tests: `cargo test -- --nocapture`
-
----
-
-## 🌐 Deployment Status
-
-| Network | Contract ID | Explorer |
+| Tool | Version | Install |
 |---|---|---|
-| **Testnet** | `CBMNXU...3WRN` | [View on Stellar.expert](https://stellar.expert/explorer/testnet/contract/CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN) |
-| **Mainnet** | `CAAQCL...HCHEK` | [View on Stellar.expert](https://stellar.expert/explorer/mainnet/contract/CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK) |
+| Rust + Cargo | stable (≥ 1.74) | [rustup.rs](https://rustup.rs) |
+| Stellar CLI | ≥ 20.x | [Stellar CLI docs](https://developers.stellar.org/docs/smart-contracts/getting-started/setup) |
+| Node.js | ≥ 18.x | [nodejs.org](https://nodejs.org) |
+| Freighter Wallet | latest | [freighter.app](https://freighter.app) |
 
----
+## 🚀 How to Run Locally
+
+### Smart Contract
+```bash
+cd contracts/typhoon_resilience_vault
+stellar contract build
+cargo test
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Backend
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+## 🌐 Deployment
+
+### Testnet
+- Contract / App Address: `CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN` 
+- 📸 Screenshot — Stellar Expert (Testnet)
+  ![Testnet Screenshot](public/testnet.png)
+- Link: [Stellar Expert Testnet](https://stellar.expert/explorer/testnet/contract/CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN)
+
+### Mainnet
+- Contract / App Address: `CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK`
+- 📸 Screenshot — Stellar Expert (Mainnet)
+  ![Mainnet Screenshot](public/mainnet.png)
+- Link: [Stellar Expert Mainnet](https://stellar.expert/explorer/mainnet/contract/CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK)
+
+## 🎥 Demo
+- 🔗 Live App: [https://ptrv-22b15.web.app/](https://ptrv-22b15.web.app/)
+- 🎬 Demo Video: [https://youtu.be/dY-zH4tBCQg](https://youtu.be/dY-zH4tBCQg)
+- 🖼️ Pitch Deck: [https://canva.link/md0xjm7hr9p4rgs](https://canva.link/md0xjm7hr9p4rgs)
 
 ## 👨‍💻 Team
-- **Prince Dale Limosnero** — *Lead Blockchain Architect / Full-Stack Developer* ([@PrinceDale99](https://github.com/PrinceDale99))
+| Name | Role | GitHub |
+|---|---|---|
+| Prince Dale Limosnero | Lead Blockchain Architect / Smart Contract Engineer / Frontend Architect / Web3 Developer / Backend & Cloud Engineer / UI/UX Designer / AI Integration Specialist / Prompt Engineer / DevOps / Blockchain Operations Manager | [@PrinceDale99](https://github.com/PrinceDale99) |
 
 ## 📜 License
-MIT License. See [LICENSE](LICENSE) for details.
+MIT License
+
+Copyright (c) 2026 TyFi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
