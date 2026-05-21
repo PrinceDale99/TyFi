@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "liveMonitor": "Live nga Pag-monitor",
+    "claims": "Mga Pag-angkon",
+    "vault": "Tagoan"
+  },
+  "header": {
+    "protocolMonitoring": "Pag-monitor han Protokol",
+    "smartCalculator": "Matalino nga Calculator",
+    "claimHistory": "Kaagi han Pag-angkon",
+    "vaultInfrastructure": "Imprastraktura han Tagoan",
+    "connectWallet": "Ikonektar it Wallet"
+  },
+  "widgets": {
+    "agriMarketPulse": "Presyo han Agrikultura",
+    "liveDaPrices": "Live nga Presyo han DA & Updates han PAGASA"
+  }
+}

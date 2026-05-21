@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "liveMonitor": "Live Monitor",
+    "claims": "Claims",
+    "vault": "Vault"
+  },
+  "header": {
+    "protocolMonitoring": "Protocol Monitoring",
+    "smartCalculator": "Smart Calculator",
+    "claimHistory": "Claim History",
+    "vaultInfrastructure": "Vault Infrastructure",
+    "connectWallet": "Connect Wallet"
+  },
+  "widgets": {
+    "agriMarketPulse": "Agri-Market Pulse",
+    "liveDaPrices": "Live DA Prices & PAGASA Updates"
+  }
+}

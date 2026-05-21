@@ -150,36 +150,6 @@ impl TyphoonVault {
         Ok(())
     }
 
-    // --- Unified Weather Oracle Functions (Simple direct fallback) ---
-
-    /// Directly report region weather (WeatherOracle functionality combined)
-    pub fn update_weather_direct(env: Env, admin: Address, region: Symbol, damage_percentage: u32) -> Result<(), Error> {
-        let saved_admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
-        saved_admin.require_auth();
-        admin.require_auth();
-        if admin != saved_admin {
-            return Err(Error::Unauthorized);
-        }
-        
-        env.storage().persistent().set(&DataKey::Report(Symbol::new(&env, "direct"), region.clone(), saved_admin), &damage_percentage);
-        
-        env.events().publish(
-            (Symbol::new(&env, "weather_updated"), region),
-            damage_percentage
-        );
-        Ok(())
-    }
-
-    /// Get direct weather for a region (WeatherOracle functionality combined)
-    pub fn get_weather_direct(env: Env, region: Symbol) -> u32 {
-        let saved_admin: Option<Address> = env.storage().instance().get(&DataKey::Admin);
-        if let Some(admin_addr) = saved_admin {
-            env.storage().persistent().get(&DataKey::Report(Symbol::new(&env, "direct"), region, admin_addr)).unwrap_or(0)
-        } else {
-            0
-        }
-    }
-
     // --- Public Premium Subsidy Pool ---
 
     /// Donors can deposit XLM into the public premium subsidy pool

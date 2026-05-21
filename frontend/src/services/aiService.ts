@@ -108,11 +108,27 @@ Return the JSON block.`;
     }
 
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    if (data.error) {
+      throw new Error(`Gemini API Error: ${data.error.message || 'Unknown error'}`);
+    }
+
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      console.warn('[AI Service] No text response from Gemini candidates:', data);
+      throw new Error('AI service returned an empty or malformed response');
+    }
     
     // Parse JSON safely, removing any potential markdown codeblock formatting if Gemini accidentally wraps it
     const cleanJsonText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const result: AiPredictionResult = JSON.parse(cleanJsonText);
+    let result: AiPredictionResult;
+    
+    try {
+      result = JSON.parse(cleanJsonText);
+    } catch (parseErr) {
+      console.error('[AI Service] Failed to parse Gemini response as JSON:', cleanJsonText);
+      throw new Error('AI service response was not valid JSON');
+    }
     
     // Log prediction to Firestore
     await logPrediction({
@@ -148,7 +164,7 @@ Return the JSON block.`;
     }
     
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error invoking Gemini Advisor:', error);
     // Fallback predictive logic if API is throttled or fails
     const mockWillHit = weather.windSpeed > 45 || weather.rainfall > 60;
@@ -159,7 +175,7 @@ Return the JSON block.`;
       estimatedDamage: mockWillHit ? Math.round(weather.windSpeed * 0.6) : 0,
       confidenceScore: 80,
       riskLevel: mockWillHit ? 'High' : 'Low',
-      reasoning: `[System Fallback Mode] Weather wind speed is ${weather.windSpeed.toFixed(1)} km/h with rainfall of ${weather.rainfall.toFixed(1)} mm.`,
+      reasoning: `[System Fallback Mode] ${error.message || 'Service unreachable'}. Weather metrics: ${weather.windSpeed.toFixed(1)} km/h winds, ${weather.rainfall.toFixed(1)} mm rain.`,
       advisory: mockWillHit 
         ? 'Precautionary Alert: Ensure all farm drainage is clear to prevent flooding and protect sensitive crop seedlings.' 
         : 'Continue monitoring regular Open-Meteo feeds.'
@@ -177,6 +193,65 @@ Return the JSON block.`;
     });
 
     return result;
+  }
+};
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+}
+
+/**
+ * Facilitates a conversational chat with the TyFi Smart Advisor.
+ * Provides full context of farms, weather, and recent claims.
+ */
+export const chatWithAdvisor = async (
+  message: string,
+  history: ChatMessage[],
+  farms: FarmData[],
+  weather: WeatherData | null,
+  claims: any[]
+): Promise<string> => {
+  const systemPrompt = `You are the TyFi Smart Advisor, an empathetic and highly expert agricultural support agent for Filipino farmers. 
+Your goal is to provide proactive protection tips before storms, guide recovery after storms, and explain the decentralized parametric insurance protocol.
+
+--- CONTEXTUAL DATA ---
+FARMS: ${JSON.stringify(farms.map(f => ({ name: f.farmName, crop: f.cropType, stage: f.season, value: f.totalCropValue })))}
+CURRENT WEATHER: ${weather ? `Wind: ${weather.windSpeed}km/h, Rain: ${weather.rainfall}mm, Condition: ${weather.condition}` : 'Unknown'}
+RECENT CLAIMS: ${JSON.stringify(claims.map(c => ({ date: c.date, amount: c.amount, trigger: c.trigger })))}
+
+--- BEHAVIORAL GUIDELINES ---
+1. PROACTIVE PROTECTION: If current wind > 60km/h or rain > 50mm, start by warning the farmer and giving crop-specific protection tips (e.g., harvesting mature crops, clearing drainage).
+2. RECOVERY GUIDANCE: If a claim was recently paid (check claims data), guide them on using the funds for resilient replanting or soil rehabilitation.
+3. PROTOCOL EDUCATION: Explain that payouts are automated by Soroban smart contracts based on "parametric triggers" (objective weather data), not manual damage inspection.
+4. TONE: Be professional, encouraging, and clear. Use local context where appropriate.
+
+Respond with concise, actionable text. Use markdown for lists or emphasis.`;
+
+  const formattedHistory = history.map(msg => ({
+    role: msg.role === 'model' ? 'model' : 'user',
+    parts: [{ text: msg.text }]
+  }));
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/ai/analyze-weather`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          { role: 'user', parts: [{ text: systemPrompt }] },
+          ...formattedHistory,
+          { role: 'user', parts: [{ text: message }] }
+        ],
+      }),
+    });
+
+    if (!response.ok) throw new Error('AI service unreachable');
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm having trouble connecting to my knowledge base. Please try again in a moment.";
+  } catch (error) {
+    console.error('Chat error:', error);
+    return "I am currently in standby mode due to a connection issue. If a storm is approaching, please prioritize your safety and follow local PAGASA advisories.";
   }
 };
 
@@ -249,16 +324,33 @@ Return strictly a JSON object with no markdown tags or text, following this exac
     }
 
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (data.error) {
+      throw new Error(`Gemini API Error: ${data.error.message || 'Unknown error'}`);
+    }
+
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      console.warn('[AI Service] No text response from Gemini candidates for crop metrics:', data);
+      throw new Error('AI service returned an empty or malformed response');
+    }
+
     const cleanJsonText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const result: CropValuationResult = JSON.parse(cleanJsonText);
+    let result: CropValuationResult;
+
+    try {
+      result = JSON.parse(cleanJsonText);
+    } catch (parseErr) {
+      console.error('[AI Service] Failed to parse Gemini response as JSON for crop metrics:', cleanJsonText);
+      throw new Error('AI service response was not valid JSON');
+    }
     
     // Ensure numbers are rounded nicely
     result.initialInvestment = Math.round(result.initialInvestment);
     result.expectedHarvestValue = Math.round(result.expectedHarvestValue);
     
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.warn('[AI Service] Failed to estimate crop metrics with Gemini, using regional math fallback:', error);
     
     // Fallback calculation logic based on agricultural standards
@@ -298,8 +390,28 @@ Return strictly a JSON object with no markdown tags or text, following this exac
       initialInvestment,
       expectedHarvestValue,
       confidenceScore: 85,
-      explanation: `[System Fallback] Estimated using standard Philippine regional baseline data for ${cropType} in ${region} at ${farmSize} hectares.`
+      explanation: `[System Fallback] ${error.message || 'Service unreachable'}. Estimated using standard Philippine regional baseline data for ${cropType} in ${region} at ${farmSize} hectares.`
     };
   }
+};
+
+export const translateText = async (text: string, targetLanguage: string): Promise<string> => {
+  if (!targetLanguage || targetLanguage === 'en') return text;
+  
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/ai/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, targetLanguage }),
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) return data.translation;
+    }
+  } catch (err) {
+    console.error('Translation failed', err);
+  }
+  return text;
 };
 

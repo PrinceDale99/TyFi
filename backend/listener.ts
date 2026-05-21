@@ -60,21 +60,56 @@ async function pollEvents() {
           });
 
           // In Soroban, topics are often symbol-based. 
-          // If the first topic is "payout" or "payout_triggered", handle it.
-          if (topics[0] === 'payout' || topics[0] === 'payout_triggered') {
-            const { address, amount, region } = value;
+          // If the first topic is "payout_claimed", handle it.
+          if (topics[0] === 'payout_claimed') {
+            const farmer = topics[1];
+            const farmId = topics[2];
+            const [typhoonId, damage, amount] = value;
             
-            await logEvent('INFO', `Triggering payout alert dispatch to frontend farmer`, {
-              address,
-              amount,
-              region: region || 'Albay Region'
+            await logEvent('INFO', `Detected on-chain payout for farmer ${farmer}`, {
+              farmer,
+              farmId,
+              typhoonId,
+              damage,
+              amount
             });
             
             // Call notification API
             await axios.post(`${BACKEND_URL}/api/notify-payout`, {
-              address,
-              amount,
-              region: region || 'Your Region'
+              address: farmer,
+              amount: amount,
+              region: 'Your Region'
+            });
+          }
+
+          // Handle "subscribe" event for certificate generation
+          if (topics[0] === 'subscribe') {
+            const farmer = topics[1];
+            const [farmId, region, season, premium, paidAmount] = value;
+
+            await logEvent('INFO', `Detected on-chain subscription for farmer ${farmer}`, {
+              farmer,
+              farmId,
+              region,
+              season,
+              premium,
+              paidAmount,
+              txHash: event.id
+            });
+
+            // Call certificate generation API
+            await axios.post(`${BACKEND_URL}/api/generate-certificate`, {
+              address: farmer,
+              farmId,
+              region,
+              season,
+              premium,
+              txHash: event.id
+            }).catch(err => {
+              logEvent('ERROR', 'Failed to trigger certificate generation', { 
+                errorMessage: err.message,
+                address: farmer
+              });
             });
           }
         } catch (parseError: any) {

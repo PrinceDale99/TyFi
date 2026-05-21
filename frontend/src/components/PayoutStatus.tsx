@@ -8,10 +8,10 @@ interface PayoutStatusProps {
   weather: WeatherData | null;
   farms: FarmData[];
   onClaim?: (farm: FarmData) => void;
-  network?: 'testnet' | 'mainnet';
+  network?: 'demo' | 'testnet' | 'mainnet';
 }
 
-const PayoutStatus: React.FC<PayoutStatusProps> = ({ weather, farms, onClaim, network = 'testnet' }) => {
+const PayoutStatus: React.FC<PayoutStatusProps> = ({ weather, farms, onClaim, network = 'demo' }) => {
   const { formatPhp } = useXlmToPhp();
   if (!weather) return null;
   const isMainnet = network === 'mainnet';

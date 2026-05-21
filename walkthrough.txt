@@ -1,0 +1,97 @@
+TyFi Product Walkthrough
+How to Use the App
+
+
+BEFORE YOU START
+
+You need two things before you can use TyFi. First, install the Freighter wallet browser extension. Freighter is Stellar's wallet, similar to MetaMask. You can get it at freighter.app. Once installed, create a wallet and save your recovery phrase somewhere safe. Second, you need some XLM in your Freighter wallet. On testnet, you can get free testnet XLM from the Stellar Laboratory friendbot at laboratory.stellar.org. Switch Freighter to Testnet mode in its settings, copy your wallet address, paste it into the friendbot, and it will send you ten thousand testnet XLM.
+
+Once you have Freighter installed and funded, open the TyFi app in your browser.
+
+
+CONNECTING YOUR WALLET
+
+When the app loads, you will see the main dashboard. At the top of the page is the header with the TyFi logo and a Connect Wallet button on the right side. Click that button. A dropdown appears asking you to connect Freighter. Click Connect Freighter. Your Freighter extension will pop up and ask you to approve the connection. Click Approve. Your wallet address now appears in the header, shortened to show just the first and last few characters. You are now logged in.
+
+
+GETTING VERIFIED AS A FARMER
+
+Before you can buy any insurance, your wallet needs to be verified. This is a one-time step. Look at the left sidebar and click on Farm Registration or Farmer Verification. You will see a form asking for your name, your region in the Philippines, and your farm ID. Fill those out. Below the form there is a file upload field asking for your land document. Upload either a Land Title or a Deed of Sale for your farm. This is required.
+
+After you submit the form, your registration is sent to the TyFi admin for review. The admin verifies your wallet address on the blockchain. Once verified, your status on the dashboard changes to Verified and you can proceed to buy insurance. For the demo, the admin can verify you immediately.
+
+
+SUBSCRIBING TO AN INSURANCE POLICY
+
+Now that you are verified, go to the Subscribe section in the sidebar. You will see your registered farm listed. Select it. Then choose your region from the dropdown and select the current planting season, for example wet2025. The app will show you the premium amount in XLM and what that converts to in Philippine pesos using the live exchange rate shown on screen.
+
+Read through the coverage details. The payout amount is ten times your premium. So if the premium is ten XLM, your maximum payout is one hundred XLM if a super typhoon causes total crop loss.
+
+When you are ready, click Subscribe. Your Freighter wallet will pop up showing the transaction details. You will see the amount of XLM being sent and the contract address. Click Approve in Freighter. The transaction goes through in about five seconds. Once confirmed, your dashboard updates to show your active policy with its region, season, and coverage amount. Your farm is now insured.
+
+
+WATCHING THE TYPHOON MAP
+
+Go to the Weather Map tab in the sidebar. You will see an interactive map of the Philippines showing the Philippine Area of Responsibility, which is the official zone PAGASA monitors for typhoons. If there are any active typhoons, their tracks and wind radii appear on the map as colored rings.
+
+Your registered farm shows as a marker on the map. If a typhoon track comes within range of your farm, the marker changes color and a warning appears. This is just information for you to see what is coming. The actual payout is determined by oracle data, not by this map directly. But it gives you a clear picture of what storms are heading your way.
+
+You can click on storm markers to see current wind speed, the storm category, and how it compares to the payout thresholds. The thresholds are one hundred kilometers per hour for a basic typhoon payout, one hundred twenty for severe, and one hundred fifty for a full super typhoon payout.
+
+
+CHECKING THE WEATHER ANALYTICS CHART
+
+Click on Weather Analytics in the sidebar. This shows a chart of real wind speed and rainfall data plotted over time. Three horizontal lines mark the payout trigger levels. As the chart updates with new weather data, you can see how the current storm's intensity compares to each threshold. If the wind speed line crosses one of the trigger lines, it means that tier of payout has been met. This helps you understand before claiming what percentage you are likely to receive.
+
+
+USING THE ORACLE SIMULATOR (FOR DEMO PURPOSES)
+
+In a real deployment, weather oracles submit data automatically. For the testnet demo, TyFi includes a built-in Oracle Consensus Simulator so you can trigger the full payout flow yourself. Click on Oracle Simulator in the sidebar.
+
+You will see a panel where you can add oracle addresses. For the demo, add two oracle wallet addresses that the admin has already authorized on the contract. Then for each oracle, enter the typhoon ID you want to simulate, select the same region your farm is in, and enter a damage percentage. For example, type in seventy to simulate a severe typhoon causing seventy percent crop loss.
+
+Submit the report for each oracle one at a time. After the second oracle submits, the quorum is reached. The app shows a confirmation that consensus has been reached for that typhoon and region. The damage percentage is now locked into the contract. Your farm in that region is now eligible to claim.
+
+
+CLAIMING YOUR PAYOUT
+
+Go back to your main dashboard or click Claim Payout in the sidebar. You will see your active policy. Next to it, if consensus has been reached for a typhoon in your region, a Claim button appears. The app shows you the consensus damage percentage and the exact XLM amount you are about to receive based on that percentage.
+
+Click Claim Payout. Freighter opens again with the transaction details. Click Approve. The contract processes the claim, checks everything is valid, and transfers the XLM directly to your wallet. This takes about five seconds.
+
+You will see your Freighter wallet balance update with the new XLM. On the dashboard, your policy status changes to Claimed. A push notification also appears on screen confirming the payout amount. If you had notifications enabled, it also fires to your phone.
+
+You cannot claim the same policy twice. The contract blocks that automatically.
+
+
+RECEIVING PUSH NOTIFICATIONS
+
+The first time you use TyFi, the app may ask for permission to send you browser notifications. Click Allow. If you missed that prompt, go to your browser settings and enable notifications for the TyFi site.
+
+Once notifications are on, the app will alert you in three situations. It will warn you when a typhoon is approaching your registered region. It will notify you when oracle consensus is reached for your area and your payout is ready. And it will confirm when your payout has been successfully claimed and the XLM has arrived in your wallet. You do not need to have the app open for these alerts to arrive.
+
+
+STAKING IN THE REINSURANCE POOL (FOR LIQUIDITY PROVIDERS)
+
+If you are not a farmer but want to earn yield by backing the insurance pool, go to the Reinsurance Pool tab. You will see the current total amount deposited in the pool, the number of LP shares outstanding, and the current APY which is around eight point four percent.
+
+Enter the amount of XLM you want to deposit and click Deposit. Freighter will prompt you to approve. After confirming, you receive LP shares proportional to your deposit size. These shares represent your ownership stake in the pool.
+
+To withdraw, enter the number of shares you want to burn and click Withdraw. The contract calculates how much XLM your shares are now worth, which includes your share of the accumulated premiums, and transfers that back to your wallet.
+
+
+DONATING TO THE SUBSIDY POOL (FOR NGOS OR DONORS)
+
+If you want to help reduce the cost of insurance for farmers, go to the Subsidy Pool section. You can deposit any amount of XLM here. When a verified farmer subscribes to a policy, the contract automatically uses subsidy funds to cover half their premium. For example, if the premium is ten XLM and the subsidy pool has enough, the farmer only pays five XLM and the pool covers the rest. Your donation directly lowers the barrier for real farmers to access insurance.
+
+
+SWITCHING BETWEEN TESTNET AND MAINNET
+
+In the header, there is a network label showing which network you are on. If the app is in testnet mode, the theme is sky blue. If you switch to mainnet, the theme changes to emerald green. This color difference is intentional so you always know at a glance which network your transactions are going to. Your Freighter wallet must also be set to the matching network for transactions to work correctly.
+
+
+SUMMARY OF THE MAIN FLOW
+
+To recap the core experience in order. Install Freighter and get testnet XLM. Open TyFi and connect your wallet. Register your farm and upload your land document. Wait for admin verification. Go to Subscribe, select your farm and season, pay the premium, approve in Freighter. Watch the map and analytics for storm activity. Use the Oracle Simulator to simulate a typhoon event if on testnet. Once consensus is reached, click Claim Payout and approve in Freighter. Receive your XLM in seconds. Done.
+
+That is the complete experience from a farmer's perspective. The entire cycle from policy purchase to payout, which normally takes months in the traditional system, happens in TyFi in under ten minutes.

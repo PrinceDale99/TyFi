@@ -370,7 +370,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ regionName, farmName, weather, 
   };
 
   return (
-    <div className="relative" style={{ height: 460 }}>
+    <div className="relative z-0" style={{ height: 460 }}>
       {/* Map Controls */}
       <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2">
         <button

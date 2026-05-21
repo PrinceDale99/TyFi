@@ -79,3 +79,49 @@ export const getPayoutHistory = async (farmerAddress: string, maxResults = 10) =
     return [];
   }
 };
+
+/**
+ * Registers a farm for the Subsidy Marketplace.
+ */
+export const registerForSubsidy = async (farmerAddress: string, farm: any) => {
+  try {
+    await addDoc(collection(db, "subsidy_requests"), {
+      farmerAddress,
+      farmerName: farm.farmerName,
+      farmName: farm.farmName,
+      cropType: farm.cropType,
+      region: farm.region,
+      farmSize: farm.farmSize,
+      premiumNeeded: Math.round(farm.expectedHarvestValue * 0.1),
+      harvestValue: farm.expectedHarvestValue,
+      season: farm.season,
+      isFunded: false,
+      timestamp: serverTimestamp(),
+    });
+    return true;
+  } catch (e) {
+    console.error("Error registering for subsidy: ", e);
+    return false;
+  }
+};
+
+/**
+ * Retrieves all active subsidy requests for sponsors to browse.
+ */
+export const getActiveSubsidyRequests = async () => {
+  try {
+    const q = query(
+      collection(db, "subsidy_requests"),
+      where("isFunded", "==", false),
+      orderBy("timestamp", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as any));
+  } catch (e) {
+    console.error("Error getting subsidy requests: ", e);
+    return [];
+  }
+};

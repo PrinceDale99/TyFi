@@ -28,10 +28,12 @@ import {
   Sprout,
   X,
   ShieldCheck,
-  Phone
+  Phone,
+  Heart
 } from 'lucide-react';
 import FarmerVerification from './components/FarmerVerification';
 import WeatherWidget from './components/WeatherWidget';
+import MarketWidget from './components/MarketWidget';
 import SmartCalculator from './components/SmartCalculator';
 import AssetDistribution from './components/AssetDistribution';
 import WeatherMap from './components/WeatherMap';
@@ -41,7 +43,7 @@ import AiCopilot from './components/AiCopilot';
 import LedgerStream from './components/LedgerStream';
 import { fetchWeather } from './services/weatherService';
 import type { WeatherData, FarmData, Claim } from "./types";
-import { connectWallet, registerPolicyOnChain, claimPayoutOnChain } from './lib/stellar';
+import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy } from './lib/stellar';
 import { calculateCombinedDamage } from './utils/DamageCalculator';
 import { useXlmToPhp } from './hooks/useXlmToPhp';
 import { WeatherChart } from './components/WeatherChart';
@@ -49,6 +51,9 @@ import { estimateCropMetrics } from './services/aiService';
 import { PHILIPPINE_REGIONS } from './constants';
 import { requestNotificationPermission } from './firebase';
 import HistoryDashboard from './components/HistoryDashboard';
+import { useTranslation } from 'react-i18next';
+import CertificateList from './components/CertificateList';
+import SubsidyMarketplace from './components/SubsidyMarketplace';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -80,16 +85,17 @@ interface Farm extends FarmData {
 }
 
 function App() {
+  const { t, i18n } = useTranslation();
   const { formatPhp } = useXlmToPhp();
   const [stakingMode, setStakingMode] = useState<'deposit' | 'withdraw'>('deposit');
   const [projectionPeriod, setProjectionPeriod] = useState<'1m' | '6m' | '1y'>('1y');
   const [isOracleSimulating, setIsOracleSimulating] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault'>(() => {
+  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace'>(() => {
     return (localStorage.getItem('typhoon_vault_activeTab') as any) || 'monitor';
   });
-  const [network, setNetwork] = useState<'testnet' | 'mainnet'>(() => {
-    return (localStorage.getItem('typhoon_vault_network') as any) || 'testnet';
+  const [network, setNetwork] = useState<'demo' | 'testnet' | 'mainnet'>(() => {
+    return (localStorage.getItem('typhoon_vault_network') as any) || 'demo';
   });
   const [isWalletConnected, setIsWalletConnected] = useState(() => {
     return localStorage.getItem('typhoon_vault_isWalletConnected') === 'true';
@@ -166,8 +172,8 @@ function App() {
     cropType: 'Rice',
     plantingDate: new Date().toISOString().split('T')[0],
     farmSize: 1.5,
-    initialInvestment: 1000,
-    expectedHarvestValue: 3000,
+    initialInvestment: 250,
+    expectedHarvestValue: 1000,
     latitude: 13.421,
     longitude: 123.413
   });
@@ -242,15 +248,36 @@ function App() {
     }
   }, [isWalletConnected, walletAddress]);
 
-  const [fundingAmount, setFundingAmount] = useState(10000);
-  const [testnetTvl, setTestnetTvl] = useState(() => {
-    const saved = localStorage.getItem('typhoon_vault_testnetTvl');
-    return saved ? parseInt(saved) : 1500000;
-  });
-  const [subsidyBalance, setSubsidyBalance] = useState(() => {
-    const saved = localStorage.getItem('typhoon_vault_subsidyBalance');
-    return saved ? parseInt(saved) : 750000;
-  });
+  const [fundingAmount, setFundingAmount] = useState(100);
+  const [contractTvl, setContractTvl] = useState<number>(0);
+  const [contractSubsidy, setContractSubsidy] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (network === 'demo') return;
+      try {
+        const tvl = await getContractTvl(network);
+        const subsidy = await getContractSubsidy(network);
+        setContractTvl(tvl);
+        setContractSubsidy(subsidy);
+      } catch (e) {
+        console.error("Failed to fetch contract stats", e);
+      }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
+  }, [network]);
+
+  const [testnetTvl, setTestnetTvl] = useState(1500000);
+  const [subsidyBalance, setSubsidyBalance] = useState(750000);
+  
+  const isDemo = network === 'demo';
+  const isMainnet = network === 'mainnet';
+  const isTestnet = network === 'testnet';
+
+  const currentTvl = isDemo ? testnetTvl : contractTvl;
+  const currentSubsidy = isDemo ? subsidyBalance : contractSubsidy;
   const [lpDeposit, setLpDeposit] = useState(() => {
     const saved = localStorage.getItem('typhoon_vault_lpDeposit');
     return saved ? parseFloat(saved) : 0;
@@ -259,22 +286,20 @@ function App() {
   // Open Policy modal state
   const [openPolicy, setOpenPolicy] = useState<'tos' | 'privacy' | 'cookie' | 'agreement' | null>(null);
 
-  const isMainnet = network === 'mainnet';
-
   const [claims, setClaims] = useState<Claim[]>(() => {
-    const initialNetwork = localStorage.getItem('typhoon_vault_network') || 'testnet';
+    const initialNetwork = localStorage.getItem('typhoon_vault_network') || 'demo';
     const initialAddress = localStorage.getItem('typhoon_vault_walletAddress') || '';
     if (initialAddress) {
       const saved = localStorage.getItem(`typhoon_vault_${initialNetwork}_${initialAddress}`);
       if (saved) {
         try {
-          return JSON.parse(saved).claims || (initialNetwork === 'mainnet' ? [] : [
+          return JSON.parse(saved).claims || (initialNetwork === 'mainnet' || initialNetwork === 'testnet' ? [] : [
             { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
           ]);
         } catch (e) {}
       }
     }
-    return initialNetwork === 'mainnet' ? [] : [
+    return initialNetwork === 'mainnet' || initialNetwork === 'testnet' ? [] : [
       { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
     ];
   });
@@ -435,7 +460,7 @@ function App() {
         hourlyWindSpeed: Array.from({ length: 24 }, (_, i) => i < 12 ? 50 + i * 11 : 165 - (i - 12) * 8),
         hourlyPrecipitation: Array.from({ length: 24 }, (_, i) => i < 12 ? 15 + i * 4 : 40 - (i - 12) * 3),
       };
-      addNotification('🌀 SUPER TYPHOON double trigger met! 100% full parametric claim enabled on Testnet.', 'warning');
+      addNotification('🌀 SUPER TYPHOON double trigger met! 90% full parametric claim enabled on Testnet.', 'warning');
     }
 
     setWeather(simulated);
@@ -474,11 +499,17 @@ function App() {
       const method = type === 'lp'
         ? (stakingMode === 'withdraw' ? 'withdraw_reinsurance' : 'deposit_reinsurance')
         : 'deposit_subsidy';
-      console.log(`[Stellar Testnet] Preparing envelope calling ${method}...`);
       
-      addNotification(`Signing transaction via Freighter Wallet (${network.toUpperCase()})...`, 'info');
-      await new Promise(r => setTimeout(r, 1200));
-      console.log(`[Stellar Testnet] Freighter signature received.`);
+      console.log(`[${network.toUpperCase()}] Preparing envelope calling ${method}...`);
+      
+      if (isTestnet) {
+        addNotification(`Signing transaction via Freighter Wallet (Testnet)...`, 'info');
+        await new Promise(r => setTimeout(r, 1200));
+        console.log(`[Stellar Testnet] Freighter signature received.`);
+      } else {
+        addNotification(`Simulating sandbox signature (Demo)...`, 'info');
+        await new Promise(r => setTimeout(r, 600));
+      }
       
       await new Promise(r => setTimeout(r, 800));
       const txHash = '0x' + Math.random().toString(16).slice(2, 10) + '...' + Math.random().toString(16).slice(2, 6);
@@ -502,9 +533,9 @@ function App() {
         addNotification(`Success! Deposited ${fundingAmount.toLocaleString()} XLM to Donor Subsidy Pool.`, 'success');
       }
 
-      console.log(`[Stellar Testnet] Transaction confirmed on ledger. Tx Hash: ${txHash}`);
+      console.log(`[${network.toUpperCase()}] Transaction confirmed on ledger. Tx Hash: ${txHash}`);
     } catch (e) {
-      addNotification('Sandbox simulation error during operation.', 'warning');
+      addNotification('Operation failed or cancelled.', 'warning');
     }
   };
 
@@ -531,7 +562,8 @@ function App() {
     let totalPaid = 0;
     const updatedFarms = farms.map(f => {
       if (f.isInsured && !f.hasClaimed) {
-        const claimAmt = Math.round(f.totalCropValue * 1.0); // 100% payout for double trigger
+        const principalValue = f.initialInvestment || (f.expectedHarvestValue ? f.expectedHarvestValue * 0.3 : 1000);
+        const claimAmt = Math.round(principalValue * 0.9); // 90% payout of principal value
         totalPaid += claimAmt;
         
         const claimId = `TX-${Math.floor(Math.random() * 10000)}`;
@@ -540,7 +572,7 @@ function App() {
           date: new Date().toISOString().split('T')[0],
           amount: claimAmt,
           status: 'Paid',
-          trigger: `Super Typhoon (100% Payout) - Auto-Oracle`
+          trigger: `Super Typhoon (90% Payout) - Auto-Oracle`
         };
         
         setClaims(prev => [newClaim, ...prev]);
@@ -559,7 +591,7 @@ function App() {
           ...f,
           hasClaimed: true,
           claimedAmount: claimAmt,
-          claimedRatio: 1.0
+          claimedRatio: 0.9
         };
       }
       return f;
@@ -635,6 +667,10 @@ function App() {
 
   // Sync state when network, wallet address, or connection status changes
   useEffect(() => {
+    // SECURITY PATCH: Clear weather state when switching networks to prevent testnet/demo simulation data from being carried over to mainnet
+    setWeather(null);
+    setIsSimulatingWeather(false);
+
     if (isWalletConnected && walletAddress) {
       const savedData = localStorage.getItem(`typhoon_vault_${network}_${walletAddress}`);
       if (savedData) {
@@ -772,9 +808,11 @@ function App() {
     try {
       await registerPolicyOnChain(
         walletAddress,
-        newFarm.latitude,
-        newFarm.longitude,
-        newFarm.totalCropValue
+        newFarm.farmName.replace(/\s+/g, '_'),
+        profileForm.region,
+        newFarm.totalCropValue,
+        'Wet Season 2026',
+        network
       );
       addNotification('Stellar ledger transaction confirmed!', 'success');
     } catch (err: any) {
@@ -791,8 +829,8 @@ function App() {
       cropType: 'Rice',
       plantingDate: new Date().toISOString().split('T')[0],
       farmSize: 1.5,
-      initialInvestment: 1000,
-      expectedHarvestValue: 3000,
+      initialInvestment: 250,
+      expectedHarvestValue: 1000,
       latitude: 13.421,
       longitude: 123.413
     });
@@ -844,33 +882,44 @@ function App() {
   const handleClaim = (farm: FarmData) => {
     if (farm.hasClaimed) return;
     
-    let payoutRatio = 0.8; // Default 80% payout on mainnet
-    let triggerDesc = `Wind Speed ${weather?.windSpeed.toFixed(0)} km/h`;
-
-    if (!isMainnet && weather) {
-      // Testnet: calculate payout based on combined oracle and ai damage analysis
-      const oracleDamage = weather.damageEstimation || 0;
-      const aiDamage = weather.aiDamageEstimation;
-      
-      const combinedDamage = calculateCombinedDamage(oracleDamage, aiDamage);
-      payoutRatio = combinedDamage / 100;
-      
-      const ws = weather.windSpeed;
-      const rf = weather.rainfall;
-      
-      if (ws >= 150 || rf >= 300) {
-        triggerDesc = `Super Typhoon (Oracle: ${oracleDamage}%, AI: ${aiDamage}%) - Combined: ${combinedDamage}% Payout`;
-      } else if (ws >= 120 || rf >= 200) {
-        triggerDesc = `Severe Typhoon (Oracle: ${oracleDamage}%, AI: ${aiDamage}%) - Combined: ${combinedDamage}% Payout`;
-      } else if (ws >= 100 || rf >= 100) {
-        triggerDesc = `Typhoon Trigger (Oracle: ${oracleDamage}%, AI: ${aiDamage}%) - Combined: ${combinedDamage}% Payout`;
-      } else {
-        triggerDesc = `Parametric limits not met (Combined: ${combinedDamage}%)`;
-        payoutRatio = combinedDamage / 100; // Still allow payout if combined damage is > 0
-      }
+    if (!weather) {
+      addNotification('No active weather data to process a claim.', 'warning');
+      return;
     }
 
-    const claimAmount = Math.round(farm.totalCropValue * payoutRatio);
+    let payoutRatio = 0;
+    let triggerDesc = `Parametric conditions not met`;
+
+    const oracleDamage = weather.damageEstimation || 0;
+    const aiDamage = weather.aiDamageEstimation;
+    const combinedDamage = calculateCombinedDamage(oracleDamage, aiDamage);
+    
+    const ws = weather.windSpeed;
+    const rf = weather.rainfall;
+    
+    if (ws >= 150 || rf >= 300) {
+      triggerDesc = `Super Typhoon (Oracle: ${oracleDamage}%, AI: ${aiDamage}%) - Combined: ${combinedDamage}% Payout`;
+      payoutRatio = isMainnet ? 0.9 : combinedDamage / 100;
+    } else if (ws >= 120 || rf >= 200) {
+      triggerDesc = `Severe Typhoon (Oracle: ${oracleDamage}%, AI: ${aiDamage}%) - Combined: ${combinedDamage}% Payout`;
+      payoutRatio = isMainnet ? 0.8 : combinedDamage / 100;
+    } else if (ws >= 100 || rf >= 100) {
+      triggerDesc = `Typhoon Trigger (Oracle: ${oracleDamage}%, AI: ${aiDamage}%) - Combined: ${combinedDamage}% Payout`;
+      payoutRatio = isMainnet ? 0.5 : combinedDamage / 100;
+    } else {
+      triggerDesc = `Parametric limits not met (Combined: ${combinedDamage}%)`;
+      // Mainnet strictly denies payout if wind/rain limits not met
+      payoutRatio = isMainnet ? 0 : combinedDamage / 100;
+    }
+
+    // Security check for zero payout
+    if (payoutRatio <= 0) {
+      addNotification('Parametric payout calculated as 0 XLM for current weather metrics.', 'warning');
+      return;
+    }
+
+    const principalValue = farm.initialInvestment || (farm.expectedHarvestValue ? farm.expectedHarvestValue * 0.3 : 1000);
+    const claimAmount = Math.round(principalValue * payoutRatio);
     if (claimAmount <= 0) {
       addNotification('Parametric payout calculated as 0 XLM for current weather metrics.', 'warning');
       return;
@@ -1007,7 +1056,7 @@ function App() {
     <div className="min-h-screen bg-[#020617] text-slate-200 selection:bg-sky-500/30">
       {/* Dynamic Ambient Background Light */}
       <div className={`absolute top-0 right-0 w-96 h-96 rounded-full filter blur-[120px] transition-colors duration-1000 -z-10 ${
-        isMainnet ? 'bg-emerald-500/5' : 'bg-sky-500/5'
+        isMainnet ? 'bg-emerald-500/5' : isTestnet ? 'bg-sky-500/5' : 'bg-indigo-500/5'
       }`} />
 
       {/* Navigation */}
@@ -1015,16 +1064,16 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-colors duration-700 ${
-              isMainnet ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-sky-500 shadow-sky-500/20'
+              isMainnet ? 'bg-emerald-500 shadow-emerald-500/20' : isTestnet ? 'bg-sky-500 shadow-sky-500/20' : 'bg-indigo-500 shadow-indigo-500/20'
             }`}>
               <img src="/logo.svg" alt="TyFi Logo" className="w-7 h-7" />
             </div>
             <div>
               <div className="text-sm font-black text-white tracking-tighter uppercase italic">TyFi</div>
               <div className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-700 ${
-                isMainnet ? 'text-emerald-400' : 'text-sky-400'
+                isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400'
               }`}>
-                {isMainnet ? 'Mainnet Active' : 'Protocol Sandbox Active'}
+                {isMainnet ? 'Mainnet' : isTestnet ? 'Testnet' : 'Demo Sandbox'} Active
               </div>
             </div>
           </div>
@@ -1032,33 +1081,52 @@ function App() {
           <div className="hidden md:flex items-center gap-6">
             <button
               onClick={() => setActiveTab('monitor')}
-              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'monitor' ? (isMainnet ? 'text-emerald-400' : 'text-sky-400') : 'text-slate-500 hover:text-white'}`}
+              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'monitor' ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
             >
               Monitor
             </button>
             <button
               onClick={() => setActiveTab('calc')}
-              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'calc' ? (isMainnet ? 'text-emerald-400' : 'text-sky-400') : 'text-slate-500 hover:text-white'}`}
+              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'calc' ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
             >
               Calculator
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'history' ? (isMainnet ? 'text-emerald-400' : 'text-sky-400') : 'text-slate-500 hover:text-white'}`}
+              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'history' ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
             >
               Claims
             </button>
             <button
               onClick={() => setActiveTab('vault')}
-              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'vault' ? (isMainnet ? 'text-emerald-400' : 'text-sky-400') : 'text-slate-500 hover:text-white'}`}
+              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'vault' ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
             >
               Vault
+            </button>
+            <button
+              onClick={() => setActiveTab('marketplace')}
+              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'marketplace' ? 'text-rose-400' : 'text-slate-500 hover:text-white'}`}
+            >
+              Marketplace
             </button>
           </div>
 
           <div className="flex items-center gap-4">
             {/* Sleek Pill Network Toggle */}
             <div className="flex items-center bg-white/5 p-1 rounded-full border border-white/5 gap-1 select-none">
+              <button
+                onClick={() => {
+                  setNetwork('demo');
+                  addNotification('Switched to Isolated Demo Sandbox', 'info');
+                }}
+                className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all duration-300 ${
+                  network === 'demo'
+                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Demo
+              </button>
               <button
                 onClick={() => {
                   setNetwork('testnet');
@@ -1205,9 +1273,9 @@ function App() {
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                   <h1 className="text-4xl font-black text-white tracking-tight">
-                    {activeTab === 'monitor' ? 'Protocol Monitoring' :
-                      activeTab === 'calc' ? 'Smart Calculator' :
-                        activeTab === 'history' ? 'Claim History' : 'Vault Infrastructure'}
+                    {activeTab === 'monitor' ? t('header.protocolMonitoring') :
+                      activeTab === 'calc' ? t('header.smartCalculator') :
+                        activeTab === 'history' ? t('header.claimHistory') : t('header.vaultInfrastructure')}
                   </h1>
                   <p className="text-slate-400 mt-1">
                     {activeTab === 'monitor' ? `Automated smart contracts for ${farms[0]?.farmName || 'your farms'}` :
@@ -1217,24 +1285,24 @@ function App() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs font-bold bg-white/5 p-1 rounded-lg border border-white/5">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-bold bg-white/5 p-1 rounded-lg border border-white/5">
                   <button
                     onClick={() => setActiveTab('monitor')}
                     className={`px-4 py-2 rounded-md transition-all ${activeTab === 'monitor' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'text-slate-400 hover:text-white'}`}
                   >
-                    Live Monitor
+                    {t('nav.liveMonitor')}
                   </button>
                   <button
                     onClick={() => setActiveTab('history')}
                     className={`px-4 py-2 rounded-md transition-all ${activeTab === 'history' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'text-slate-400 hover:text-white'}`}
                   >
-                    Claims
+                    {t('nav.claims')}
                   </button>
                   <button
                     onClick={() => setActiveTab('vault')}
                     className={`px-4 py-2 rounded-md transition-all ${activeTab === 'vault' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'text-slate-400 hover:text-white'}`}
                   >
-                    Vault
+                    {t('nav.vault')}
                   </button>
                 </div>
               </div>
@@ -1265,6 +1333,8 @@ function App() {
                       />
                     </div>
                   )}
+
+                  <MarketWidget />
                 </>
               )}
               {activeTab === 'calc' && (
@@ -1289,38 +1359,38 @@ function App() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* TVL */}
-                    <div className={`glass-panel border transition-all duration-700 ${isMainnet ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]' : 'border-sky-500/20 shadow-[0_0_20px_rgba(14,165,233,0.05)]'}`}>
+                    <div className={`glass-panel border transition-all duration-700 ${isMainnet ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]' : isTestnet ? 'border-sky-500/20 shadow-[0_0_20px_rgba(14,165,233,0.05)]' : 'border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)]'}`}>
                       <div className="flex items-center gap-3 mb-4">
-                        <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
+                        <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
                           <Lock size={20} />
                         </div>
                         <h3 className="font-black text-white text-sm">Total Value Locked</h3>
                       </div>
                       <div className="text-2xl font-black text-white mb-1">
-                        {isMainnet ? '2,400,000 XLM' : `${testnetTvl.toLocaleString()} XLM`}
+                        {currentTvl.toLocaleString()} XLM
                       </div>
                       <div className="text-[11px] text-slate-400 font-bold block -mt-1 mb-2">
-                        ≈ {formatPhp(isMainnet ? 2400000 : testnetTvl)}
+                        ≈ {formatPhp(currentTvl)}
                       </div>
                       <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
                         <TrendingUp size={14} />
-                        +14.8% this quarter
+                        {isDemo ? 'Sandbox Simulation' : 'Real-time Ledger Data'}
                       </div>
                     </div>
 
                     {/* Subsidy Pool */}
-                    <div className="glass-panel border border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)]">
+                    <div className={`glass-panel border transition-all duration-700 ${isMainnet ? 'border-emerald-500/20' : isTestnet ? 'border-sky-500/20' : 'border-indigo-500/20'}`}>
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg">
+                        <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
                           <Database size={20} />
                         </div>
                         <h3 className="font-black text-white text-sm">Subsidy Pool Balance</h3>
                       </div>
                       <div className="text-2xl font-black text-white mb-1">
-                        {isMainnet ? '1,200,000 XLM' : `${subsidyBalance.toLocaleString()} XLM`}
+                        {currentSubsidy.toLocaleString()} XLM
                       </div>
                       <div className="text-[11px] text-slate-400 font-bold block -mt-1 mb-2">
-                        ≈ {formatPhp(isMainnet ? 1200000 : subsidyBalance)}
+                        ≈ {formatPhp(currentSubsidy)}
                       </div>
                       <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                         Government & Donor Subsidy
@@ -1328,15 +1398,15 @@ function App() {
                     </div>
 
                     {/* Reserve Ratio */}
-                    <div className="glass-panel border border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.05)]">
+                    <div className={`glass-panel border transition-all duration-700 ${isMainnet ? 'border-emerald-500/20' : isTestnet ? 'border-sky-500/20' : 'border-indigo-500/20'}`}>
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg">
+                        <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
                           <Wind size={20} />
                         </div>
                         <h3 className="font-black text-white text-sm">Reserve Ratio</h3>
                       </div>
                       <div className="text-2xl font-black text-white mb-2">
-                        {isMainnet ? '410%' : `${Math.round((testnetTvl / 438000) * 100)}%`}
+                        {currentTvl > 0 ? `${Math.round((currentTvl / 438000) * 100)}%` : '---%'}
                       </div>
                       <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                         Over-collateralized protection
@@ -1345,47 +1415,78 @@ function App() {
                   </div>
 
                   {/* Liquidity Providers */}
-                  <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
-                    <h3 className="font-black text-white mb-6 uppercase tracking-wider text-sm">Liquidity Providers</h3>
-                    <div className="space-y-4">
-                      {[
-                        { name: 'Swiss Re Capital', share: isMainnet ? '52%' : `${((675000 / testnetTvl) * 100).toFixed(1)}%`, amount: isMainnet ? '1,248,000 XLM' : '675,000 XLM' },
-                        { name: 'Luzon Agriculture Fund', share: isMainnet ? '20%' : `${((330000 / testnetTvl) * 100).toFixed(1)}%`, amount: isMainnet ? '480,000 XLM' : '330,000 XLM' },
-                        { name: 'Asian Development Bank', share: isMainnet ? '18%' : `${((270000 / testnetTvl) * 100).toFixed(1)}%`, amount: isMainnet ? '432,000 XLM' : '270,000 XLM' },
-                        { name: 'Protocol Reserves', share: isMainnet ? '10%' : `${((225000 / testnetTvl) * 100).toFixed(1)}%`, amount: isMainnet ? '240,000 XLM' : '225,000 XLM' },
-                        ...(lpDeposit > 0 ? [{ name: 'Your Sandbox Liquidity', share: `${((lpDeposit / testnetTvl) * 100).toFixed(1)}%`, amount: `${lpDeposit.toLocaleString()} XLM` }] : [])
-                      ].map((lp, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 border-b border-white/5 last:border-0 hover:bg-white/[0.01] rounded-lg transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full ${lp.name.startsWith('Your') ? 'bg-sky-500 animate-pulse' : 'bg-slate-700'}`} />
-                            <div className="text-sm font-bold text-slate-300">{lp.name}</div>
+                  {isDemo && (
+                    <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
+                      <h3 className="font-black text-white mb-6 uppercase tracking-wider text-sm">Liquidity Providers (Sandbox)</h3>
+                      <div className="space-y-4">
+                        {[
+                          { name: 'Swiss Re Capital', share: '52%', amount: '1,248,000 XLM' },
+                          { name: 'Luzon Agriculture Fund', share: '20%', amount: '480,000 XLM' },
+                          { name: 'Asian Development Bank', share: '18%', amount: '432,000 XLM' },
+                          { name: 'Protocol Reserves', share: '10%', amount: '240,000 XLM' },
+                          ...(lpDeposit > 0 ? [{ name: 'Your Sandbox Liquidity', share: `${((lpDeposit / currentTvl) * 100).toFixed(1)}%`, amount: `${lpDeposit.toLocaleString()} XLM` }] : [])
+                        ].map((lp, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 border-b border-white/5 last:border-0 hover:bg-white/[0.01] rounded-lg transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${lp.name.startsWith('Your') ? 'bg-sky-500 animate-pulse' : 'bg-slate-700'}`} />
+                              <div className="text-sm font-bold text-slate-300">{lp.name}</div>
+                            </div>
+                            <div className="flex gap-8">
+                              <div className="text-right">
+                                <div className="text-[10px] text-slate-500 uppercase font-black">Underwritten Amount</div>
+                                <div className="text-xs font-bold text-white">{lp.amount}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[10px] text-slate-500 uppercase font-black">Share</div>
+                                <div className="text-xs font-bold text-white">{lp.share}</div>
+                              </div>
+                              <div className="text-right w-20">
+                                <div className="text-[10px] text-slate-500 uppercase font-black">Status</div>
+                                <div className="text-xs font-bold text-emerald-400">Active</div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex gap-8">
-                            <div className="text-right">
-                              <div className="text-[10px] text-slate-500 uppercase font-black">Underwritten Amount</div>
-                              <div className="text-xs font-bold text-white">{lp.amount}</div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-[10px] text-slate-500 uppercase font-black">Share</div>
-                              <div className="text-xs font-bold text-white">{lp.share}</div>
-                            </div>
-                            <div className="text-right w-20">
-                              <div className="text-[10px] text-slate-500 uppercase font-black">Status</div>
-                              <div className="text-xs font-bold text-emerald-400">Active</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
+                  {!isDemo && lpDeposit > 0 && (
+                     <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
+                        <h3 className="font-black text-white mb-6 uppercase tracking-wider text-sm">Your Reinsurance Positions</h3>
+                        <div className="flex items-center justify-between p-3 border border-emerald-500/20 bg-emerald-500/5 rounded-lg">
+                           <div className="flex items-center gap-3">
+                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                             <div className="text-sm font-bold text-slate-300">Your Reinsurance Deposit</div>
+                           </div>
+                           <div className="flex gap-8">
+                             <div className="text-right">
+                               <div className="text-[10px] text-slate-500 uppercase font-black">Underwritten Amount</div>
+                               <div className="text-xs font-bold text-white">{lpDeposit.toLocaleString()} XLM</div>
+                             </div>
+                             <div className="text-right">
+                               <div className="text-[10px] text-slate-500 uppercase font-black">Share</div>
+                               <div className="text-xs font-bold text-white">{currentTvl > 0 ? ((lpDeposit / currentTvl) * 100).toFixed(1) : '100'}%</div>
+                             </div>
+                             <div className="text-right w-20">
+                               <div className="text-[10px] text-slate-500 uppercase font-black">Status</div>
+                               <div className="text-xs font-bold text-emerald-400">Active</div>
+                             </div>
+                           </div>
+                        </div>
+                     </div>
+                  )}
                   {/* Staking / Provisioning Operations */}
                   <div className="glass-panel border border-white/5 relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
                     <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-sky-500/5 blur-2xl pointer-events-none" />
                     
                     <h3 className="font-black text-white mb-4 uppercase tracking-wider text-sm flex items-center gap-2">
                       <span>🌾 Protocol Capital Operations</span>
-                      {network === 'testnet' && <span className="text-[10px] bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded font-black uppercase">Sandbox</span>}
+                      {(isTestnet || isDemo) && (
+                        <span className={`text-[10px] ${isDemo ? 'bg-indigo-500/20 text-indigo-400' : 'bg-sky-500/20 text-sky-400'} px-2 py-0.5 rounded font-black uppercase`}>
+                          {isDemo ? 'Isolated Demo' : 'Sandbox'}
+                        </span>
+                      )}
                     </h3>
                     <p className="text-xs text-slate-400 mb-6 leading-relaxed">
                       Expand the protocol's underwritten limits by contributing reinsurance capital or supporting the premium subsidy pools.
@@ -1397,14 +1498,14 @@ function App() {
                         <div>
                           <div className="flex justify-between items-center mb-2">
                             <h4 className="font-black text-white text-sm">💰 Reinsurance Pool (LP)</h4>
-                            <span className="text-[10px] text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded font-bold">APY ~8.4%</span>
+                            <span className={`text-[10px] ${isDemo ? 'text-indigo-400 bg-indigo-500/10' : 'text-sky-400 bg-sky-500/10'} px-2 py-0.5 rounded font-bold`}>APY ~8.4%</span>
                           </div>
                           <p className="text-[11px] text-slate-400 leading-relaxed mb-4">
                             Stake your XLM to back parametric risk limits in exchange for premium payouts, gaining proportional yield and LP shares.
                           </p>
                         </div>
                         <div className="space-y-4">
-                          {network === 'testnet' ? (
+                          {(isTestnet || isDemo) ? (
                             <>
                               {/* Staking Mode Selector */}
                               <div className="flex bg-slate-950 p-1 rounded-xl border border-white/5 gap-1">
@@ -1413,7 +1514,7 @@ function App() {
                                   onClick={() => setStakingMode('deposit')}
                                   className={`w-1/2 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${
                                     stakingMode === 'deposit'
-                                      ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20'
+                                      ? (isDemo ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20')
                                       : 'text-slate-500 hover:text-white'
                                   }`}
                                 >
@@ -1438,14 +1539,14 @@ function App() {
                                   placeholder="Amount in XLM"
                                   value={fundingAmount}
                                   onChange={(e) => setFundingAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                                  className="w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500 font-mono font-bold"
+                                  className={`w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none ${isDemo ? 'focus:border-indigo-500' : 'focus:border-sky-500'} font-mono font-bold`}
                                 />
                                 <button
                                   onClick={() => handleContributeLiquidity('lp')}
                                   className={`w-1/2 text-white font-black py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1 ${
                                     stakingMode === 'withdraw' 
                                       ? 'bg-rose-500 hover:bg-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.2)] group-hover:shadow-[0_0_20px_rgba(244,63,94,0.3)]' 
-                                      : 'bg-sky-500 hover:bg-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.2)] group-hover:shadow-[0_0_20px_rgba(14,165,233,0.3)]'
+                                      : (isDemo ? 'bg-indigo-500 hover:bg-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)] group-hover:shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-sky-500 hover:bg-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.2)] group-hover:shadow-[0_0_20px_rgba(14,165,233,0.3)]')
                                   }`}
                                 >
                                   <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
@@ -1464,7 +1565,7 @@ function App() {
                                         type="button"
                                         onClick={() => setProjectionPeriod(p)}
                                         className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase transition-all ${
-                                          projectionPeriod === p ? 'bg-sky-500 text-white' : 'text-slate-500 hover:text-white'
+                                          projectionPeriod === p ? (isDemo ? 'bg-indigo-500 text-white' : 'bg-sky-500 text-white') : 'text-slate-500 hover:text-white'
                                         }`}
                                       >
                                         {p}
@@ -1516,7 +1617,7 @@ function App() {
                           </p>
                         </div>
                         <div className="space-y-3">
-                          {network === 'testnet' ? (
+                          {(isTestnet || isDemo) ? (
                             <div className="flex gap-2">
                               <input
                                 type="number"
@@ -1545,6 +1646,16 @@ function App() {
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'marketplace' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <SubsidyMarketplace 
+                    sponsorAddress={walletAddress} 
+                    network={network}
+                    addNotification={addNotification}
+                  />
                 </div>
               )}
 
@@ -1625,6 +1736,21 @@ function App() {
                     </div>
                     <ArrowUpRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
+
+                  <button
+                    onClick={() => setActiveTab('marketplace')}
+                    className={`w-full p-4 rounded-xl border flex items-center justify-between group transition-all ${
+                      activeTab === 'marketplace' 
+                        ? 'bg-rose-500/10 border-rose-500 text-rose-400' 
+                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Heart size={20} />
+                      <span className="font-bold">Subsidy Marketplace</span>
+                    </div>
+                    <ArrowUpRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
                   {/* Edit Profile Button */}
                   <button
                     onClick={() => setIsEditProfileModalOpen(true)}
@@ -1645,7 +1771,7 @@ function App() {
                     className="w-full p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex items-center justify-between group cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-1.5 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
+                      <div className={`p-1.5 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
                         <Plus size={16} />
                       </div>
                       <span className="font-bold">Add Farm</span>
@@ -1655,23 +1781,23 @@ function App() {
                 </div>
               </div>
 
-              {network === 'testnet' && (
-                <div className="glass-panel border border-sky-500/20 shadow-[0_0_25px_rgba(14,165,233,0.05)] relative overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-xl" />
+              {isDemo && (
+                <div className="glass-panel border border-indigo-500/20 shadow-[0_0_25px_rgba(99,102,241,0.05)] relative overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl" />
                   
                   <div className="flex items-center gap-2 mb-4">
                     <span className="flex h-2 w-2 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                     </span>
                     <h3 className="font-black text-white text-sm uppercase tracking-wider flex-1">🧪 Sandbox Weather Simulator</h3>
                     {isSimulatingWeather && (
-                      <span className="text-[9px] font-black uppercase text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded">Active</span>
+                      <span className="text-[9px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">Active</span>
                     )}
                   </div>
                   
                   <p className="text-[11px] text-slate-400 mb-5 leading-relaxed">
-                    Trigger simulated weather events to test the Soroban contract parametric payout logic and ledger updates.
+                    Trigger simulated weather events to test the Soroban contract parametric payout logic and ledger updates in an isolated sandbox.
                   </p>
 
                   <div className="space-y-2.5">
@@ -1776,6 +1902,7 @@ function App() {
                 <AiCopilot
                   weather={weather}
                   farms={farms}
+                  claims={claims}
                   addNotification={addNotification}
                   onUpdateWeatherDamage={(damage, status, aiDamage, confidence) => {
                     setWeather(prev => prev ? {
@@ -1972,12 +2099,24 @@ function App() {
                   <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Protocol Participant Information</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setIsProfileDashboardOpen(false)}
-                className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-all"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-4">
+                <select
+                  onChange={(e) => i18n.changeLanguage(e.target.value)}
+                  value={i18n.language}
+                  className="bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500/50 appearance-none cursor-pointer"
+                >
+                  <option value="en">English</option>
+                  <option value="tl">Tagalog</option>
+                  <option value="ceb">Cebuano</option>
+                  <option value="war">Waray</option>
+                </select>
+                <button 
+                  onClick={() => setIsProfileDashboardOpen(false)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
@@ -2095,6 +2234,11 @@ function App() {
 
                 {/* Right: History & Actions */}
                 <div className="lg:col-span-5 space-y-6">
+                  {/* Certificates Section */}
+                  <div className="glass-panel p-6 bg-white/5 border-white/10">
+                    <CertificateList address={walletAddress} network={network} />
+                  </div>
+
                   <div className="glass-panel p-6 bg-white/5 border-white/10">
                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                       <Bell size={14} className="text-indigo-400" />

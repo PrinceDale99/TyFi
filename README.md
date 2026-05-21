@@ -1,7 +1,7 @@
 # 🌀 TyFi — Parametric Typhoon Insurance on Stellar
 
 [![Stellar](https://img.shields.io/badge/Stellar-Soroban-blue.svg)](https://stellar.org)
-[![Testnet](https://img.shields.io/badge/Testnet-Live-brightgreen.svg)](https://lab.stellar.org/r/testnet/contract/CB62WJ6VDF4JSYX6DWOPPYFBCM4ULM2WX4CEJADZCHSY7RLUFBVP2GFW)
+[![Testnet](https://img.shields.io/badge/Testnet-Live-brightgreen.svg)](https://lab.stellar.org/r/testnet/contract/CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -124,7 +124,7 @@ Farmer receives payout within minutes, not months
 - **Smart Contracts**: Soroban Rust SDK `v20.5.0`
 - **Network**: Stellar Testnet (live) + Mainnet (ready)
 - **Assets**: Native XLM — no stablecoin dependency, no bridge risk
-- **Live Contract**: [`CB62WJ6...BVVP2GFW`](https://lab.stellar.org/r/testnet/contract/CB62WJ6VDF4JSYX6DWOPPYFBCM4ULM2WX4CEJADZCHSY7RLUFBVP2GFW)
+- **Live Contract**: [`CBMNXUY...3WRN`](https://lab.stellar.org/r/testnet/contract/CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN)
 
 ### Frontend Layer
 - **Framework**: React 19 + TypeScript + Vite
@@ -357,7 +357,7 @@ GEMINI_API_KEY=<your-gemini-api-key>
 
 ### ✅ Phase 1 — Testnet (Complete)
 - [x] Core Soroban contract with sliding-scale parametric payouts
-- [x] Live testnet deployment (`CB62WJ6VDF4JSYX6DWOPPYFBCM4ULM2WX4CEJADZCHSY7RLUFBVP2GFW`)
+- [x] Live testnet deployment (`CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN`)
 - [x] Multi-oracle quorum consensus + single-oracle mainnet mode
 - [x] RSBSA + Land Title / Deed of Sale verification gate
 - [x] LP reinsurance staking portal with APY yield projections

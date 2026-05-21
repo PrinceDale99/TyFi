@@ -87,7 +87,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({ regionName, farmName, i
   ];
 
   return (
-    <div className="map-container relative w-full h-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+    <div className="map-container relative z-0 w-full h-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
       <MapContainer 
         center={center} 
         zoom={farms.length > 1 ? 6 : 7} 

@@ -10,6 +10,9 @@ import {
   BASE_FEE,
   xdr,
   scValToNative,
+  nativeToScVal,
+  Transaction,
+  Account,
 } from "@stellar/stellar-sdk";
 
 export interface NetworkConfig {
@@ -21,15 +24,23 @@ export interface NetworkConfig {
   passphrase: string;
 }
 
-export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
+export const NETWORK_CONFIGS: Record<'demo' | 'testnet' | 'mainnet', NetworkConfig> = {
+  demo: {
+    name: 'Demo Sandbox',
+    xlmTokenId: 'CDLZFC3SYJYDZT7KMGCCEEH45FAZ6COCYPIBA67KEHWOAAZ5KVHQ64VL',
+    vaultContractId: 'CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN',
+    horizonUrl: 'https://horizon-testnet.stellar.org',
+    sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
+    passphrase: Networks.TESTNET,
+  },
   testnet: {
     name: 'Testnet',
     // Native XLM SAC on Testnet
     xlmTokenId: 'CDLZFC3SYJYDZT7KMGCCEEH45FAZ6COCYPIBA67KEHWOAAZ5KVHQ64VL',
-    // ✅ Deployed 2026-05-20 — tx: a02637c596972ec4b4a67522cb329ef96dd28f21a3404fab0992a2b40915a703
-    // 🔗 https://stellar.expert/explorer/testnet/tx/a02637c596972ec4b4a67522cb329ef96dd28f21a3404fab0992a2b40915a703
-    // 🔗 https://lab.stellar.org/r/testnet/contract/CB62WJ6VDF4JSYX6DWOPPYFBCM4ULM2WX4CEJADZCHSY7RLUFBVP2GFW
-    vaultContractId: 'CB62WJ6VDF4JSYX6DWOPPYFBCM4ULM2WX4CEJADZCHSY7RLUFBVP2GFW',
+    // ✅ Deployed 2026-05-21 — tx: 53b327340a990201617f61c639749dd9f92be2c542fee7cd50faca04f587e92c
+    // 🔗 https://stellar.expert/explorer/testnet/tx/53b327340a990201617f61c639749dd9f92be2c542fee7cd50faca04f587e92c
+    // 🔗 https://lab.stellar.org/r/testnet/contract/CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN
+    vaultContractId: 'CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN',
     horizonUrl: 'https://horizon-testnet.stellar.org',
     sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
     passphrase: Networks.TESTNET,
@@ -72,62 +83,76 @@ export const connectWallet = async () => {
 
 export const registerPolicyOnChain = async (
   farmer: string,
-  lat: number,
-  lng: number,
+  farmId: string,
+  region: string,
   cropValue: number,
   season: string = 'Wet Season 2026',
-  network: 'testnet' | 'mainnet' = 'testnet'
+  network: 'demo' | 'testnet' | 'mainnet' = 'testnet'
 ) => {
   try {
-    const config = NETWORK_CONFIGS[network];
-    console.log(`[${config.name}] Preparing blockchain registration for: ${farmer} at (${lat}, ${lng}) with crop value ${cropValue} XLM for ${season}`);
-    
+    const config = NETWORK_CONFIGS[network as 'demo' | 'testnet' | 'mainnet'];
     const server = new rpc.Server(config.sorobanRpcUrl);
     
-    // In production, we construct the actual Soroban subscription call:
-    // e.g. subscribe(farmer, farm_id, region, season, premium)
-    console.log(`[${config.name}] Constructing Soroban 'subscribe' invocation...`);
-    console.log(`[${config.name}] target Contract: ${config.vaultContractId}`);
+    // Construct the actual Soroban subscription call:
+    // subscribe(farmer, farm_id, region, season, premium)
+    const farmerAddress = Address.fromString(farmer);
+    const contract = new Contract(config.vaultContractId);
     
-    // We check if Freighter wallet is active and loaded
-    const walletConnected = await isConnected();
-    if (walletConnected) {
-      const { address } = await getAddress();
-      if (address === farmer) {
-        try {
-          // 1. Fetch account sequence number via Soroban RPC
-          const ledgerRes = await server.getLatestLedger();
-          console.log(`[${config.name}] Connected to Soroban RPC. Latest ledger: ${ledgerRes.sequence}`);
-          
-          // 2. Build Transaction Envelope
-          // Note: In real setup, we use actual contract bindings or direct call builder
-          console.log(`[${config.name}] Building transaction envelope calling 'subscribe' for ${season} with amount ${cropValue} XLM...`);
-          
-          // Simulating Soroban RPC response block
-          await new Promise(r => setTimeout(r, 1200));
-          console.log(`[${config.name}] Transaction successfully constructed & simulated.`);
-          
-          // 3. Prompt user for Freighter signature
-          const dummyXdr = "AAAAAgAAAADc5...dummyXdrSignatureEnvelope...";
-          try {
-            console.log(`[${config.name}] Requesting Freighter signature for: subscribe`);
-            const signedXdr = await signTransaction(dummyXdr, {
-              networkPassphrase: config.passphrase,
-            });
-            console.log(`[${config.name}] Freighter signature received:`, signedXdr);
-          } catch (freighterErr) {
-            console.warn(`[${config.name}] Freighter sign bypass (sandbox simulation fallback):`, freighterErr);
-          }
-        } catch (rpcErr) {
-          console.warn(`[${config.name}] RPC check fallback:`, rpcErr);
-        }
+    // Build Transaction Envelope
+    const account = await server.getAccount(farmer);
+    
+    // Construct the operation
+    const tx = new TransactionBuilder(
+      account,
+      {
+        fee: BASE_FEE,
+        networkPassphrase: config.passphrase,
       }
+    )
+    .addOperation(
+      contract.call(
+        "subscribe",
+        ...[
+          farmerAddress.toScVal(),
+          xdr.ScVal.scvSymbol(farmId),
+          xdr.ScVal.scvSymbol(region),
+          xdr.ScVal.scvSymbol(season),
+          nativeToScVal(BigInt(cropValue), { type: 'i128' })
+        ]
+      )
+    )
+    .setTimeout(30)
+    .build();
+
+    console.log(`[${config.name}] Requesting Freighter signature for: subscribe`);
+    const signResult = await signTransaction(tx.toXDR(), {
+      networkPassphrase: config.passphrase,
+    });
+    
+    const signedXdr = typeof signResult === 'string' ? signResult : signResult.signedTxXdr;
+    const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
+    const result = await server.sendTransaction(transaction);
+    
+    if (result.status !== "PENDING") {
+      throw new Error(`Transaction failed: ${JSON.stringify(result)}`);
     }
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log(`[${config.name}] Policy registration completed successfully.`);
-    return true;
-  } catch (error) {
+    // Wait for result
+    let status: string = result.status;
+    let txResult;
+    while (status === "PENDING") {
+      await new Promise(r => setTimeout(r, 2000));
+      txResult = await server.getTransaction(result.hash);
+      status = txResult.status;
+    }
+
+    if (status === "SUCCESS") {
+      console.log(`[${config.name}] Policy registration completed successfully. Hash: ${result.hash}`);
+      return true;
+    } else {
+      throw new Error(`Transaction failed: ${status}`);
+    }
+  } catch (error: any) {
     console.error(`[${network.toUpperCase()}] Blockchain registration error:`, error);
     throw error;
   }
@@ -137,49 +162,132 @@ export const claimPayoutOnChain = async (
   farmer: string, 
   farmId: string, 
   season: string, 
-  network: 'testnet' | 'mainnet' = 'testnet',
+  network: 'demo' | 'testnet' | 'mainnet' = 'testnet',
   typhoonId: string = 'DEFAULT_TYPHOON'
 ) => {
   try {
-    const config = NETWORK_CONFIGS[network];
+    const config = NETWORK_CONFIGS[network as 'demo' | 'testnet' | 'mainnet'];
+    const server = new rpc.Server(config.sorobanRpcUrl);
     const farmerAddress = Address.fromString(farmer);
     const contract = new Contract(config.vaultContractId);
     
-    console.log(`[${config.name}] Claiming payout on chain for address ${farmerAddress.toString()} on vault contract ${contract.toString()} for farm ${farmId} (${season}) due to ${typhoonId}...`);
+    console.log(`[${config.name}] Claiming payout on chain for farm ${farmId}...`);
     
-    const server = new rpc.Server(config.sorobanRpcUrl);
-    const walletConnected = await isConnected();
-    
-    if (walletConnected) {
-      const { address } = await getAddress();
-      if (address === farmer) {
-        try {
-          console.log(`[${config.name}] Building transaction envelope calling 'claim_payout' for ${farmId} / ${season} / ${typhoonId}...`);
-          await new Promise(r => setTimeout(r, 1000));
-          
-          const dummyXdr = "AAAAAgAAAADc5...dummyXdrClaimEnvelope...";
-          try {
-            console.log(`[${config.name}] Requesting Freighter signature for: claim_payout`);
-            const signedXdr = await signTransaction(dummyXdr, {
-              networkPassphrase: config.passphrase,
-            });
-            console.log(`[${config.name}] Freighter signature received:`, signedXdr);
-          } catch (freighterErr) {
-            console.warn(`[${config.name}] Freighter sign bypass (sandbox simulation fallback):`, freighterErr);
-          }
-        } catch (rpcErr) {
-          console.warn(`[${config.name}] RPC check fallback:`, rpcErr);
-        }
+    const account = await server.getAccount(farmer);
+    const tx = new TransactionBuilder(
+      account,
+      {
+        fee: BASE_FEE,
+        networkPassphrase: config.passphrase,
       }
-    }
+    )
+    .addOperation(
+      contract.call(
+        "claim_payout",
+        ...[
+          farmerAddress.toScVal(),
+          xdr.ScVal.scvSymbol(farmId),
+          xdr.ScVal.scvSymbol(season),
+          xdr.ScVal.scvSymbol(typhoonId)
+        ]
+      )
+    )
+    .setTimeout(30)
+    .build();
+
+    const signResult = await signTransaction(tx.toXDR(), {
+      networkPassphrase: config.passphrase,
+    });
     
-    await new Promise(resolve => setTimeout(resolve, 1800));
-    const txHash = '0x' + Math.random().toString(16).slice(2, 10) + '...' + Math.random().toString(16).slice(2, 6);
-    console.log(`[${config.name}] Payout successfully disbursed on Stellar ledger for ${typhoonId}. Tx Hash: ${txHash}`);
-    return txHash;
+    const signedXdr = typeof signResult === 'string' ? signResult : signResult.signedTxXdr;
+    const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
+    const result = await server.sendTransaction(transaction);
+    
+    if (result.status !== "PENDING") {
+      throw new Error(`Transaction failed: ${JSON.stringify(result)}`);
+    }
+
+    let status: string = result.status;
+    while (status === "PENDING") {
+      await new Promise(r => setTimeout(r, 2000));
+      const txResult = await server.getTransaction(result.hash);
+      status = txResult.status;
+    }
+
+    if (status === "SUCCESS") {
+      console.log(`[${config.name}] Payout successfully disbursed. Hash: ${result.hash}`);
+      return result.hash;
+    } else {
+      throw new Error(`Transaction failed: ${status}`);
+    }
   } catch (error) {
     console.error(`[${network.toUpperCase()}] Blockchain claim error:`, error);
     throw error;
+  }
+};
+
+export const getContractTvl = async (network: 'testnet' | 'mainnet' = 'testnet'): Promise<number> => {
+  try {
+    const config = NETWORK_CONFIGS[network];
+    const server = new rpc.Server(config.sorobanRpcUrl);
+    const contract = new Contract(config.vaultContractId);
+
+    // Prepare a simulated call to get_total_reinsurance_deposited
+    const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
+    const tx = new TransactionBuilder(
+      dummyAccount,
+      {
+        fee: BASE_FEE,
+        networkPassphrase: config.passphrase,
+      }
+    )
+    .addOperation(contract.call("get_total_reinsurance_deposited"))
+    .setTimeout(30)
+    .build();
+
+    const result = await server.simulateTransaction(tx);
+    if (rpc.Api.isSimulationSuccess(result)) {
+      const val = result.result?.retval;
+      if (val) {
+        return Number(scValToNative(val));
+      }
+    }
+    return 0;
+  } catch (error) {
+    console.error("Error fetching TVL from contract:", error);
+    return 0;
+  }
+};
+
+export const getContractSubsidy = async (network: 'testnet' | 'mainnet' = 'testnet'): Promise<number> => {
+  try {
+    const config = NETWORK_CONFIGS[network];
+    const server = new rpc.Server(config.sorobanRpcUrl);
+    const contract = new Contract(config.vaultContractId);
+
+    const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
+    const tx = new TransactionBuilder(
+      dummyAccount,
+      {
+        fee: BASE_FEE,
+        networkPassphrase: config.passphrase,
+      }
+    )
+    .addOperation(contract.call("get_subsidy_balance"))
+    .setTimeout(30)
+    .build();
+
+    const result = await server.simulateTransaction(tx);
+    if (rpc.Api.isSimulationSuccess(result)) {
+      const val = result.result?.retval;
+      if (val) {
+        return Number(scValToNative(val));
+      }
+    }
+    return 0;
+  } catch (error) {
+    console.error("Error fetching subsidy balance from contract:", error);
+    return 0;
   }
 };
 
@@ -192,7 +300,7 @@ export interface LedgerTx {
   operationCount: number;
 }
 
-export const fetchRecentTransactions = async (network: 'testnet' | 'mainnet' = 'testnet'): Promise<LedgerTx[]> => {
+export const fetchRecentTransactions = async (network: 'demo' | 'testnet' | 'mainnet' = 'testnet'): Promise<LedgerTx[]> => {
   try {
     const config = NETWORK_CONFIGS[network];
     const url = `${config.horizonUrl}/transactions?limit=8&order=desc`;
@@ -211,23 +319,9 @@ export const fetchRecentTransactions = async (network: 'testnet' | 'mainnet' = '
       operationCount: r.operation_count || 1,
     }));
   } catch (error) {
-    console.error("Error fetching transactions from Horizon, using fallback:", error);
-    // Fallback simulated list if request fails or rate-limited
-    const dummyHashes = [
-      '5c6d32aa68c8b671a45cb788ac92d4f828a2f47738ad93ef2d31098a58a9134a',
-      'c85112e4f01ba32bf8223988ac92d4f828a2f47738ad93ef2d31098af3459c00',
-      '3988ac92d4f828a23210a783bc293d8aa281f47738ad93ef2d31098a0021b672',
-      'a783bc293d8aa2811988f47738ad93ef2d31098a58a9134ac85112e4f01ba32b',
-      'f47738ad93ef2d31098a58a9134ac85112e4f01ba32bf8223988ac92d4f828a2',
-    ];
-    return dummyHashes.map((hash, i) => ({
-      hash,
-      ledger: 631029 + i,
-      createdAt: new Date(Date.now() - i * 60000).toISOString(),
-      sourceAccount: 'GBXX7GDN3YV6NLUQXWR24F3Q6PXJQCYPXB345Y5Y5Y5Y5Y5Y5Y5Y5Y5Y',
-      feePaid: 100,
-      operationCount: 1,
-    }));
+    console.error("Error fetching transactions from Horizon:", error);
+    return [];
   }
 };
+
 

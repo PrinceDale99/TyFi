@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, TrendingDown, AlertTriangle, CheckCircle2, DollarSign, Sprout, BarChart3, Brain, Sparkles, RefreshCw } from 'lucide-react';
+import { Calculator, AlertTriangle, CheckCircle2, Sprout, BarChart3, RefreshCw } from 'lucide-react';
 import type { CalculatorData, WeatherData } from '../types';
 import { analyzeWeatherImpact } from '../services/aiService';
 import { useXlmToPhp } from '../hooks/useXlmToPhp';
@@ -36,42 +36,45 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
     }
   };
 
-  const [result, setResult] = useState<{
-    estimatedLoss: number;
-    recommendedPayout: number;
-    recoveryPotential: number;
-  } | null>(null);
-
-  const calculateDamage = () => {
-    // Basic simulation of damage assessment logic
+  const farm = farms.find(f => f.id === selectedFarmId);
+  
+  // 1. Determine Expected Harvest Value (Total potential value at 100% maturity)
+  const expectedHarvestValue = farm ? farm.expectedHarvestValue : (() => {
     const yieldPerHectare = data.cropType === 'Rice' ? 4000 : 
                            data.cropType === 'Corn' ? 3500 :
                            data.cropType === 'Coconut' ? 2500 : 3000; // kg
-    const totalYield = yieldPerHectare * data.area;
-    const totalValue = totalYield * data.marketPrice;
+    return yieldPerHectare * data.area * data.marketPrice;
+  })();
 
-    // Stage multipliers for damage impact
-    const stageMultiplier = {
-      'Seedling': 0.9,
-      'Vegetative': 0.7,
-      'Reproductive': 1.0,
-      'Maturity': 0.8
-    }[data.stage];
+  // 2. Determine Initial Investment (Base cost before any growth)
+  const initialInvestment = farm ? farm.initialInvestment : (expectedHarvestValue * 0.3);
 
-    const loss = totalValue * (data.destructionLevel / 100) * (stageMultiplier || 1);
-    const payout = loss * 0.85; // 85% coverage
-    const recovery = 100 - (data.destructionLevel * 0.8);
+  // 3. Map Growth Stage to Progress (Consistent with DamageCalculator.ts stages)
+  const stageProgress = {
+    'Seedling': 0.1,      // Early stage
+    'Vegetative': 0.4,    // Mid-growth
+    'Reproductive': 0.7,  // Critical stage (flowering/fruiting)
+    'Maturity': 1.0       // Harvest ready
+  }[data.stage] || 0.4;
 
-    setResult({
-      estimatedLoss: loss,
-      recommendedPayout: payout,
-      recoveryPotential: Math.max(0, recovery)
-    });
+  // 4. Calculate Current Financial Asset Value (Investment + Accrued Potential Profit)
+  const currentAssetValue = initialInvestment + ((expectedHarvestValue - initialInvestment) * stageProgress);
+
+  // 5. Calculate Real Financial Loss (Damage to current asset value)
+  const destructionFactor = data.destructionLevel / 100;
+  const estimatedLoss = currentAssetValue * destructionFactor;
+
+  // 6. Calculate Recommended Vault Payout (Parametric trigger based on destruction of principal/seedline)
+  const recommendedPayout = initialInvestment;
+
+  // 7. Calculate Recovery Potential
+  const recoveryPotential = Math.max(0, 100 - (data.destructionLevel * 0.8));
+
+  const result = {
+    estimatedLoss,
+    recommendedPayout,
+    recoveryPotential
   };
-
-  useEffect(() => {
-    calculateDamage();
-  }, [data]);
 
   const handleAiEstimate = async () => {
     if (!weather) return;
@@ -87,9 +90,9 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
       cropType: data.cropType,
       plantingDate: new Date().toISOString(),
       farmSize: data.area,
-      initialInvestment: 10000,
-      expectedHarvestValue: data.area * 5000,
-      totalCropValue: data.area * 5000 * data.marketPrice,
+      initialInvestment: 250,
+      expectedHarvestValue: 1000,
+      totalCropValue: 1000,
       latitude: 14.5995,
       longitude: 120.9842,
     };
@@ -271,44 +274,42 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
               Assessment Results
             </h3>
 
-            {result && (
-              <div className="space-y-6">
-                <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                  <div className="text-xs text-slate-500 uppercase tracking-tight mb-1">Estimated Financial Loss</div>
-                  <div className="text-3xl font-bold text-white flex items-baseline gap-2">
-                    {result.estimatedLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    <span className="text-slate-400 text-lg font-normal">XLM</span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1 font-medium pl-0.5">
-                    ≈ {formatPhp(result.estimatedLoss)}
-                  </div>
+            <div className="space-y-6">
+              <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                <div className="text-xs text-slate-500 uppercase tracking-tight mb-1">Estimated Financial Loss</div>
+                <div className="text-3xl font-bold text-white flex items-baseline gap-2">
+                  {result.estimatedLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className="text-slate-400 text-lg font-normal">XLM</span>
                 </div>
- 
-                <div className="p-4 bg-sky-500/10 rounded-xl border border-sky-500/20">
-                  <div className="text-xs text-sky-400/70 uppercase tracking-tight mb-1">Recommended Vault Payout</div>
-                  <div className="text-3xl font-bold text-sky-400 flex items-baseline gap-2">
-                    {result.recommendedPayout.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    <span className="text-sky-500 text-lg font-normal">XLM</span>
-                  </div>
-                  <div className="text-xs text-sky-400/70 mt-1 font-medium pl-0.5">
-                    ≈ {formatPhp(result.recommendedPayout)}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-400">Recovery Potential</span>
-                    <span className="text-white font-medium">{result.recoveryPotential.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 transition-all duration-1000"
-                      style={{ width: `${result.recoveryPotential}%` }}
-                    ></div>
-                  </div>
+                <div className="text-xs text-slate-400 mt-1 font-medium pl-0.5">
+                  ≈ {formatPhp(result.estimatedLoss)}
                 </div>
               </div>
-            )}
+
+              <div className="p-4 bg-sky-500/10 rounded-xl border border-sky-500/20">
+                <div className="text-xs text-sky-400/70 uppercase tracking-tight mb-1">Recommended Vault Payout</div>
+                <div className="text-3xl font-bold text-sky-400 flex items-baseline gap-2">
+                  {result.recommendedPayout.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className="text-sky-500 text-lg font-normal">XLM</span>
+                </div>
+                <div className="text-xs text-sky-400/70 mt-1 font-medium pl-0.5">
+                  ≈ {formatPhp(result.recommendedPayout)}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-400">Recovery Potential</span>
+                  <span className="text-white font-medium">{result.recoveryPotential.toFixed(1)}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 transition-all duration-1000"
+                    style={{ width: `${result.recoveryPotential}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className={`p-4 rounded-2xl border flex items-start gap-3 transition-all ${data.destructionLevel > 50

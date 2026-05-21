@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "liveMonitor": "Live nga Pagbantay",
+    "claims": "Mga Pangangkon",
+    "vault": "Tagoanan"
+  },
+  "header": {
+    "protocolMonitoring": "Pagbantay sa Protokol",
+    "smartCalculator": "Maalamong Calculator",
+    "claimHistory": "Kasaysayan sa Pangangkon",
+    "vaultInfrastructure": "Imprastraktura sa Tagoanan",
+    "connectWallet": "Ikonektar ang Pitaka"
+  },
+  "widgets": {
+    "agriMarketPulse": "Presyo sa Agrikultura",
+    "liveDaPrices": "Live nga Presyo sa DA & Updates sa PAGASA"
+  }
+}

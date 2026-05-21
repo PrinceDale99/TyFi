@@ -18,12 +18,14 @@ import {
   Upload,
   Loader2,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Heart
 } from 'lucide-react';
 import type { FarmData } from '../types';
 import { registerPolicyOnChain } from '../lib/stellar';
 import { estimateCropMetrics } from '../services/aiService';
 import { PHILIPPINE_REGIONS } from '../constants';
+import { registerForSubsidy } from '../services/firebaseService';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -53,10 +55,10 @@ const MapEventsHandler = ({ onChange }: { onChange: (lat: number, lng: number) =
 interface FarmerVerificationProps {
   onVerificationComplete: (farms: FarmData[]) => void;
   walletAddress: string;
-  network?: 'testnet' | 'mainnet';
+  network?: 'demo' | 'testnet' | 'mainnet';
 }
 
-const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'testnet' }) => {
+const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'demo' }) => {
   const [step, setStep] = useState(1);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isUploadingRsbsa, setIsUploadingRsbsa] = useState(false);
@@ -65,6 +67,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
   const [uploadedValidId, setUploadedValidId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [needsSubsidy, setNeedsSubsidy] = useState(false);
   
   const isMainnet = network === 'mainnet';
 
@@ -226,8 +229,6 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
     setFarms(farms.filter(f => f.id !== id));
   };
 
-  // Files are uploaded using inline handlers to manage separate state variables for RSBSA and Valid ID
-
   const startAnalysis = () => {
     if (farms.length === 0 && currentFarm.farmName) {
         addFarm();
@@ -244,22 +245,30 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
     setIsSubmitting(true);
     
     try {
-      for (const farm of farms) {
-        const premium = Math.round(farm.expectedHarvestValue * 0.1);
-        await registerPolicyOnChain(
-          walletAddress,
-          farm.latitude,
-          farm.longitude,
-          premium, // Pass premium instead of total value
-          farm.season || 'Wet Season 2026'
-        );
+      if (needsSubsidy) {
+        // Register for subsidy instead of paying immediately
+        for (const farm of farms) {
+          await registerForSubsidy(walletAddress, {
+            ...farmerInfo,
+            ...farm
+          });
+        }
+        console.log('Farms registered for subsidy requests');
+      } else {
+        // Original immediate payment flow
+        for (const farm of farms) {
+          const premium = Math.round(farm.expectedHarvestValue * 0.1);
+          await registerPolicyOnChain(
+            walletAddress,
+            farm.farmName.replace(/\s+/g, '_'),
+            farm.region || 'Albay',
+            premium,
+            farm.season || 'Wet Season 2026',
+            network
+          );
+        }
       }
-      console.log('All farms registered on Stellar blockchain');
-    } catch (error) {
-      console.error('Failed to register on blockchain:', error);
-    }
 
-    try {
       const pubkey = localStorage.getItem('stellar_pubkey') || walletAddress;
       await fetch('http://localhost:3001/api/register', {
         method: 'POST',
@@ -271,7 +280,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
       });
       console.log('Registered for notifications');
     } catch (error) {
-      console.error('Failed to register for notifications:', error);
+      console.error('Failed to complete submission:', error);
     }
 
     setIsSubmitting(false);
@@ -1065,6 +1074,30 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
               </div>
             </div>
 
+            {/* Add Subsidy Toggle */}
+            <div className="max-w-md mx-auto mb-8 p-6 rounded-3xl bg-rose-500/5 border border-rose-500/10 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="text-left">
+                  <h4 className="text-sm font-black text-white uppercase italic">Financial Assistance?</h4>
+                  <p className="text-[10px] text-slate-500 font-medium">Request sponsorship for your premium deposit.</p>
+                </div>
+                <button 
+                  onClick={() => setNeedsSubsidy(!needsSubsidy)}
+                  className={`w-12 h-6 rounded-full relative transition-all ${needsSubsidy ? 'bg-rose-500' : 'bg-slate-700'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${needsSubsidy ? 'right-1' : 'left-1'}`} />
+                </button>
+              </div>
+              {needsSubsidy && (
+                <div className="flex gap-3 items-start animate-in fade-in slide-in-from-top-1">
+                  <Heart size={14} className="text-rose-400 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-rose-400 font-bold leading-relaxed text-left">
+                    Your farm will be listed in the **Subsidy Marketplace**. Global sponsors can pay your premium to activate your protection.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <button 
               onClick={handleSubmit}
               disabled={isSubmitting}
@@ -1079,10 +1112,10 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
               {isSubmitting ? (
                 <div className="flex items-center justify-center gap-3">
                   <Loader2 className="animate-spin" size={24} />
-                  Anchoring to Stellar...
+                  {needsSubsidy ? 'Posting to Marketplace...' : 'Anchoring to Stellar...'}
                 </div>
               ) : (
-                "Enter Resilience Dashboard"
+                needsSubsidy ? "List on Subsidy Marketplace" : "Enter Resilience Dashboard"
               )}
             </button>
           </div>

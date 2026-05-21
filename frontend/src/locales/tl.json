@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "liveMonitor": "Live na Pagsubaybay",
+    "claims": "Mga Claim",
+    "vault": "Bóveda"
+  },
+  "header": {
+    "protocolMonitoring": "Pagsubaybay sa Protokol",
+    "smartCalculator": "Smart Calculator",
+    "claimHistory": "Kasaysayan ng Claim",
+    "vaultInfrastructure": "Imprastraktura ng Bóveda",
+    "connectWallet": "Ikonekta ang Wallet"
+  },
+  "widgets": {
+    "agriMarketPulse": "Presyo ng Merkado-Agrikultura",
+    "liveDaPrices": "Live na Presyo ng DA at Updates ng PAGASA"
+  }
+}
