@@ -89,7 +89,6 @@ function App() {
   const { formatPhp } = useXlmToPhp();
   const [stakingMode, setStakingMode] = useState<'deposit' | 'withdraw'>('deposit');
   const [projectionPeriod, setProjectionPeriod] = useState<'1m' | '6m' | '1y'>('1y');
-  const [isOracleSimulating, setIsOracleSimulating] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace'>(() => {
     return (localStorage.getItem('typhoon_vault_activeTab') as any) || 'monitor';
@@ -233,7 +232,6 @@ function App() {
 
   // 🧪 Testnet Developer Sandbox States
   const [isSimulatingWeather, setIsSimulatingWeather] = useState(false);
-  const [demoBypass, setDemoBypass] = useState(false);
 
   useEffect(() => {
     if (isWalletConnected && walletAddress) {
@@ -523,75 +521,6 @@ function App() {
     } catch (e: any) {
       addNotification(`Operation failed: ${e.message || 'Cancelled'}`, 'warning');
     }
-  };
-
-  const handleAutomatedOracleConsensus = async () => {
-    if (farms.length === 0) {
-      addNotification('Please add or verify at least one farm first to run oracle consensus.', 'warning');
-      return;
-    }
-    
-    setIsOracleSimulating(true);
-    addNotification('⚡ Oracle Consensus: Simulating Super Typhoon forecast track...', 'info');
-    
-    // Set weather to Super Typhoon
-    handleSimulateWeather('double_trigger');
-    
-    await new Promise(r => setTimeout(r, 1500));
-    addNotification('📡 Oracle API: Validating storm proximity sensors at Luzon coordinates...', 'info');
-    
-    await new Promise(r => setTimeout(r, 1500));
-    addNotification('⚙️ Smart Contract: Resolving parametric claims conditions on Soroban ledger...', 'info');
-    
-    await new Promise(r => setTimeout(r, 1500));
-    
-    let totalPaid = 0;
-    const updatedFarms = farms.map(f => {
-      if (f.isInsured && !f.hasClaimed) {
-        const claimAmt = Math.round((f.totalCropValue || 1000) * 0.9); // 90% payout of total crop value
-        totalPaid += claimAmt;
-        
-        const claimId = `TX-${Math.floor(Math.random() * 10000)}`;
-        const newClaim: Claim = {
-          id: claimId,
-          date: new Date().toISOString().split('T')[0],
-          amount: claimAmt,
-          status: 'Paid',
-          trigger: `Super Typhoon (90% Payout) - Auto-Oracle`
-        };
-        
-        setClaims(prev => [newClaim, ...prev]);
-        
-        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-        fetch(`${BACKEND_URL}/api/notify-payout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address: walletAddress || 'GC5MUJ...',
-            amount: claimAmt,
-            region: f.region
-          })
-        }).catch(() => console.log('Backend notification offline/standby'));
-
-        return {
-          ...f,
-          hasClaimed: true,
-          claimedAmount: claimAmt,
-          claimedRatio: 0.9
-        };
-      }
-      return f;
-    });
-
-    if (totalPaid > 0) {
-      setFarms(updatedFarms);
-      setTestnetTvl(prev => Math.max(0, prev - totalPaid));
-      addNotification(`🎉 Oracle Success! Auto-disbursed ${totalPaid.toLocaleString()} XLM to your wallet`, 'success');
-    } else {
-      addNotification('Oracle finished. No active/unclaimed insured farms found.', 'info');
-    }
-    
-    setIsOracleSimulating(false);
   };
 
   const addNotification = (text: string, type: 'info' | 'success' | 'warning' = 'info') => {
@@ -926,17 +855,7 @@ function App() {
       
       const processClaim = async () => {
         try {
-          if (demoBypass && !isMainnet) {
-            addNotification('Demo Mode: Generating a real transaction hash for Stellar Expert (Bypassing Oracle)...', 'info');
-            // We use contributeLiquidityOnChain for 0.0000001 XLM to generate a real TxHash without needing Oracle authorization!
-            const dummyHash = await contributeLiquidityOnChain(pubkey, 0.0000001, 'lp', 'deposit', 'testnet');
-            addNotification(`Insurance payout processed! Real Transaction Hash generated for Demo!`, 'success');
-            
-            // Log the dummy hash as the payout hash
-            console.log("Demo Payout Hash: ", dummyHash);
-          } else {
-            await claimPayoutOnChain(pubkey, farm.id, farm.season || 'Wet Season 2026', isMainnet ? 'mainnet' : 'testnet', typhoonId);
-          }
+          await claimPayoutOnChain(pubkey, farm.id, farm.season || 'Wet Season 2026', isMainnet ? 'mainnet' : 'testnet', typhoonId);
         } catch (err) {
           console.error("Stellar claim error:", err);
           addNotification('Transaction failed or rejected by wallet.', 'warning');
@@ -1792,30 +1711,7 @@ function App() {
                     Trigger simulated weather events to test the Soroban contract parametric payout logic and ledger updates in an isolated sandbox.
                   </p>
                   
-                  <div className="flex items-center justify-between mb-4 bg-indigo-500/5 p-2.5 rounded-lg border border-indigo-500/10">
-                    <label htmlFor="demoBypass" className="text-xs font-bold text-indigo-300">All Oracle Consensus Approves (Demo Only)</label>
-                    <input 
-                      type="checkbox" 
-                      id="demoBypass" 
-                      checked={demoBypass} 
-                      onChange={(e) => setDemoBypass(e.target.checked)}
-                      className="w-4 h-4 rounded bg-white/10 border-white/20 text-indigo-500 focus:ring-indigo-500/50"
-                    />
-                  </div>
-
                   <div className="space-y-2.5">
-                    {/* Automated Oracle Consensus Button */}
-                    <button
-                      onClick={handleAutomatedOracleConsensus}
-                      disabled={isOracleSimulating}
-                      className="w-full py-3 px-4 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(14,165,233,0.25)] hover:shadow-[0_0_20px_rgba(14,165,233,0.35)] border border-sky-400/20"
-                    >
-                      <RefreshCw size={14} className={isOracleSimulating ? 'animate-spin' : ''} />
-                      {isOracleSimulating ? 'Processing Oracle Consensus...' : '⚡ Execute Auto-Oracle Consensus'}
-                    </button>
-
-                    <div className="h-px bg-white/5 my-2" />
-
                     <button
                       onClick={() => handleSimulateWeather('normal')}
                       className={`w-full py-2.5 px-4 rounded-xl text-left border text-xs font-bold transition-all flex items-center justify-between group ${
