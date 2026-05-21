@@ -1,0 +1,533 @@
+#![no_std]
+use soroban_sdk::{
+    contract, contractimpl, contracttype, contracterror, Address, Env, Symbol, log, token, Vec
+};
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    AlreadyInitialized = 1,
+    NotInitialized = 2,
+    Unauthorized = 3,
+    NotVerified = 4,
+    PolicyNotActive = 5,
+    ThresholdNotMet = 6,
+    InvalidAmount = 7,
+    InsufficientLiquidity = 8,
+    NoConsensus = 9,
+    Overflow = 10,
+}
+
+#[derive(Clone)]
+#[contracttype]
+pub enum DataKey {
+    Admin,                      // Governance admin
+    XlmToken,                   // Stellar native asset (XLM) contract address
+    QuorumThreshold,            // Quorum threshold (u32)
+    Oracle(Address),            // Oracle authorization status
+    SingleOracle,               // Mainnet single authorized oracle address
+    IsMainnetMode,              // Boolean indicator for Mainnet production mode
+    Verified(Address),          // Farmer RSBSA verification status
+    SubsidyBalance,             // Donor premium subsidy pool balance (i128)
+    TotalReinsuranceShares,     // Total reinsurance shares issued (i128)
+    TotalReinsuranceDeposited,  // Total reinsurance XLM deposited (i128)
+    LpShares(Address),          // Reinsurance shares balance of an LP (i128)
+    Policy(Address, Symbol, Symbol), // Policy details: (farmer, farm_id, season) -> Policy
+    FarmList(Address),          // List of farm IDs for a farmer
+    Report(Symbol, Symbol, Address), // Damage report: (typhoon_id, region, oracle) -> damage_percentage (u32)
+    ReportedOracles(Symbol, Symbol), // List of oracles that have reported: (typhoon_id, region) -> Vec<Address>
+    ConsensusDamagePercentage(Symbol, Symbol), // Calculated consensus damage percentage: (typhoon_id, region) -> u32
+    ConsensusReached(Symbol, Symbol),   // Whether consensus is reached: (typhoon_id, region) -> bool
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracttype]
+pub struct Policy {
+    pub farm_id: Symbol,
+    pub region: Symbol,
+    pub season: Symbol,
+    pub premium: i128,
+    pub payout_amount: i128,
+    pub is_active: bool,
+}
+
+#[contract]
+pub struct TyphoonVault;
+
+#[contractimpl]
+impl TyphoonVault {
+    /// Initialize the contract with admin, token address, oracle parameters, and mainnet/testnet flag
+    pub fn initialize(
+        env: Env, 
+        admin: Address, 
+        xlm_token: Address, 
+        quorum: u32,
+        is_mainnet_mode: bool,
+        single_oracle: Address
+    ) -> Result<(), Error> {
+        if env.storage().instance().has(&DataKey::Admin) {
+            return Err(Error::AlreadyInitialized);
+        }
+        env.storage().instance().set(&DataKey::Admin, &admin);
+        env.storage().instance().set(&DataKey::XlmToken, &xlm_token);
+        env.storage().instance().set(&DataKey::QuorumThreshold, &quorum);
+        env.storage().instance().set(&DataKey::IsMainnetMode, &is_mainnet_mode);
+        env.storage().instance().set(&DataKey::SingleOracle, &single_oracle);
+        
+        env.storage().instance().set(&DataKey::SubsidyBalance, &0i128);
+        env.storage().instance().set(&DataKey::TotalReinsuranceShares, &0i128);
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &0i128);
+        
+        log!(&env, "Initialized vault. Mainnet mode:", is_mainnet_mode);
+        Ok(())
+    }
+
+    /// Check if contract is initialized
+    pub fn is_initialized(env: Env) -> bool {
+        env.storage().instance().has(&DataKey::Admin)
+    }
+
+    /// Check if running in mainnet mode
+    pub fn is_mainnet_mode(env: Env) -> bool {
+        env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false)
+    }
+
+    // --- Governance & Admin Functions ---
+
+    /// Set the active status of a weather oracle (Testnet consensus)
+    pub fn set_oracle(env: Env, admin: Address, oracle: Address, is_active: bool) -> Result<(), Error> {
+        let saved_admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
+        saved_admin.require_auth();
+        admin.require_auth();
+        if admin != saved_admin {
+            return Err(Error::Unauthorized);
+        }
+        
+        env.storage().persistent().set(&DataKey::Oracle(oracle.clone()), &is_active);
+        log!(&env, "Oracle status updated", oracle, is_active);
+        Ok(())
+    }
+
+    /// Set the single authorized oracle (Mainnet mode)
+    pub fn set_single_oracle(env: Env, admin: Address, single_oracle: Address) -> Result<(), Error> {
+        let saved_admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
+        saved_admin.require_auth();
+        admin.require_auth();
+        if admin != saved_admin {
+            return Err(Error::Unauthorized);
+        }
+        
+        env.storage().instance().set(&DataKey::SingleOracle, &single_oracle);
+        log!(&env, "Single oracle updated for mainnet", single_oracle);
+        Ok(())
+    }
+
+    /// Official KYC/RSBSA Verification of farmers
+    pub fn verify_farmer(env: Env, admin: Address, farmer: Address, is_verified: bool) -> Result<(), Error> {
+        let saved_admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
+        saved_admin.require_auth();
+        admin.require_auth();
+        if admin != saved_admin {
+            return Err(Error::Unauthorized);
+        }
+        
+        env.storage().persistent().set(&DataKey::Verified(farmer.clone()), &is_verified);
+        log!(&env, "Farmer verification status set", farmer, is_verified);
+        Ok(())
+    }
+
+    /// Set the consensus quorum threshold
+    pub fn set_quorum_threshold(env: Env, admin: Address, threshold: u32) -> Result<(), Error> {
+        let saved_admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
+        saved_admin.require_auth();
+        admin.require_auth();
+        if admin != saved_admin {
+            return Err(Error::Unauthorized);
+        }
+        
+        env.storage().instance().set(&DataKey::QuorumThreshold, &threshold);
+        Ok(())
+    }
+
+    // --- Public Premium Subsidy Pool ---
+
+    /// Donors can deposit XLM into the public premium subsidy pool
+    pub fn deposit_subsidy(env: Env, donor: Address, amount: i128) -> Result<(), Error> {
+        donor.require_auth();
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+        
+        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
+        let client = token::Client::new(&env, &xlm_token_addr);
+        client.transfer(&donor, &env.current_contract_address(), &amount);
+        
+        let balance: i128 = env.storage().instance().get(&DataKey::SubsidyBalance).unwrap_or(0);
+        let new_balance = balance.checked_add(amount).ok_or(Error::Overflow)?;
+        env.storage().instance().set(&DataKey::SubsidyBalance, &new_balance);
+        
+        env.events().publish(
+            (Symbol::new(&env, "deposit_subsidy"), donor),
+            amount
+        );
+        
+        Ok(())
+    }
+
+    /// Get total subsidy pool balance
+    pub fn get_subsidy_balance(env: Env) -> i128 {
+        env.storage().instance().get(&DataKey::SubsidyBalance).unwrap_or(0)
+    }
+
+    // --- Reinsurance Yield-Seeking Pool (Liquidity Provision) ---
+
+    /// Reinsurance pool deposits (Yield Seekers back the pool to gain interest from premiums)
+    pub fn deposit_reinsurance(env: Env, lp: Address, amount: i128) -> Result<i128, Error> {
+        lp.require_auth();
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+        
+        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
+        let client = token::Client::new(&env, &xlm_token_addr);
+        client.transfer(&lp, &env.current_contract_address(), &amount);
+        
+        let mut total_shares: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0);
+        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        
+        let shares = if total_shares == 0 || total_deposited == 0 {
+            amount
+        } else {
+            (amount.checked_mul(total_shares).ok_or(Error::Overflow)?)
+                .checked_div(total_deposited).ok_or(Error::Overflow)?
+        };
+        
+        let mut lp_share_balance: i128 = env.storage().persistent().get(&DataKey::LpShares(lp.clone())).unwrap_or(0);
+        lp_share_balance = lp_share_balance.checked_add(shares).ok_or(Error::Overflow)?;
+        env.storage().persistent().set(&DataKey::LpShares(lp.clone()), &lp_share_balance);
+        
+        total_shares = total_shares.checked_add(shares).ok_or(Error::Overflow)?;
+        total_deposited = total_deposited.checked_add(amount).ok_or(Error::Overflow)?;
+        
+        env.storage().instance().set(&DataKey::TotalReinsuranceShares, &total_shares);
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+        
+        env.events().publish(
+            (Symbol::new(&env, "deposit_reinsurance"), lp),
+            (amount, shares)
+        );
+        
+        Ok(shares)
+    }
+
+    /// Reinsurance pool withdrawals (burning LP shares for XLM)
+    pub fn withdraw_reinsurance(env: Env, lp: Address, shares: i128) -> Result<i128, Error> {
+        lp.require_auth();
+        if shares <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+        
+        let mut lp_share_balance: i128 = env.storage().persistent().get(&DataKey::LpShares(lp.clone())).unwrap_or(0);
+        if lp_share_balance < shares {
+            return Err(Error::InvalidAmount);
+        }
+        
+        let mut total_shares: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0);
+        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        
+        if total_shares == 0 {
+            return Err(Error::InvalidAmount);
+        }
+        
+        let amount = (shares.checked_mul(total_deposited).ok_or(Error::Overflow)?)
+            .checked_div(total_shares).ok_or(Error::Overflow)?;
+        
+        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
+        let client = token::Client::new(&env, &xlm_token_addr);
+        let contract_balance = client.balance(&env.current_contract_address());
+        
+        if contract_balance < amount {
+            return Err(Error::InsufficientLiquidity);
+        }
+        
+        lp_share_balance = lp_share_balance.checked_sub(shares).ok_or(Error::Overflow)?;
+        env.storage().persistent().set(&DataKey::LpShares(lp.clone()), &lp_share_balance);
+        
+        total_shares = total_shares.checked_sub(shares).ok_or(Error::Overflow)?;
+        total_deposited = total_deposited.checked_sub(amount).ok_or(Error::Overflow)?;
+        
+        env.storage().instance().set(&DataKey::TotalReinsuranceShares, &total_shares);
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+        
+        client.transfer(&env.current_contract_address(), &lp, &amount);
+        
+        env.events().publish(
+            (Symbol::new(&env, "withdraw_reinsurance"), lp),
+            (amount, shares)
+        );
+        
+        Ok(amount)
+    }
+
+    /// Get details of LP shares
+    pub fn get_lp_shares(env: Env, lp: Address) -> i128 {
+        env.storage().persistent().get(&DataKey::LpShares(lp)).unwrap_or(0)
+    }
+
+    /// Get total reinsurance deposited
+    pub fn get_total_reinsurance_deposited(env: Env) -> i128 {
+        env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0)
+    }
+
+    /// Get total reinsurance shares
+    pub fn get_total_reinsurance_shares(env: Env) -> i128 {
+        env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0)
+    }
+
+    // --- Farmer Subscription and Core Operations ---
+
+    /// Subscribe a farm to a parametric insurance policy for a specific season
+    pub fn subscribe(env: Env, farmer: Address, farm_id: Symbol, region: Symbol, season: Symbol, premium: i128) -> Result<(), Error> {
+        farmer.require_auth();
+        if premium <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let is_verified: bool = env.storage().persistent().get(&DataKey::Verified(farmer.clone())).unwrap_or(false);
+        if !is_verified {
+            return Err(Error::NotVerified);
+        }
+
+        let is_mainnet = env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false);
+        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
+        let client = token::Client::new(&env, &xlm_token_addr);
+
+        let farmer_to_pay = if is_mainnet {
+            // Mainnet handles direct payment with no premium subsidy for isolated risk integrity
+            premium
+        } else {
+            // Apply testnet 50% premium subsidy
+            let mut subsidy_balance: i128 = env.storage().instance().get(&DataKey::SubsidyBalance).unwrap_or(0);
+            let subsidy_portion = premium.checked_div(2).ok_or(Error::Overflow)?;
+
+            if subsidy_balance >= subsidy_portion {
+                subsidy_balance = subsidy_balance.checked_sub(subsidy_portion).ok_or(Error::Overflow)?;
+                env.storage().instance().set(&DataKey::SubsidyBalance, &subsidy_balance);
+                premium.checked_sub(subsidy_portion).ok_or(Error::Overflow)?
+            } else {
+                premium
+            }
+        };
+
+        client.transfer(&farmer, &env.current_contract_address(), &farmer_to_pay);
+
+        let payout_amount = premium.checked_mul(10).ok_or(Error::Overflow)?;
+
+        let policy = Policy {
+            farm_id: farm_id.clone(),
+            region: region.clone(),
+            season: season.clone(),
+            premium,
+            payout_amount,
+            is_active: true,
+        };
+
+        env.storage().persistent().set(&DataKey::Policy(farmer.clone(), farm_id.clone(), season.clone()), &policy);
+        // Extend TTL to ~1 year (≈6,307,200 ledgers at 5s each) so policies don't expire
+        env.storage().persistent().extend_ttl(
+            &DataKey::Policy(farmer.clone(), farm_id.clone(), season.clone()),
+            100,
+            6_307_200
+        );
+
+        // Add farm to farmer's list
+        let mut farms: Vec<Symbol> = env.storage().persistent().get(&DataKey::FarmList(farmer.clone())).unwrap_or(Vec::new(&env));
+        let mut exists = false;
+        for i in 0..farms.len() {
+            if farms.get(i).unwrap() == farm_id {
+                exists = true;
+                break;
+            }
+        }
+        if !exists {
+            farms.push_back(farm_id.clone());
+            env.storage().persistent().set(&DataKey::FarmList(farmer.clone()), &farms);
+        }
+
+        // Update reinsurance deposited balance (premiums serve as pool reserves)
+        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        total_deposited = total_deposited.checked_add(premium).ok_or(Error::Overflow)?;
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+
+        env.events().publish(
+            (Symbol::new(&env, "subscribe"), farmer),
+            (farm_id, region, season, premium, farmer_to_pay)
+        );
+
+        Ok(())
+    }
+    // --- Weather Reporting and Multi-Oracle Consensus ---
+
+    /// Oracles submit damage estimation reports (Combined Oracle + AI) for a typhoon in a region
+    pub fn submit_weather_report(env: Env, oracle: Address, typhoon_id: Symbol, region: Symbol, damage_percentage: u32) -> Result<(), Error> {
+        oracle.require_auth();
+        
+        let is_mainnet = env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false);
+        
+        if is_mainnet {
+            // Mainnet: Validate single authorized oracle
+            let single_oracle: Address = env.storage().instance().get(&DataKey::SingleOracle).ok_or(Error::NotInitialized)?;
+            if oracle != single_oracle {
+                return Err(Error::Unauthorized);
+            }
+            
+            // Single authorized oracle immediately establishes absolute consensus
+            env.storage().persistent().set(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), region.clone()), &damage_percentage);
+            env.storage().persistent().set(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone()), &true);
+            
+            env.events().publish(
+                (Symbol::new(&env, "consensus_reached"), typhoon_id, region),
+                damage_percentage
+            );
+        } else {
+            // Testnet Sandbox: Multi-oracle quorum consensus
+            let is_active = env.storage().persistent().get(&DataKey::Oracle(oracle.clone())).unwrap_or(false);
+            if !is_active {
+                return Err(Error::Unauthorized);
+            }
+            
+            env.storage().persistent().set(&DataKey::Report(typhoon_id.clone(), region.clone(), oracle.clone()), &damage_percentage);
+            
+            let mut reported: Vec<Address> = env.storage().persistent().get(&DataKey::ReportedOracles(typhoon_id.clone(), region.clone())).unwrap_or(Vec::new(&env));
+            
+            let mut already_reported = false;
+            for i in 0..reported.len() {
+                if reported.get(i).unwrap() == oracle {
+                    already_reported = true;
+                    break;
+                }
+            }
+            
+            if !already_reported {
+                reported.push_back(oracle.clone());
+                env.storage().persistent().set(&DataKey::ReportedOracles(typhoon_id.clone(), region.clone()), &reported);
+            }
+            
+            let quorum: u32 = env.storage().instance().get(&DataKey::QuorumThreshold).unwrap_or(1);
+            if reported.len() >= quorum {
+                let mut sum: u64 = 0;
+                let mut count: u64 = 0;
+                for i in 0..reported.len() {
+                    let o_addr = reported.get(i).unwrap();
+                    let damage: u32 = env.storage().persistent().get(&DataKey::Report(typhoon_id.clone(), region.clone(), o_addr)).unwrap_or(0);
+                    sum = sum.checked_add(damage as u64).ok_or(Error::Overflow)?;
+                    count = count.checked_add(1).ok_or(Error::Overflow)?;
+                }
+                if count == 0 {
+                    return Err(Error::NoConsensus);
+                }
+                let avg_damage = (sum.checked_div(count).ok_or(Error::Overflow)?) as u32;
+                
+                env.storage().persistent().set(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), region.clone()), &avg_damage);
+                env.storage().persistent().set(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone()), &true);
+                
+                env.events().publish(
+                    (Symbol::new(&env, "consensus_reached"), typhoon_id, region),
+                    avg_damage
+                );
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Claim payout based on dynamic network-configured parametric curves for a specific farm and season
+    pub fn claim_payout(env: Env, farmer: Address, farm_id: Symbol, season: Symbol, typhoon_id: Symbol) -> Result<i128, Error> {
+        farmer.require_auth();
+        
+        let mut policy: Policy = env.storage().persistent().get(&DataKey::Policy(farmer.clone(), farm_id.clone(), season.clone())).ok_or(Error::PolicyNotActive)?;
+        if !policy.is_active {
+            return Err(Error::PolicyNotActive);
+        }
+        
+        let consensus_reached = env.storage().persistent().get(&DataKey::ConsensusReached(typhoon_id.clone(), policy.region.clone())).unwrap_or(false);
+        if !consensus_reached {
+            return Err(Error::NoConsensus);
+        }
+        
+        let damage_percentage: u32 = env.storage().persistent().get(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), policy.region.clone())).unwrap_or(0);
+        
+        // Payout percentage is now derived directly from the combined consensus damage estimation
+        let payout_percentage = damage_percentage;
+        
+        if payout_percentage == 0 {
+            return Err(Error::ThresholdNotMet);
+        }
+        
+        let payout_amount = (policy.payout_amount.checked_mul(payout_percentage as i128).ok_or(Error::Overflow)?)
+            .checked_div(100).ok_or(Error::Overflow)?;
+        
+        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
+        let client = token::Client::new(&env, &xlm_token_addr);
+        let contract_balance = client.balance(&env.current_contract_address());
+        
+        if contract_balance < payout_amount {
+            return Err(Error::InsufficientLiquidity);
+        }
+        
+        policy.is_active = false;
+        env.storage().persistent().set(&DataKey::Policy(farmer.clone(), farm_id.clone(), season.clone()), &policy);
+        
+        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        total_deposited = total_deposited.checked_sub(payout_amount).ok_or(Error::Overflow)?;
+        if total_deposited < 0 {
+            total_deposited = 0;
+        }
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+        
+        client.transfer(&env.current_contract_address(), &farmer, &payout_amount);
+        
+        env.events().publish(
+            (Symbol::new(&env, "payout_claimed"), farmer, farm_id),
+            (typhoon_id, damage_percentage, payout_amount)
+        );
+        
+        Ok(payout_amount)
+    }
+
+    // --- Getters ---
+
+    /// Get all farms registered for a farmer
+    pub fn get_farmer_farms(env: Env, farmer: Address) -> Vec<Symbol> {
+        env.storage().persistent().get(&DataKey::FarmList(farmer)).unwrap_or(Vec::new(&env))
+    }
+
+    /// Get details of a policy for a specific farm and season
+    pub fn get_farm_policy(env: Env, farmer: Address, farm_id: Symbol, season: Symbol) -> Option<Policy> {
+        env.storage().persistent().get(&DataKey::Policy(farmer, farm_id, season))
+    }
+
+    /// Get weather report submitted by specific oracle
+    pub fn get_weather_report(env: Env, typhoon_id: Symbol, region: Symbol, oracle: Address) -> u32 {
+        env.storage().persistent().get(&DataKey::Report(typhoon_id, region, oracle)).unwrap_or(0)
+    }
+
+    /// Get consensus damage percentage if consensus is reached
+    pub fn get_consensus_damage_percentage(env: Env, typhoon_id: Symbol, region: Symbol) -> Option<u32> {
+        let reached = env.storage().persistent().get(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone())).unwrap_or(false);
+        if reached {
+            Some(env.storage().persistent().get(&DataKey::ConsensusDamagePercentage(typhoon_id, region)).unwrap_or(0))
+        } else {
+            None
+        }
+    }
+
+    /// Get whether farmer is RSBSA verified
+    pub fn is_farmer_verified(env: Env, farmer: Address) -> bool {
+        env.storage().persistent().get(&DataKey::Verified(farmer)).unwrap_or(false)
+    }
+}
+
+#[cfg(test)]
+mod test;
