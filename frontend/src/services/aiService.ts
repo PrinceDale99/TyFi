@@ -91,11 +91,14 @@ Return the JSON block.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }]
+        },
         contents: [
           {
             parts: [
               {
-                text: `${systemPrompt}\n\n${userPrompt}`,
+                text: userPrompt,
               },
             ],
           },
@@ -104,7 +107,8 @@ Return the JSON block.`;
     });
 
     if (!response.ok) {
-      throw new Error(`AI proxy returned status ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || errorData.error || `AI proxy returned status ${response.status}`);
     }
 
     const data = await response.json();
@@ -238,20 +242,29 @@ Respond with concise, actionable text. Use markdown for lists or emphasis.`;
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }]
+        },
         contents: [
-          { role: 'user', parts: [{ text: systemPrompt }] },
           ...formattedHistory,
           { role: 'user', parts: [{ text: message }] }
         ],
       }),
     });
 
-    if (!response.ok) throw new Error('AI service unreachable');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || errorData.error || 'AI service unreachable');
+    }
+
     const data = await response.json();
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm having trouble connecting to my knowledge base. Please try again in a moment.";
-  } catch (error) {
+  } catch (error: any) {
     console.error('Chat error:', error);
-    return "I am currently in standby mode due to a connection issue. If a storm is approaching, please prioritize your safety and follow local PAGASA advisories.";
+    if (error.message.includes('Failed to fetch')) {
+      return "I can't reach the TyFi backend. Please ensure the backend server is running on port 3001.";
+    }
+    return `I am currently in standby mode (${error.message || 'connection issue'}). Please prioritize your safety and follow local PAGASA advisories.`;
   }
 };
 
@@ -307,11 +320,14 @@ Return strictly a JSON object with no markdown tags or text, following this exac
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }]
+        },
         contents: [
           {
             parts: [
               {
-                text: systemPrompt,
+                text: `Estimate economics for ${cropType} in ${region} at ${farmSize} hectares.`,
               },
             ],
           },
@@ -320,7 +336,8 @@ Return strictly a JSON object with no markdown tags or text, following this exac
     });
 
     if (!response.ok) {
-      throw new Error(`AI proxy returned status ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || errorData.error || `AI proxy returned status ${response.status}`);
     }
 
     const data = await response.json();
