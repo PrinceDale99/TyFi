@@ -150,7 +150,7 @@ app.post('/api/notify-alert', async (req, res) => {
 });
 
 app.post('/api/ai/analyze-weather', async (req, res) => {
-  const { contents } = req.body;
+  const { contents, system_instruction } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY;
 
   if (!API_KEY) {
@@ -158,13 +158,19 @@ app.post('/api/ai/analyze-weather', async (req, res) => {
     return res.status(500).json({ error: 'AI service configuration error: Missing API Key' });
   }
 
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`;
+  // Use gemini-1.5-flash for better reliability and performance
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   try {
+    const body: any = { contents };
+    if (system_instruction) {
+      body.system_instruction = system_instruction;
+    }
+
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents }),
+      body: JSON.stringify(body),
     });
 
     const data = await response.json();
@@ -174,13 +180,16 @@ app.post('/api/ai/analyze-weather', async (req, res) => {
         status: response.status,
         errorData: data 
       });
-      return res.status(response.status).json(data);
+      return res.status(response.status).json({
+        error: data.error || 'Gemini API reported an error',
+        status: response.status
+      });
     }
 
     res.json(data);
   } catch (error: any) {
     await logEvent('ERROR', 'Gemini Proxy Exception', { errorMessage: error.message });
-    res.status(500).json({ error: 'Failed to communicate with AI service' });
+    res.status(500).json({ error: 'Failed to communicate with AI service: ' + error.message });
   }
 });
 
@@ -273,7 +282,8 @@ app.post('/api/ai/translate', async (req, res) => {
     return res.status(500).json({ error: 'Missing API Key' });
   }
 
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`;
+  // Use gemini-1.5-flash for consistency
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
   const prompt = `Translate the following text to ${targetLanguage}. Maintain the original meaning and formatting. Respond ONLY with the translated text, no markdown blocks, no extra comments.\n\nText:\n${text}`;
 

@@ -4,12 +4,15 @@
   "description": "Root workspace control for TyFi",
   "private": true,
   "scripts": {
-    "dev": "npm --prefix frontend run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend run dev",
     "build": "npm --prefix frontend run build",
     "build:frontend": "npm --prefix frontend run build",
     "listener": "npm --prefix backend run listener",
     "install:all": "npm install --prefix frontend && npm install --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
