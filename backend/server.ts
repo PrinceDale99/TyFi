@@ -158,8 +158,8 @@ app.post('/api/ai/analyze-weather', async (req, res) => {
     return res.status(500).json({ error: 'AI service configuration error: Missing API Key' });
   }
 
-  // Use gemini-1.5-flash-latest for better reliability and performance
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
+  // Use gemini-2.5-flash for maximum efficiency and speed
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
   try {
     const body: any = { contents };
@@ -282,8 +282,8 @@ app.post('/api/ai/translate', async (req, res) => {
     return res.status(500).json({ error: 'Missing API Key' });
   }
 
-  // Use gemini-1.5-flash-latest for consistency
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
+  // Use gemini-2.5-flash for consistency and speed
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
   const prompt = `Translate the following text to ${targetLanguage}. Maintain the original meaning and formatting. Respond ONLY with the translated text, no markdown blocks, no extra comments.\n\nText:\n${text}`;
 
