@@ -39,12 +39,14 @@ interface SubsidyMarketplaceProps {
   sponsorAddress: string;
   network?: 'testnet' | 'mainnet';
   addNotification: (text: string, type?: 'info' | 'success' | 'warning') => void;
+  userFarms?: any[];
 }
 
 const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({ 
   sponsorAddress, 
   network = 'testnet',
-  addNotification 
+  addNotification,
+  userFarms = []
 }) => {
   const [requests, setRequests] = useState<SubsidyRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,6 +132,61 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
           />
         </div>
       </div>
+
+      {/* User's Own Farms Configuration Section */}
+      {userFarms.length > 0 && (
+        <div className="glass-panel p-6 bg-white/5 border-white/10 mb-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
+          <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 mb-4">
+            <Sprout size={16} className={network === 'mainnet' ? 'text-emerald-400' : 'text-sky-400'} />
+            List Your Farms For Subsidy
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">Select which of your active farms to list publicly so institutional donors can sponsor your premiums.</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {userFarms.map((farm) => {
+              const isListed = requests.some(r => r.farmerAddress === sponsorAddress && r.farmName === farm.farmName);
+              
+              return (
+                <div key={farm.id} className="p-4 rounded-xl bg-slate-950/50 border border-white/5 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-white text-sm">{farm.farmName}</h4>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">{farm.cropType} • {farm.farmSize} Hectares</p>
+                  </div>
+                  <button
+                    disabled={isListed || isProcessing === farm.id}
+                    onClick={async () => {
+                      setIsProcessing(farm.id);
+                      try {
+                        addNotification(`Registering ${farm.farmName} for financial assistance...`, 'info');
+                        const { registerForSubsidy } = await import('../services/firebaseService');
+                        await registerForSubsidy(sponsorAddress, farm, network);
+                        addNotification(`${farm.farmName} successfully listed in the Subsidy Marketplace.`, 'success');
+                        fetchRequests(); // Refresh the list
+                      } catch (e) {
+                        addNotification(`Failed to list ${farm.farmName}.`, 'warning');
+                      } finally {
+                        setIsProcessing(null);
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                      isListed 
+                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
+                        : isProcessing === farm.id 
+                          ? 'bg-slate-700 text-slate-400 cursor-wait'
+                          : network === 'mainnet' 
+                            ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
+                            : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_0_15px_rgba(14,165,233,0.2)]'
+                    }`}
+                  >
+                    {isListed ? 'Already Listed' : isProcessing === farm.id ? 'Listing...' : 'List Farm'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-4">

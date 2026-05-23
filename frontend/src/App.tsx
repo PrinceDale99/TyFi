@@ -1877,6 +1877,7 @@ function App() {
                     sponsorAddress={walletAddress} 
                     network={network}
                     addNotification={addNotification}
+                    userFarms={farms}
                   />
                 </div>
               )}
@@ -2331,6 +2332,28 @@ function App() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+              {/* Wallet Info Section */}
+              <div className="glass-panel p-6 bg-white/5 border-white/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-2xl ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
+                      <Wallet size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Connected Wallet</h3>
+                      <p className="text-sm font-mono text-white mb-1">{walletAddress || 'Not Connected'}</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                          isMainnet ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                        }`}>
+                          {network === 'mainnet' ? '🟢 Mainnet' : '🔵 Testnet Sandbox'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Farmer Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
@@ -2476,58 +2499,7 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    {/* Financial Assistance Switch */}
-                    <div className={`p-4 rounded-2xl border transition-all ${
-                      profileForm.isSeekingAssistance 
-                        ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-sky-500/10 border-sky-500/30') 
-                        : 'bg-white/5 border-white/10'
-                    }`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-2 rounded-lg ${profileForm.isSeekingAssistance ? (isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400') : 'bg-slate-800 text-slate-400'}`}>
-                            <Globe size={16} />
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-black text-white uppercase">Subsidy Marketplace</h4>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase">Financial Assistance</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={async () => {
-                            const willSeek = !profileForm.isSeekingAssistance;
-                            setProfileForm(prev => ({ ...prev, isSeekingAssistance: willSeek }));
-
-                            if (willSeek) {
-                              if (farms.length > 0) {
-                                addNotification(`Registering your farm for financial assistance...`, 'info');
-                                await registerForSubsidy(walletAddress, farms[0], network);
-                                addNotification('Farm successfully listed in the Subsidy Marketplace.', 'success');
-                              } else {
-                                addNotification('Financial assistance enabled. Please add a farm to list it in the marketplace.', 'info');
-                              }
-                            } else {
-                              addNotification('Financial assistance disabled for future farms.', 'info');
-                            }
-                          }}                          className={`w-12 h-6 rounded-full transition-colors relative ${
-                            profileForm.isSeekingAssistance 
-                              ? (isMainnet ? 'bg-emerald-500' : 'bg-sky-500') 
-                              : 'bg-slate-700'
-                          }`}
-                        >
-                          <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${
-                            profileForm.isSeekingAssistance ? 'left-7' : 'left-1'
-                          }`}></div>
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-slate-400 leading-relaxed">
-                        {profileForm.isSeekingAssistance 
-                          ? "Your profile is publicly listed. Institutional sponsors and donors can now fund your premium subsidies." 
-                          : "Enable this to allow NGOs, LGUs, and DeFi protocols to sponsor your insurance premiums."}
-                      </p>
-                    </div>
-
-                    <button 
+                  <button 
                       onClick={() => {
                         setIsProfileDashboardOpen(false);
                         setIsEditProfileModalOpen(true);
