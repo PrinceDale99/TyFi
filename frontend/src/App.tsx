@@ -943,7 +943,7 @@ function App() {
           addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed on Stellar ${isMainnet ? 'Mainnet' : 'Testnet Sandbox'}!`, 'success');
         } catch (err) {
           console.error("Stellar claim error:", err);
-          addNotification('Payout Rejected: The decentralized oracle network and AI assessment verified that there is no active storm damage. Manipulation attempts are automatically rejected by the smart contract.', 'error');
+          addNotification('Payout Rejected: The decentralized oracle network and AI assessment verified that there is no active storm damage. Manipulation attempts are automatically rejected by the smart contract.', 'warning');
         }
       };
       processClaim();
