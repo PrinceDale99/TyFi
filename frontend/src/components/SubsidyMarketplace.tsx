@@ -70,6 +70,11 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
       return;
     }
 
+    if (sponsorAddress.startsWith('DEMO_')) {
+      addNotification('You are on a demo account, unable to fund. Please connect your real wallet via a Stellar extension.', 'warning');
+      return;
+    }
+
     setIsProcessing(request.id);
     try {
       addNotification(`Initiating sponsorship for ${request.farmerName}...`, 'info');
