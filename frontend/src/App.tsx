@@ -1296,8 +1296,8 @@ function App() {
 
         <div className="relative z-10 max-w-4xl w-full">
           <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-4">Select your role</h1>
-            <p className="text-slate-400 text-lg">Choose how you want to interact with the TyFi protocol</p>
+            <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-4">Identify Your Profile</h1>
+            <p className="text-slate-400 text-lg">Select your operational capacity to access the appropriate decentralized infrastructure</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
@@ -1313,12 +1313,12 @@ function App() {
               <div className="w-16 h-16 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                 <Sprout size={32} />
               </div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-3">Farmer</h2>
+              <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-3">Agricultural Asset Owner</h2>
               <p className="text-slate-400 leading-relaxed mb-6">
-                Register your agricultural assets to secure parametric weather insurance. Get automatic payouts directly to your wallet when disaster strikes, and request premium subsidies from donors.
+                Register agricultural assets to secure parametric weather coverage. Receive autonomous payouts directly to your wallet when disaster thresholds are met, and apply for premium subsidies.
               </p>
               <div className="text-xs font-black text-sky-400 uppercase tracking-widest flex items-center gap-2 group-hover:translate-x-2 transition-transform">
-                Register as Farmer <ArrowUpRight size={14} />
+                Access Beneficiary Portal <ArrowUpRight size={14} />
               </div>
             </button>
 
@@ -1335,12 +1335,12 @@ function App() {
               <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                 <Globe size={32} />
               </div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-3">Donor / NGO / Investor</h2>
+              <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-3">Sponsor & Liquidity Provider</h2>
               <p className="text-slate-400 leading-relaxed mb-6">
-                Sponsor insurance premiums for vulnerable farmers or provide liquidity to the protocol's vault. Track the real-world impact of your funds and earn yield on your capital.
+                Deploy capital to subsidize insurance premiums for vulnerable farmers or provide liquidity to the core vault. Track the immutable impact of your funds and earn protocol yields.
               </p>
               <div className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2 group-hover:translate-x-2 transition-transform">
-                Enter as Sponsor <ArrowUpRight size={14} />
+                Access Institutional Portal <ArrowUpRight size={14} />
               </div>
             </button>
           </div>
