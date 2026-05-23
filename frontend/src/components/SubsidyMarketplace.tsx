@@ -243,9 +243,8 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
         <div className="space-y-1">
           <h4 className="text-sm font-black text-white uppercase italic tracking-wider">Direct Global Solidarity</h4>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Sponsorships are trustless. Your XLM goes directly to the **TyFi Soroban Vault** to activate the farmer's parametric policy. 
-            If a typhoon hits, the smart contract pays out **directly to the farmer's wallet**, not a middleman. 
-            Verification is backed by Philippine Department of Agriculture (RSBSA) credentials.
+            Sponsorships are trustless. Your XLM goes directly to the <strong>TyFi Soroban Vault</strong> to activate the farmer's parametric policy.
+            If a typhoon hits, the smart contract pays out <strong>directly to the farmer's wallet</strong>, not a middleman.            Verification is backed by Philippine Department of Agriculture (RSBSA) credentials.
           </p>
         </div>
       </div>

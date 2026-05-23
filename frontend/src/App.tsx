@@ -1189,7 +1189,7 @@ function App() {
               <div className="pl-4 space-y-4 border-l border-white/10">
                 <div className="space-y-2">
                   <h4 className="font-black text-white uppercase text-[11px] tracking-widest">3.1 Immutable Geospatial Publication</h4>
-                  <p className="text-xs text-slate-400">To enable parametric monitoring, your farm's coordinate bounds must be published to the Stellar Ledger. This data is **public, permanent, and immutable**. By registering, you understand that your farm location is viewable by any entity with access to a Stellar explorer.</p>
+                  <p className="text-xs text-slate-400">To enable parametric monitoring, your farm's coordinate bounds must be published to the Stellar Ledger. This data is <strong>public, permanent, and immutable</strong>. By registering, you understand that your farm location is viewable by any entity with access to a Stellar explorer.</p>
                 </div>
 
                 <div className="space-y-2">
@@ -1209,7 +1209,7 @@ function App() {
               <h3 className="text-white font-black uppercase tracking-widest text-xs border-l-4 border-rose-500 pl-4 bg-rose-500/5 py-1">4. Governing Law & Jurisdictional Disclosures</h3>
               <div className="pl-4 space-y-4 border-l border-white/10">
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  These Terms and any non-contractual obligations arising out of or in connection with them shall be governed by and construed in accordance with the laws of the **Republic of the Philippines** for agricultural matters, and the **Laws of Singapore** for matters pertaining to cryptographic assets and decentralized protocols. Any dispute, controversy, or claim arising out of or relating to this agreement shall be referred to and finally resolved by arbitration administered by the Singapore International Arbitration Centre (SIAC).
+                  These Terms and any non-contractual obligations arising out of or in connection with them shall be governed by and construed in accordance with the laws of the <strong>Republic of the Philippines</strong> for agricultural matters, and the <strong>Laws of Singapore</strong> for matters pertaining to cryptographic assets and decentralized protocols. Any dispute, controversy, or claim arising out of or relating to this agreement shall be referred to and finally resolved by arbitration administered by the Singapore International Arbitration Centre (SIAC).
                 </p>
               </div>
             </section>

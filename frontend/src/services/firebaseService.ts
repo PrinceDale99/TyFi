@@ -91,19 +91,19 @@ export const registerForSubsidy = async (farmerAddress: string, farm: any) => {
     const premiumNeeded = Math.max(0, totalPremium - subsidyAmount);
 
     await addDoc(collection(db, "subsidy_requests"), {
-      farmerAddress,
-      farmerName: farm.farmerName,
-      farmName: farm.farmName,
-      cropType: farm.cropType,
-      region: farm.region,
-      farmSize: farm.farmSize,
-      totalPremium,
+      farmerAddress: farmerAddress || 'Unknown Address',
+      farmerName: farm.farmerName || 'Unknown Farmer',
+      farmName: farm.farmName || 'Unknown Farm',
+      cropType: farm.cropType || 'Mixed Crops',
+      region: farm.region || 'Unknown Region',
+      farmSize: farm.farmSize || 1,
+      totalPremium: totalPremium || 0,
       govSubsidyPercent: farm.govSubsidyPercent || 0,
       ngoSubsidyPercent: farm.ngoSubsidyPercent || 0,
-      premiumNeeded,
+      premiumNeeded: premiumNeeded || 0,
       paymentPlan: farm.paymentPlan || 'full',
-      harvestValue: farm.expectedHarvestValue,
-      season: farm.season,
+      harvestValue: farm.expectedHarvestValue || 0,
+      season: farm.season || 'Current Season',
       isFunded: false,
       timestamp: serverTimestamp(),
     });
@@ -121,14 +121,19 @@ export const getActiveSubsidyRequests = async () => {
   try {
     const q = query(
       collection(db, "subsidy_requests"),
-      where("isFunded", "==", false),
-      orderBy("timestamp", "desc")
+      where("isFunded", "==", false)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+    const docs = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as any));
+    
+    return docs.sort((a, b) => {
+      const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
+      const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
+      return timeB - timeA;
+    });
   } catch (e) {
     console.error("Error getting subsidy requests: ", e);
     return [];
