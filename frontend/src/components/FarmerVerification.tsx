@@ -881,7 +881,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                             </span>
                         </div>
                         <p className="text-[10px] text-slate-400 leading-relaxed">
-                            To activate protection for this {currentFarm.season}, a premium deposit of **{Math.round(currentFarm.expectedHarvestValue * 0.1)} XLM** is required. This covers up to **{currentFarm.expectedHarvestValue} XLM** in potential typhoon damages.
+                            To activate protection for this {currentFarm.season}, a premium deposit of <strong>{Math.round(currentFarm.expectedHarvestValue * 0.1)} XLM</strong> is required. This covers up to <strong>{currentFarm.expectedHarvestValue} XLM</strong> in potential typhoon damages.
                         </p>
                     </div>
 
@@ -1216,7 +1216,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                   Cannot afford the deposit?
                 </h4>
                 <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                  List your farm on the **Subsidy Marketplace**. Global donors and NGOs can sponsor your premium. Your protection activates once a sponsor pays the first installment.
+                  List your farm on the <strong>Subsidy Marketplace</strong>. Global donors and NGOs can sponsor your premium. Your protection activates once a sponsor pays the first installment.
                 </p>
               </div>
               <button 
