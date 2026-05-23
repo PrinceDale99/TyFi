@@ -4,6 +4,7 @@ import {
 } from '@creit.tech/stellar-wallets-kit';
 import { FreighterModule, FREIGHTER_ID } from '@creit.tech/stellar-wallets-kit/modules/freighter';
 import { AlbedoModule, ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
+import { WalletConnectModule, WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
 
 import {
   Address,
@@ -58,12 +59,25 @@ let currentUserAddress: string = '';
 
 export const initKit = (network: 'testnet' | 'mainnet' = 'testnet') => {
   if (!isKitInitialized) {
+    const wcProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
+    
     StellarWalletsKit.init({
       selectedWalletId: FREIGHTER_ID,
       network: network === 'mainnet' ? SWKNetworks.PUBLIC : SWKNetworks.TESTNET,
       modules: [
         new FreighterModule(),
-        new AlbedoModule()
+        new AlbedoModule(),
+        ...(wcProjectId ? [
+          new WalletConnectModule({
+            projectId: wcProjectId,
+            metadata: {
+              name: "TyFi Vault",
+              description: "Parametric Agricultural Insurance Protocol",
+              url: "https://tyfi.app",
+              icons: ["https://tyfi.app/logo.png"]
+            }
+          })
+        ] : [])
       ]
     });
     isKitInitialized = true;
@@ -74,6 +88,11 @@ export const initKit = (network: 'testnet' | 'mainnet' = 'testnet') => {
 
 export const connectWallet = async (network: 'testnet' | 'mainnet' = 'testnet', walletId: string = FREIGHTER_ID) => {
   try {
+    const wcProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
+    if (walletId === WALLET_CONNECT_ID && !wcProjectId) {
+      throw new Error(`MISSING_WC_ID`);
+    }
+
     initKit(network);
     StellarWalletsKit.setWallet(walletId);
     

@@ -579,7 +579,13 @@ function App() {
       const address = await connectWallet(network, walletId);
       handleWalletConnected(address);
     } catch (error: any) {
-      if (error.message && error.message.startsWith('WALLET_NOT_INSTALLED')) {
+      if (error.message && error.message === 'MISSING_WC_ID') {
+        setWalletError({
+          id: 'walletconnect',
+          message: 'WalletConnect is currently disabled because a Project ID was not found in the environment variables (.env). Please create an App project on Reown (WalletConnect Cloud) and add VITE_WALLETCONNECT_PROJECT_ID.',
+          url: 'https://cloud.reown.com'
+        });
+      } else if (error.message && error.message.startsWith('WALLET_NOT_INSTALLED')) {
         const id = error.message.split(':')[1];
         let url = 'https://stellar.org/ecosystem/wallets';
         if (id === 'freighter') url = 'https://chromewebstore.google.com/detail/freighter/kaojnmgeecghoocplkaeoojagghgocho';
