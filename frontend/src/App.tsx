@@ -57,6 +57,7 @@ import HistoryDashboard from './components/HistoryDashboard';
 import { useTranslation } from 'react-i18next';
 import CertificateList from './components/CertificateList';
 import SubsidyMarketplace from './components/SubsidyMarketplace';
+import SponsorVerification from './components/SponsorVerification';
 import { registerForSubsidy } from './services/firebaseService';
 
 // Leaflet & React-Leaflet Imports
@@ -1326,7 +1327,7 @@ function App() {
               onClick={() => {
                 localStorage.setItem(`typhoon_vault_role_${network}_${walletAddress}`, 'sponsor');
                 setUserRole('sponsor');
-                setIsVerified(true); // Sponsors don't need farm verification
+                // setIsVerified is intentionally NOT set here anymore so they go to SponsorVerification
               }}
               className="text-left group relative glass-panel p-8 hover:border-emerald-500/50 transition-all duration-300 overflow-hidden"
             >
@@ -1354,6 +1355,27 @@ function App() {
         onVerificationComplete={handleVerificationComplete} 
         walletAddress={walletAddress} 
         network={network}
+        onBack={() => {
+          localStorage.removeItem(`typhoon_vault_role_${network}_${walletAddress}`);
+          setUserRole(null);
+        }}
+      />
+    );
+  }
+
+  if (hasAgreedToLegal && userRole === 'sponsor' && !isVerified) {
+    return (
+      <SponsorVerification
+        walletAddress={walletAddress}
+        network={network}
+        onVerificationComplete={() => {
+          localStorage.setItem(`typhoon_vault_${network}_${walletAddress}`, JSON.stringify({
+            userRole: 'sponsor',
+            isVerified: true,
+            farms: []
+          }));
+          setIsVerified(true);
+        }}
         onBack={() => {
           localStorage.removeItem(`typhoon_vault_role_${network}_${walletAddress}`);
           setUserRole(null);
