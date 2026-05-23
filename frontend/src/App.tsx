@@ -2499,7 +2499,8 @@ function App() {
                     </div>
                   </div>
 
-                  <button 
+                  <div className="space-y-3">
+                    <button 
                       onClick={() => {
                         setIsProfileDashboardOpen(false);
                         setIsEditProfileModalOpen(true);
