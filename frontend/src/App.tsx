@@ -712,7 +712,8 @@ function App() {
   useEffect(() => {
     if (farms.length > 0) {
       const f = farms[0];
-      setProfileForm({
+      setProfileForm(prev => ({
+        ...prev,
         farmerName: f.farmerName || '',
         rsbsaNumber: f.rsbsaNumber || '',
         region: f.region || 'Central Luzon',
