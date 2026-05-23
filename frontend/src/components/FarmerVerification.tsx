@@ -19,7 +19,8 @@ import {
   Loader2,
   FileText,
   TrendingUp,
-  Heart
+  Heart,
+  AlertCircle
 } from 'lucide-react';
 import type { FarmData } from '../types';
 import { registerPolicyOnChain } from '../lib/stellar';
