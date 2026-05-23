@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TyFi Flow Visualization</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 600px;
+            position: relative;
+        }
+        .step {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            opacity: 0;
+            transform: translateX(-50px) scale(0.95);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2;
+        }
+        .step.active {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+        .icon {
+            font-size: 2.5rem;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f0f0f0;
+            border-radius: 50%;
+        }
+        .text h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.3rem;
+            color: #2c3e50;
+        }
+        .text p {
+            margin: 0;
+            font-size: 1rem;
+            color: #546e7a;
+        }
+        /* Custom Colors */
+        .s1 { border-left: 6px solid #ef5350; }
+        .s1 .icon { background: #ffebee; }
+        .s2 { border-left: 6px solid #42a5f5; }
+        .s2 .icon { background: #e3f2fd; }
+        .s3 { border-left: 6px solid #ab47bc; }
+        .s3 .icon { background: #f3e5f5; }
+        .s4 { border-left: 6px solid #66bb6a; }
+        .s4 .icon { background: #e8f5e9; }
+        .s5 { border-left: 6px solid #ffa000; }
+        .s5 .icon { background: #fff8e1; }
+        
+        .connector {
+            position: absolute;
+            left: 50px;
+            top: 40px;
+            width: 4px;
+            height: 0;
+            background: #cfd8dc;
+            z-index: 1;
+            transition: height 0.6s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="connector" id="line"></div>
+        <div class="step s1" id="step1">
+            <div class="icon">🌪️</div>
+            <div class="text">
+                <h3>1. Typhoon Reaches Threshold</h3>
+                <p>Wind speeds or rainfall exceed predefined metrics.</p>
+            </div>
+        </div>
+        <div class="step s2" id="step2">
+            <div class="icon">🤖</div>
+            <div class="text">
+                <h3>2. AI / PAGASA Verification</h3>
+                <p>Oracles fetch weather data and AI cross-references.</p>
+            </div>
+        </div>
+        <div class="step s3" id="step3">
+            <div class="icon">⚙️</div>
+            <div class="text">
+                <h3>3. Soroban Contract Triggers</h3>
+                <p>Smart contract autonomously verifies conditions.</p>
+            </div>
+        </div>
+        <div class="step s4" id="step4">
+            <div class="icon">💸</div>
+            <div class="text">
+                <h3>4. Stellar Network Execution</h3>
+                <p>Payout transaction is broadcasted on the blockchain.</p>
+            </div>
+        </div>
+        <div class="step s5" id="step5">
+            <div class="icon">📱</div>
+            <div class="text">
+                <h3>5. Payout Hits Wallet</h3>
+                <p>Farmer instantly receives relief funds (XLM/USDC).</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const steps = [
+            document.getElementById('step1'),
+            document.getElementById('step2'),
+            document.getElementById('step3'),
+            document.getElementById('step4'),
+            document.getElementById('step5')
+        ];
+        const line = document.getElementById('line');
+        let current = 0;
+
+        function showNext() {
+            if (current < steps.length) {
+                steps[current].classList.add('active');
+                
+                if (current > 0) {
+                    // Animate the line connecting them
+                    line.style.height = (current * 105) + 'px'; // roughly the height to reach next item
+                }
+                
+                current++;
+                setTimeout(showNext, 1200); // Wait 1.2s before next step
+            } else {
+                // Done
+                document.body.style.backgroundColor = "#e8f5e9";
+                setTimeout(() => {
+                    document.body.style.transition = "background-color 1s ease";
+                    document.body.style.backgroundColor = "#f8f9fa";
+                }, 500);
+            }
+        }
+
+        setTimeout(showNext, 800);
+    </script>
+</body>
+</html>

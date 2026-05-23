@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, AlertTriangle, RefreshCw, BellRing, Gauge, HelpCircle, Send, User, MessageSquare, ChevronRight, X, Bot } from 'lucide-react';
+import { Shield, AlertTriangle, RefreshCw, BellRing, Gauge, HelpCircle, Send, User, MessageSquare, ChevronRight, X, Bot, Trash2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { analyzeWeatherImpact, chatWithAdvisor } from '../services/aiService';
 import type { AiPredictionResult, ChatMessage } from '../services/aiService';
 import type { WeatherData, FarmData } from '../types';
 
 interface AiCopilotProps {
+  accountId?: string;
   weather: WeatherData | null;
   farms: FarmData[];
   claims?: any[];
@@ -13,6 +15,7 @@ interface AiCopilotProps {
 }
 
 const AiCopilot: React.FC<AiCopilotProps> = ({
+  accountId,
   weather,
   farms,
   claims = [],
@@ -26,13 +29,34 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
   const [prediction, setPrediction] = useState<AiPredictionResult | null>(null);
   
   // Chat States
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', text: "Mabuhay! I am your TyFi Smart Advisor. I'm here to help you protect your crops and manage your insurance. How can I assist you today?" }
-  ]);
+  const getInitialMessages = () => {
+    if (accountId) {
+      const saved = localStorage.getItem(`typhoon_chat_${accountId}`);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {}
+      }
+    }
+    return [
+      { role: 'model', text: "Mabuhay! I am your TyFi Smart Advisor. I'm here to help you protect your crops and manage your insurance. How can I assist you today?", timestamp: Date.now() }
+    ];
+  };
+
+  const [messages, setMessages] = useState<ChatMessage[]>(getInitialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    setMessages(getInitialMessages());
+  }, [accountId]);
+
+  useEffect(() => {
+    if (accountId) {
+      localStorage.setItem(`typhoon_chat_${accountId}`, JSON.stringify(messages));
+    }
+  }, [messages, accountId]);
   useEffect(() => {
     if (farms.length > 0 && !selectedFarmId) {
       setSelectedFarmId(farms[0].id);
@@ -50,7 +74,7 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
       const hasAlerted = messages.some(m => m.text.includes('🚨 STORM ALERT'));
       if (!hasAlerted) {
         const stormAlert = `🚨 STORM ALERT: I've detected high wind speeds (${weather.windSpeed}km/h) in your region. Based on your ${farms[0]?.cropType || 'crops'}, I recommend ensuring all drainage is clear and harvesting any mature produce immediately. Would you like a detailed risk assessment?`;
-        setMessages(prev => [...prev, { role: 'model', text: stormAlert }]);
+        setMessages(prev => [...prev, { role: 'model', text: stormAlert, timestamp: Date.now() }]);
       }
     }
   }, [weather, farms, messages]);
@@ -60,13 +84,13 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
     if (!inputValue.trim() || isTyping) return;
 
     const userMessage = inputValue.trim();
-    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    setMessages(prev => [...prev, { role: 'user', text: userMessage, timestamp: Date.now() }]);
     setInputValue('');
     setIsTyping(true);
 
     try {
       const response = await chatWithAdvisor(userMessage, messages, farms, weather, claims);
-      setMessages(prev => [...prev, { role: 'model', text: response }]);
+      setMessages(prev => [...prev, { role: 'model', text: response, timestamp: Date.now() }]);
     } catch (err) {
       console.error('Chat failed:', err);
     } finally {
@@ -94,7 +118,7 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
       
       // Auto-inject analysis into chat
       const analysisSummary = `### Risk Assessment for ${farm.farmName}\n- **Risk Level:** ${result.riskLevel}\n- **Hit Probability:** ${result.hitProbability}%\n- **Estimated Damage:** ${result.estimatedDamage}%\n\n**Advisory:** ${result.advisory}`;
-      setMessages(prev => [...prev, { role: 'model', text: analysisSummary }]);
+      setMessages(prev => [...prev, { role: 'model', text: analysisSummary, timestamp: Date.now() }]);
       setActiveTab('chat');
 
       if (onUpdateWeatherDamage) {
@@ -139,6 +163,21 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
           >
             Risk Info
           </button>
+          {activeMode === 'chat' && (
+            <button 
+              onClick={() => {
+                const init = [
+                  { role: 'model', text: "Mabuhay! I am your TyFi Smart Advisor. I'm here to help you protect your crops and manage your insurance. How can I assist you today?", timestamp: Date.now() }
+                ];
+                setMessages(init as ChatMessage[]);
+                if (accountId) localStorage.setItem(`typhoon_chat_${accountId}`, JSON.stringify(init));
+              }}
+              className="ml-2 px-2 py-1 rounded text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-all flex items-center justify-center"
+              title="Clear Chat History"
+            >
+              <Trash2 size={12} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -157,9 +196,20 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
                       ? 'bg-indigo-600 text-white rounded-tr-none' 
                       : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none'
                   }`}>
-                    {msg.text.split('\n').map((line, idx) => (
-                      <p key={idx} className={idx > 0 ? 'mt-2' : ''}>{line}</p>
-                    ))}
+                    {msg.role === 'user' ? (
+                      msg.text.split('\n').map((line, idx) => (
+                        <p key={idx} className={idx > 0 ? 'mt-2' : ''}>{line}</p>
+                      ))
+                    ) : (
+                      <div className="[&>p]:mb-2 last:[&>p]:mb-0 [&>ul]:list-disc [&>ul]:pl-4 [&>ul]:mb-2 [&>h3]:font-bold [&>h3]:text-sm [&>h3]:mb-1 [&>strong]:text-white">
+                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      </div>
+                    )}
+                    {msg.timestamp && (
+                      <div className={`text-[9px] mt-1.5 font-medium ${msg.role === 'user' ? 'text-indigo-200/70 text-right' : 'text-slate-500 text-left'}`}>
+                        {new Date(msg.timestamp).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -35,11 +35,23 @@ const RISK_COLORS: Record<string, string> = {
 
 const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmData, weather }) => {
   const { formatPhp } = useXlmToPhp();
-  const [step, setStep]           = useState<'review' | 'processing' | 'success'>('review');
+  const [step, setStep]           = useState<'review' | 'processing' | 'success' | 'offline_queued'>('review');
   const [txHash, setTxHash]       = useState('');
   const [aiResult, setAiResult]   = useState<AiPredictionResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const canClaim = isVerified && windSpeed > 100;
 
@@ -81,6 +93,24 @@ const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmDa
     : 0;
 
   const handleClaim = async () => {
+    if (isOffline) {
+      const intent = {
+        type: 'claim_payout',
+        farmName: farmData?.farmName || 'My Farm',
+        amount: estimatedPayout,
+        timestamp: Date.now(),
+        data: {
+          farmId: farmData?.id || '',
+          season: farmData?.season || 'Wet Season 2026',
+        }
+      };
+      const queue = JSON.parse(localStorage.getItem('vault_pending_claims') || '[]');
+      queue.push(intent);
+      localStorage.setItem('vault_pending_claims', JSON.stringify(queue));
+      setStep('offline_queued');
+      return;
+    }
+
     setStep('processing');
     try {
       const pubkey    = localStorage.getItem('stellar_pubkey') || '';
@@ -95,12 +125,31 @@ const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmDa
       setStep('success');
     } catch (err) {
       console.error('Error executing claim payout:', err);
-      setTimeout(() => {
-        setTxHash('0x' + Math.random().toString(16).slice(2, 10) + '...' + Math.random().toString(16).slice(2, 6));
-        setStep('success');
-      }, 2000);
+      // Fallback or retry logic
+      setStep('review');
     }
   };
+
+  // ─── Offline Queued ────────────────────────────────────────────────────────
+  if (step === 'offline_queued') {
+    return (
+      <div className="glass-panel p-10 text-center">
+        <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Clock className="text-amber-400" size={40} />
+        </div>
+        <h3 className="text-2xl font-black text-white mb-2">Claim Queued</h3>
+        <p className="text-slate-400 text-sm mb-8 max-w-xs mx-auto">
+          You are currently offline. Your claim for <span className="text-white font-bold">{estimatedPayout.toLocaleString()} XLM</span> has been saved locally and will be processed once your connection is restored.
+        </p>
+        <button 
+          onClick={() => setStep('review')}
+          className="w-full py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold transition-all border border-white/5"
+        >
+          Return to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   // ─── Not verified ──────────────────────────────────────────────────────────
   if (!isVerified) {

@@ -4,6 +4,8 @@ import type { WeatherData } from '../types';
 const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY || '';
 const AGROMONITOR_API_KEY = import.meta.env.VITE_AGROMONITOR_API_KEY || '';
 
+const WEATHER_CACHE_KEY = 'typhoon_vault_weather_cache';
+
 export const fetchWeather = async (lat: number, lon: number): Promise<WeatherData> => {
   try {
     // 1. Open-Meteo for Hourly/Daily Forecasts + Agricultural Data
@@ -26,7 +28,13 @@ export const fetchWeather = async (lat: number, lon: number): Promise<WeatherDat
     const gdacsData = gdacsRes && gdacsRes.ok ? await gdacsRes.json() : null;
 
     if (!meteoData && !owData) {
-      throw new Error('All weather data fetches failed');
+      // Fallback to cache if network fails
+      const cached = localStorage.getItem(WEATHER_CACHE_KEY);
+      if (cached) {
+        console.warn('Network failed. Using cached weather data.');
+        return JSON.parse(cached);
+      }
+      throw new Error('All weather data fetches failed and no cache available');
     }
 
     const currentMeteo = meteoData?.current || {};
@@ -79,7 +87,7 @@ export const fetchWeather = async (lat: number, lon: number): Promise<WeatherDat
     if (soilMoisture > 0.5) cropHealthIndex -= 0.2;
     if (windGusts > 50) cropHealthIndex -= (windGusts - 50) / 100;
 
-    return {
+    const weatherResult: WeatherData = {
       temperature: owData?.main?.temp ?? currentMeteo.temperature_2m ?? 28.5,
       windSpeed: owData?.wind?.speed ?? currentMeteo.wind_speed_10m ?? 0,
       windGusts: windGusts,
@@ -101,8 +109,19 @@ export const fetchWeather = async (lat: number, lon: number): Promise<WeatherDat
       agromonitorStatus,
       activeStorm
     };
+
+    // Store in cache for offline use
+    localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(weatherResult));
+
+    return weatherResult;
   } catch (error) {
     console.error('Error fetching weather:', error);
+    // Attempt to return cache on error
+    const cached = localStorage.getItem(WEATHER_CACHE_KEY);
+    if (cached) {
+      console.warn('Returning cached weather data after error');
+      return JSON.parse(cached);
+    }
     throw error;
   }
 };

@@ -85,6 +85,11 @@ export const getPayoutHistory = async (farmerAddress: string, maxResults = 10) =
  */
 export const registerForSubsidy = async (farmerAddress: string, farm: any) => {
   try {
+    const totalPremium = Math.round(farm.expectedHarvestValue * 0.1);
+    const subsidyPercent = (farm.govSubsidyPercent || 0) + (farm.ngoSubsidyPercent || 0);
+    const subsidyAmount = Math.round(totalPremium * (subsidyPercent / 100));
+    const premiumNeeded = Math.max(0, totalPremium - subsidyAmount);
+
     await addDoc(collection(db, "subsidy_requests"), {
       farmerAddress,
       farmerName: farm.farmerName,
@@ -92,7 +97,11 @@ export const registerForSubsidy = async (farmerAddress: string, farm: any) => {
       cropType: farm.cropType,
       region: farm.region,
       farmSize: farm.farmSize,
-      premiumNeeded: Math.round(farm.expectedHarvestValue * 0.1),
+      totalPremium,
+      govSubsidyPercent: farm.govSubsidyPercent || 0,
+      ngoSubsidyPercent: farm.ngoSubsidyPercent || 0,
+      premiumNeeded,
+      paymentPlan: farm.paymentPlan || 'full',
       harvestValue: farm.expectedHarvestValue,
       season: farm.season,
       isFunded: false,

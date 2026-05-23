@@ -26,6 +26,9 @@ interface SubsidyRequest {
   cropType: string;
   region: string;
   farmSize: number;
+  totalPremium?: number;
+  govSubsidyPercent?: number;
+  ngoSubsidyPercent?: number;
   premiumNeeded: number;
   harvestValue: number;
   season: string;
@@ -181,10 +184,22 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 mb-6">
-                <div className="flex justify-between items-end">
+              <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 mb-6 space-y-2">
+                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
+                  <span className="text-slate-500">Base Premium</span>
+                  <span className="text-slate-300">{request.totalPremium?.toLocaleString() || Math.round(request.harvestValue * 0.1).toLocaleString()} XLM</span>
+                </div>
+                
+                {((request.govSubsidyPercent || 0) > 0 || (request.ngoSubsidyPercent || 0) > 0) && (
+                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                    <span>Applied Subsidies</span>
+                    <span>-{((request.govSubsidyPercent || 0) + (request.ngoSubsidyPercent || 0))}%</span>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-rose-500/10 flex justify-between items-end">
                   <div>
-                    <span className="text-[9px] font-black text-rose-400/70 uppercase tracking-widest block mb-1">Premium Sponsorship</span>
+                    <span className="text-[9px] font-black text-rose-400/70 uppercase tracking-widest block mb-1">Remaining Sponsoring</span>
                     <div className="text-2xl font-black text-white">{request.premiumNeeded.toLocaleString()} XLM</div>
                   </div>
                   <div className="text-right">

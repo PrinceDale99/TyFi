@@ -1,5 +1,10 @@
-import freighterApi from "@stellar/freighter-api";
-const { isConnected, setAllowed, getAddress, signTransaction } = freighterApi;
+import {
+  StellarWalletsKit,
+  Networks as SWKNetworks,
+} from '@creit.tech/stellar-wallets-kit';
+import { FreighterModule, FREIGHTER_ID } from '@creit.tech/stellar-wallets-kit/modules/freighter';
+import { AlbedoModule, ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
+import { WalletConnectModule, WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
 
 import {
   Address,
@@ -28,11 +33,7 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
 
   testnet: {
     name: 'Testnet',
-    // Native XLM SAC on Testnet
     xlmTokenId: 'CDLZFC3SYJYDZT7KMGCCEEH45FAZ6COCYPIBA67KEHWOAAZ5KVHQ64VL',
-    // ✅ Deployed 2026-05-21 — tx: 53b327340a990201617f61c639749dd9f92be2c542fee7cd50faca04f587e92c
-    // 🔗 https://stellar.expert/explorer/testnet/tx/53b327340a990201617f61c639749dd9f92be2c542fee7cd50faca04f587e92c
-    // 🔗 https://lab.stellar.org/r/testnet/contract/CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN
     vaultContractId: 'CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN',
     horizonUrl: 'https://horizon-testnet.stellar.org',
     sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
@@ -40,9 +41,7 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
   },
   mainnet: {
     name: 'Mainnet',
-    // Native XLM SAC on Mainnet
     xlmTokenId: 'CAS3J7AVONGEJ757545DG5TZAT24DQZGX357FBCT6UW674ATCQZ3E367',
-    // ✅ Deployed 2026-05-21
     vaultContractId: 'CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK',
     horizonUrl: 'https://horizon.stellar.org',
     sorobanRpcUrl: 'https://soroban-rpc.stellar.org',
@@ -50,32 +49,60 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
   }
 };
 
-// Helper to ensure strings are valid Soroban symbols (max 32 chars, a-zA-Z0-9_)
 const sanitizeSymbol = (str: string) => {
   return str.replace(/[^a-zA-Z0-9_]/g, '_').substring(0, 32);
 };
-export const connectWallet = async () => {
+
+let isKitInitialized = false;
+let currentWalletId: string = FREIGHTER_ID;
+let currentUserAddress: string = '';
+
+export const initKit = (network: 'testnet' | 'mainnet' = 'testnet') => {
+  if (!isKitInitialized) {
+    StellarWalletsKit.init({
+      selectedWalletId: FREIGHTER_ID,
+      network: network === 'mainnet' ? SWKNetworks.PUBLIC : SWKNetworks.TESTNET,
+      modules: [
+        new FreighterModule(),
+        new AlbedoModule(),
+        new WalletConnectModule({
+          projectId: "e6704b281f629bf5bdf447aeb29a28db", // Replace with real WalletConnect ID
+          metadata: {
+            name: "TyFi Vault",
+            description: "Parametric Agricultural Insurance Protocol",
+            url: "https://tyfi.app",
+            icons: ["https://tyfi.app/logo.png"]
+          }
+        })
+      ]
+    });
+    isKitInitialized = true;
+  } else {
+    StellarWalletsKit.setNetwork(network === 'mainnet' ? SWKNetworks.PUBLIC : SWKNetworks.TESTNET);
+  }
+};
+
+export const connectWallet = async (network: 'testnet' | 'mainnet' = 'testnet', walletId: string = FREIGHTER_ID) => {
   try {
-    if (await isConnected()) {
-      const allowed = await setAllowed();
-      if (!allowed) {
-        throw new Error("User declined connection request");
-      }
-      
-      const { address, error } = await getAddress();
-      if (error) {
-        throw new Error(error);
-      }
-      if (!address) {
-        throw new Error("No public address found. Please make sure you are logged into Freighter.");
-      }
-      return address;
-    }
-    throw new Error("Freighter extension not detected. Please install it to continue.");
+    initKit(network);
+    StellarWalletsKit.setWallet(walletId);
+    currentWalletId = walletId;
+    const { address } = await StellarWalletsKit.getAddress();
+    currentUserAddress = address;
+    return address;
   } catch (error: any) {
     console.error("Wallet connection error:", error);
     throw error;
   }
+};
+
+export const signTx = async (xdrString: string, network: 'testnet' | 'mainnet') => {
+  initKit(network);
+  const signResult = await StellarWalletsKit.signTransaction(xdrString, {
+    address: currentUserAddress,
+    networkPassphrase: NETWORK_CONFIGS[network].passphrase
+  });
+  return signResult.signedTxXdr;
 };
 
 export const registerPolicyOnChain = async (
@@ -123,12 +150,8 @@ export const registerPolicyOnChain = async (
 
     const preparedTx = await server.prepareTransaction(tx) as Transaction;
 
-    console.log(`[${config.name}] Requesting Freighter signature for: subscribe`);
-    const signResult = await signTransaction(preparedTx.toXDR(), {
-      networkPassphrase: config.passphrase,
-    });
-    
-    const signedXdr = typeof signResult === 'string' ? signResult : signResult.signedTxXdr;
+    console.log(`[${config.name}] Requesting signature for: subscribe`);
+    const signedXdr = await signTx(preparedTx.toXDR(), network);
     const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
     const result = await server.sendTransaction(transaction);
     
@@ -186,10 +209,8 @@ export const submitWeatherReportOnChain = async (
       .build();
 
     const preparedTx = await server.prepareTransaction(tx) as Transaction;
-    console.log(`[${config.name}] Requesting Freighter signature for Oracle Submission...`);
-    const signResult = await signTransaction(preparedTx.toXDR(), { networkPassphrase: config.passphrase });
-    
-    const signedXdr = typeof signResult === 'string' ? signResult : signResult.signedTxXdr;
+    console.log(`[${config.name}] Requesting signature for Oracle Submission...`);
+    const signedXdr = await signTx(preparedTx.toXDR(), network);
     const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
     const result = await server.sendTransaction(transaction);
     
@@ -254,11 +275,7 @@ export const claimPayoutOnChain = async (
 
     const preparedTx = await server.prepareTransaction(tx) as Transaction;
 
-    const signResult = await signTransaction(preparedTx.toXDR(), {
-      networkPassphrase: config.passphrase,
-    });
-    
-    const signedXdr = typeof signResult === 'string' ? signResult : signResult.signedTxXdr;
+    const signedXdr = await signTx(preparedTx.toXDR(), network);
     const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
     const result = await server.sendTransaction(transaction);
     
@@ -350,6 +367,58 @@ export const getContractSubsidy = async (network: 'testnet' | 'mainnet' = 'testn
   }
 };
 
+export const getUserLpBalance = async (user: string, network: 'testnet' | 'mainnet' = 'testnet'): Promise<number> => {
+  try {
+    const config = NETWORK_CONFIGS[network];
+    const server = new rpc.Server(config.sorobanRpcUrl);
+    const contract = new Contract(config.vaultContractId);
+    const userAddr = Address.fromString(user);
+
+    // Prepare simulated calls
+    const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
+    
+    // 1. Get user shares
+    const txShares = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+      .addOperation(contract.call("get_lp_shares", userAddr.toScVal()))
+      .setTimeout(30).build();
+    
+    // 2. Get total shares
+    const txTotalShares = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+      .addOperation(contract.call("get_total_reinsurance_shares"))
+      .setTimeout(30).build();
+
+    // 3. Get total deposited (XLM)
+    const txTotalDeposited = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+      .addOperation(contract.call("get_total_reinsurance_deposited"))
+      .setTimeout(30).build();
+
+    const [resShares, resTotalShares, resTotalDeposited] = await Promise.all([
+      server.simulateTransaction(txShares),
+      server.simulateTransaction(txTotalShares),
+      server.simulateTransaction(txTotalDeposited)
+    ]);
+
+    if (rpc.Api.isSimulationSuccess(resShares) && 
+        rpc.Api.isSimulationSuccess(resTotalShares) && 
+        rpc.Api.isSimulationSuccess(resTotalDeposited)) {
+      
+      const shares = BigInt(scValToNative(resShares.result!.retval!));
+      const totalShares = BigInt(scValToNative(resTotalShares.result!.retval!));
+      const totalDeposited = BigInt(scValToNative(resTotalDeposited.result!.retval!));
+
+      if (totalShares === 0n) return 0;
+
+      // amount = (shares * total_deposited) / total_shares
+      const amountStroops = (shares * totalDeposited) / totalShares;
+      return Number(amountStroops) / 10000000;
+    }
+    return 0;
+  } catch (error) {
+    console.error("Error fetching user LP balance:", error);
+    return 0;
+  }
+};
+
 export interface LedgerTx {
   hash: string;
   ledger: number;
@@ -425,12 +494,8 @@ export const contributeLiquidityOnChain = async (
 
     const preparedTx = await server.prepareTransaction(tx) as Transaction;
 
-    console.log(`[${config.name}] Requesting Freighter signature for: ${methodName}`);
-    const signResult = await signTransaction(preparedTx.toXDR(), {
-      networkPassphrase: config.passphrase,
-    });
-    
-    const signedXdr = typeof signResult === 'string' ? signResult : signResult.signedTxXdr;
+    console.log(`[${config.name}] Requesting signature for: ${methodName}`);
+    const signedXdr = await signTx(preparedTx.toXDR(), network);
     const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
     const result = await server.sendTransaction(transaction);
     
