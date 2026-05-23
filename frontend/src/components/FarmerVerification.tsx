@@ -96,6 +96,8 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
     phoneNumber: ''
   });
 
+  const [isConfirmSkipOpen, setIsConfirmSkipOpen] = useState(false);
+
   // Farms List
   const [farms, setFarms] = useState<FarmData[]>([]);
 
@@ -1081,9 +1083,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                             <button 
                                 onClick={() => {
                                   if (farms.length === 0) {
-                                    if (confirm("Are you sure you want to add farms later? You can always add them from your profile dashboard.")) {
-                                      onVerificationComplete([]);
-                                    }
+                                    setIsConfirmSkipOpen(true);
                                   } else {
                                     startAnalysis();
                                   }
@@ -1254,6 +1254,39 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                   needsSubsidy ? "List on Marketplace" : `Pay ${installmentAmount.toLocaleString()} XLM & Activate`
                 )}
               </button>
+            </div>
+          </div>
+        )}
+        {/* Confirm Skip Modal Overlay */}
+        {isConfirmSkipOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-md w-full p-8 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+              <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-6 ${isMainnet ? 'bg-amber-500/10 text-amber-500' : 'bg-sky-500/10 text-sky-400'}`}>
+                <AlertCircle size={32} />
+              </div>
+              <h3 className="text-xl font-black text-white uppercase tracking-wider mb-2">Proceed without farms?</h3>
+              <p className="text-sm text-slate-400 mb-8 leading-relaxed">
+                Are you sure you want to proceed without registering any farms? You can always add them later from your profile dashboard.
+              </p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setIsConfirmSkipOpen(false)}
+                  className="flex-1 py-3 rounded-xl font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 transition-all border border-white/10"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsConfirmSkipOpen(false);
+                    onVerificationComplete([]);
+                  }}
+                  className={`flex-1 py-3 rounded-xl font-bold text-white shadow-lg transition-all ${
+                    isMainnet ? 'bg-amber-500 hover:bg-amber-400 shadow-amber-500/20' : 'bg-sky-500 hover:bg-sky-400 shadow-sky-500/20'
+                  }`}
+                >
+                  Yes, Proceed
+                </button>
+              </div>
             </div>
           </div>
         )}
