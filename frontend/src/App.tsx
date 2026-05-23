@@ -1354,6 +1354,10 @@ function App() {
         onVerificationComplete={handleVerificationComplete} 
         walletAddress={walletAddress} 
         network={network}
+        onBack={() => {
+          localStorage.removeItem(`typhoon_vault_role_${network}_${walletAddress}`);
+          setUserRole(null);
+        }}
       />
     );
   }

@@ -57,9 +57,10 @@ interface FarmerVerificationProps {
   onVerificationComplete: (farms: FarmData[]) => void;
   walletAddress: string;
   network?: 'testnet' | 'mainnet';
+  onBack?: () => void;
 }
 
-const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'testnet' }) => {
+const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'testnet', onBack }) => {
   const [step, setStep] = useState(1);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isUploadingRsbsa, setIsUploadingRsbsa] = useState(false);
@@ -583,17 +584,27 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                 </div>
               </div>
 
-              <button 
-                onClick={() => setStep(2)}
-                disabled={!farmerInfo.farmerName || !farmerInfo.rsbsaNumber || !uploadedRsbsa || !uploadedValidId || !farmerInfo.phoneNumber}
-                className={`w-full py-3.5 rounded-xl font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed mt-4 flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  isMainnet 
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
-                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_0_20px_rgba(14,165,233,0.2)]'
-                }`}
-              >
-                Continue to Farm Details
-              </button>
+              <div className="flex gap-3 mt-4">
+                {onBack && (
+                  <button 
+                    onClick={onBack}
+                    className="p-3.5 bg-white/5 text-white rounded-xl font-bold hover:bg-white/10 transition-all border border-white/10"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                )}
+                <button 
+                  onClick={() => setStep(2)}
+                  disabled={!farmerInfo.farmerName || !farmerInfo.rsbsaNumber || !uploadedRsbsa || !uploadedValidId || !farmerInfo.phoneNumber}
+                  className={`flex-1 py-3.5 rounded-xl font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    isMainnet 
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
+                      : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_0_20px_rgba(14,165,233,0.2)]'
+                  }`}
+                >
+                  Continue to Farm Details
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1102,7 +1113,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                                     Analyzing Satellite Polygons...
                                     </>
                                 ) : (
-                                    farms.length === 0 && !currentFarm.farmName ? 'Add Later' : 'Register All Farms'
+                                    farms.length === 0 && !currentFarm.farmName ? 'Add farms later' : 'Add all farms'
                                 )}
                             </button>
                         </div>
