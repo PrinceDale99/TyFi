@@ -96,10 +96,12 @@ export const connectWallet = async (network: 'testnet' | 'mainnet' = 'testnet', 
     initKit(network);
     StellarWalletsKit.setWallet(walletId);
     
-    // Check if the selected wallet extension/app is available
-    const isAvailable = await StellarWalletsKit.selectedModule.isAvailable();
-    if (!isAvailable) {
-      throw new Error(`WALLET_NOT_INSTALLED:${walletId}`);
+    // Check if the selected wallet extension/app is available (only needed for extensions like Freighter)
+    if (walletId !== WALLET_CONNECT_ID && walletId !== ALBEDO_ID) {
+      const isAvailable = await StellarWalletsKit.selectedModule.isAvailable();
+      if (!isAvailable) {
+        throw new Error(`WALLET_NOT_INSTALLED:${walletId}`);
+      }
     }
 
     currentWalletId = walletId;
