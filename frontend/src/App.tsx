@@ -55,6 +55,7 @@ import HistoryDashboard from './components/HistoryDashboard';
 import { useTranslation } from 'react-i18next';
 import CertificateList from './components/CertificateList';
 import SubsidyMarketplace from './components/SubsidyMarketplace';
+import { registerForSubsidy } from './services/firebaseService';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -718,8 +719,8 @@ function App() {
         phoneNumber: f.phoneNumber || '',
         uploadedRsbsa: 'verified-rsbsa.pdf',
         uploadedValidId: 'verified-valid-id.png',
-        isSeekingAssistance: false
-      });
+        isSeekingAssistance: prev.isSeekingAssistance || false
+      }));
     } else {
       setProfileForm(prev => ({
         ...prev,
@@ -2478,14 +2479,18 @@ function App() {
                           </div>
                         </div>
                         <button
-                          onClick={() => {
-                            setProfileForm(prev => ({ ...prev, isSeekingAssistance: !prev.isSeekingAssistance }));
-                            addNotification(
-                              !profileForm.isSeekingAssistance 
-                                ? 'Profile added to the Subsidy Marketplace.' 
-                                : 'Profile removed from the Subsidy Marketplace.',
-                              !profileForm.isSeekingAssistance ? 'success' : 'info'
-                            );
+                          onClick={async () => {
+                            const willSeek = !profileForm.isSeekingAssistance;
+                            setProfileForm(prev => ({ ...prev, isSeekingAssistance: willSeek }));
+                            
+                            if (willSeek) {
+                              if (farms.length > 0) {
+                                await registerForSubsidy(walletAddress, farms[0]);
+                              }
+                              addNotification('Profile added to the Subsidy Marketplace.', 'success');
+                            } else {
+                              addNotification('Profile removed from the Subsidy Marketplace.', 'info');
+                            }
                           }}
                           className={`w-12 h-6 rounded-full transition-colors relative ${
                             profileForm.isSeekingAssistance 
