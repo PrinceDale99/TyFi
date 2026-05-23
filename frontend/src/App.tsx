@@ -157,6 +157,7 @@ function App() {
   // 🚪 Signout Confirmation State
   const [isSignoutConfirmOpen, setIsSignoutConfirmOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [walletError, setWalletError] = useState<{ id: string, message: string, url?: string } | null>(null);
 
   // ─── Offline-First Intent Recovery ──────────────────────────────────────────
   useEffect(() => {
@@ -578,7 +579,23 @@ function App() {
       const address = await connectWallet(network, walletId);
       handleWalletConnected(address);
     } catch (error: any) {
-      addNotification(error.message || 'Failed to connect wallet', 'warning');
+      if (error.message && error.message.startsWith('WALLET_NOT_INSTALLED')) {
+        const id = error.message.split(':')[1];
+        let url = 'https://stellar.org/ecosystem/wallets';
+        if (id === 'freighter') url = 'https://chromewebstore.google.com/detail/freighter/kaojnmgeecghoocplkaeoojagghgocho';
+        if (id === 'xbull') url = 'https://xbull.app/';
+        
+        setWalletError({
+          id,
+          message: `The ${id.charAt(0).toUpperCase() + id.slice(1)} wallet is not installed or not active.`,
+          url
+        });
+      } else {
+        setWalletError({
+          id: 'connection',
+          message: error.message || 'Failed to connect wallet. Ensure the wallet extension is unlocked or your mobile app is active.'
+        });
+      }
     }
   };
 
@@ -1003,6 +1020,46 @@ function App() {
           onConnect={handleConnectWallet}
           network={network}
         />
+
+        {/* Wallet Error Popup */}
+        {walletError && (
+          <div className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95">
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-500">
+                  <AlertCircle size={24} />
+                </div>
+                <button onClick={() => setWalletError(null)} className="text-slate-500 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <h3 className="text-xl font-black text-white mb-2">Connection Error</h3>
+              <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                {walletError.message}
+              </p>
+              
+              <div className="space-y-3">
+                {walletError.url && (
+                  <a 
+                    href={walletError.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-bold transition-colors flex items-center justify-center gap-2"
+                  >
+                    Install {walletError.id.charAt(0).toUpperCase() + walletError.id.slice(1)} <ArrowUpRight size={16} />
+                  </a>
+                )}
+                <button 
+                  onClick={() => setWalletError(null)}
+                  className="w-full py-3 rounded-xl border border-white/10 text-slate-300 font-bold hover:bg-white/5 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
