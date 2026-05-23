@@ -2,7 +2,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: "AIzaSyDONg71QkI2r0RLD2DM_C3GBP5PaE7nBu0",
+  apiKey: "REPLACE_WITH_UR_API_KEY",
   authDomain: "ptrv-22b15.firebaseapp.com",
   projectId: "ptrv-22b15",
   storageBucket: "ptrv-22b15.firebasestorage.app",
