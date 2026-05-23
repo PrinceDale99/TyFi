@@ -190,7 +190,8 @@ function App() {
     region: 'Central Luzon',
     phoneNumber: '',
     uploadedRsbsa: '',
-    uploadedValidId: ''
+    uploadedValidId: '',
+    isSeekingAssistance: false
   });
 
   const [newFarmForm, setNewFarmForm] = useState({
@@ -2433,6 +2434,50 @@ function App() {
                   </div>
 
                   <div className="space-y-3">
+                    {/* Financial Assistance Switch */}
+                    <div className={`p-4 rounded-2xl border transition-all ${
+                      profileForm.isSeekingAssistance 
+                        ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-sky-500/10 border-sky-500/30') 
+                        : 'bg-white/5 border-white/10'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-2 rounded-lg ${profileForm.isSeekingAssistance ? (isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400') : 'bg-slate-800 text-slate-400'}`}>
+                            <Globe size={16} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black text-white uppercase">Subsidy Marketplace</h4>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase">Financial Assistance</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setProfileForm(prev => ({ ...prev, isSeekingAssistance: !prev.isSeekingAssistance }));
+                            addNotification(
+                              !profileForm.isSeekingAssistance 
+                                ? 'Profile added to the Subsidy Marketplace.' 
+                                : 'Profile removed from the Subsidy Marketplace.',
+                              !profileForm.isSeekingAssistance ? 'success' : 'info'
+                            );
+                          }}
+                          className={`w-12 h-6 rounded-full transition-colors relative ${
+                            profileForm.isSeekingAssistance 
+                              ? (isMainnet ? 'bg-emerald-500' : 'bg-sky-500') 
+                              : 'bg-slate-700'
+                          }`}
+                        >
+                          <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${
+                            profileForm.isSeekingAssistance ? 'left-7' : 'left-1'
+                          }`}></div>
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        {profileForm.isSeekingAssistance 
+                          ? "Your profile is publicly listed. Institutional sponsors and donors can now fund your premium subsidies." 
+                          : "Enable this to allow NGOs, LGUs, and DeFi protocols to sponsor your insurance premiums."}
+                      </p>
+                    </div>
+
                     <button 
                       onClick={() => {
                         setIsProfileDashboardOpen(false);
