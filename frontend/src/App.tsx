@@ -29,7 +29,8 @@ import {
   X,
   ShieldCheck,
   Phone,
-  Heart
+  Heart,
+  Globe
 } from 'lucide-react';
 import FarmerVerification from './components/FarmerVerification';
 import WeatherWidget from './components/WeatherWidget';
@@ -716,7 +717,8 @@ function App() {
         region: f.region || 'Central Luzon',
         phoneNumber: f.phoneNumber || '',
         uploadedRsbsa: 'verified-rsbsa.pdf',
-        uploadedValidId: 'verified-valid-id.png'
+        uploadedValidId: 'verified-valid-id.png',
+        isSeekingAssistance: false
       });
     } else {
       setProfileForm(prev => ({
@@ -846,7 +848,8 @@ function App() {
         region: firstFarm.region || 'Central Luzon',
         phoneNumber: firstFarm.phoneNumber || '',
         uploadedRsbsa: 'verified',
-        uploadedValidId: 'verified'
+        uploadedValidId: 'verified',
+        isSeekingAssistance: false
       });
     }
 
