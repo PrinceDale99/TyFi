@@ -366,6 +366,12 @@ function App() {
   }, [activeTab]);
 
   useEffect(() => {
+    if (userRole === 'sponsor' && (activeTab === 'monitor' || activeTab === 'calc')) {
+      setActiveTab('marketplace');
+    }
+  }, [userRole, activeTab]);
+
+  useEffect(() => {
     localStorage.setItem('typhoon_vault_network', network);
   }, [network]);
 
@@ -1432,7 +1438,14 @@ function App() {
           </div>
 
           <div className="hidden md:flex items-center gap-6">
-            {(['monitor', 'calc', 'history', 'vault', 'marketplace'] as const).map((tab) => (
+            {(['monitor', 'calc', 'history', 'vault', 'marketplace'] as const)
+              .filter(tab => {
+                if (userRole === 'sponsor') {
+                  return ['history', 'vault', 'marketplace'].includes(tab);
+                }
+                return true;
+              })
+              .map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1615,23 +1628,27 @@ function App() {
                   <h1 className="text-4xl font-black text-white tracking-tight">
                     {activeTab === 'monitor' ? t('header.protocolMonitoring') :
                       activeTab === 'calc' ? t('header.smartCalculator') :
-                        activeTab === 'history' ? t('header.claimHistory') : t('header.vaultInfrastructure')}
+                        activeTab === 'history' ? t('header.claimHistory') : 
+                          activeTab === 'marketplace' ? 'Subsidy Marketplace' : t('header.vaultInfrastructure')}
                   </h1>
                   <p className="text-slate-400 mt-1">
                     {activeTab === 'monitor' ? `Automated smart contracts for ${farms[0]?.farmName || 'your farms'}` :
                       activeTab === 'calc' ? 'Analyze damage and estimate recovery payouts' :
                         activeTab === 'history' ? 'Transparency report of all triggered payouts' :
+                          activeTab === 'marketplace' ? 'Fund climate resilience for verified farmers' :
                           'Proof of liquidity and capital reserves'}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:flex-wrap md:overflow-visible">
-                  <button
-                    onClick={() => setActiveTab('monitor')}
-                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'monitor' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
-                  >
-                    {t('nav.liveMonitor')}
-                  </button>
+                  {userRole !== 'sponsor' && (
+                    <button
+                      onClick={() => setActiveTab('monitor')}
+                      className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'monitor' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
+                    >
+                      {t('nav.liveMonitor')}
+                    </button>
+                  )}
                   <button
                     onClick={() => setActiveTab('history')}
                     className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
@@ -1643,6 +1660,12 @@ function App() {
                     className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'vault' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
                   >
                     {t('nav.vault')}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('marketplace')}
+                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'marketplace' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
+                  >
+                    Marketplace
                   </button>
                 </div>
               </div>
