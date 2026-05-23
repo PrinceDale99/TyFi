@@ -122,14 +122,12 @@ export const getActiveSubsidyRequests = async (network: string = 'testnet') => {
   try {
     const q = query(
       collection(db, "subsidy_requests"),
-      where("isFunded", "==", false),
-      where("network", "==", network)
+      where("isFunded", "==", false)
     );
     const querySnapshot = await getDocs(q);
-    const docs = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as any));
+    const docs = querySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as any))
+      .filter(doc => (doc.network || 'testnet') === network);
     
     return docs.sort((a, b) => {
       const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
