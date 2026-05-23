@@ -83,7 +83,7 @@ export const getPayoutHistory = async (farmerAddress: string, maxResults = 10) =
 /**
  * Registers a farm for the Subsidy Marketplace.
  */
-export const registerForSubsidy = async (farmerAddress: string, farm: any) => {
+export const registerForSubsidy = async (farmerAddress: string, farm: any, network: string = 'testnet') => {
   try {
     const totalPremium = Math.round(farm.expectedHarvestValue * 0.1);
     const subsidyPercent = (farm.govSubsidyPercent || 0) + (farm.ngoSubsidyPercent || 0);
@@ -105,6 +105,7 @@ export const registerForSubsidy = async (farmerAddress: string, farm: any) => {
       harvestValue: farm.expectedHarvestValue || 0,
       season: farm.season || 'Current Season',
       isFunded: false,
+      network: network,
       timestamp: serverTimestamp(),
     });
     return true;
@@ -117,11 +118,12 @@ export const registerForSubsidy = async (farmerAddress: string, farm: any) => {
 /**
  * Retrieves all active subsidy requests for sponsors to browse.
  */
-export const getActiveSubsidyRequests = async () => {
+export const getActiveSubsidyRequests = async (network: string = 'testnet') => {
   try {
     const q = query(
       collection(db, "subsidy_requests"),
-      where("isFunded", "==", false)
+      where("isFunded", "==", false),
+      where("network", "==", network)
     );
     const querySnapshot = await getDocs(q);
     const docs = querySnapshot.docs.map(doc => ({

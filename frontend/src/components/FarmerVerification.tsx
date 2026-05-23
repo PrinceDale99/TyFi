@@ -299,7 +299,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
         // Even if offline, registerForSubsidy uses Firestore persistence which will sync automatically
         if (needsSubsidy) {
           for (const farm of enrichedFarms) {
-            registerForSubsidy(walletAddress, { ...farmerInfo, ...farm }).catch(console.error);
+            registerForSubsidy(walletAddress, { ...farmerInfo, ...farm }, network).catch(console.error);
           }
         }
         console.log('Offline: Queued farm registration intents');
@@ -310,7 +310,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
             await registerForSubsidy(walletAddress, {
               ...farmerInfo,
               ...farm
-            });
+            }, network);
           }
           console.log('Farms registered for subsidy requests');
         } else {
