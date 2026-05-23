@@ -779,29 +779,43 @@ function App() {
       latitude: Number(newFarmForm.latitude),
       longitude: Number(newFarmForm.longitude),
       totalCropValue, // Standard buffer
-      isInsured: true,
+      isInsured: !profileForm.isSeekingAssistance,
       landDocument: {
         fileName: modalUploadedLandDoc,
         docType: modalLandDocType,
         uploadedAt: new Date().toISOString()
-      }
+      },
+      govSubsidyPercent: 0,
+      ngoSubsidyPercent: 0,
+      paymentPlan: 'full'
     };
     
-    // Register on Stellar blockchain asynchronously (or show loading)
-    addNotification('Initiating Stellar Soroban smart contract registration...', 'info');
-    try {
-      await registerPolicyOnChain(
-        walletAddress,
-        newFarm.farmName.replace(/\s+/g, '_'),
-        profileForm.region,
-        newFarm.totalCropValue,
-        'Wet Season 2026',
-        network
-      );
-      addNotification('Stellar ledger transaction confirmed!', 'success');
-    } catch (err: any) {
-      console.error('Error registering policy on chain:', err);
-      addNotification(`Blockchain registration warning: ${err.message || 'connection timeout'}. Local policy saved.`, 'warning');
+    if (profileForm.isSeekingAssistance) {
+      addNotification('Registering farm for Subsidy Marketplace...', 'info');
+      try {
+        await registerForSubsidy(walletAddress, newFarm, network);
+        addNotification('Farm successfully listed in Subsidy Marketplace!', 'success');
+      } catch (err: any) {
+        console.error('Error registering for subsidy:', err);
+        addNotification('Could not list on Marketplace. Local data saved.', 'warning');
+      }
+    } else {
+      // Register on Stellar blockchain asynchronously (or show loading)
+      addNotification('Initiating Stellar Soroban smart contract registration...', 'info');
+      try {
+        await registerPolicyOnChain(
+          walletAddress,
+          newFarm.farmName.replace(/\s+/g, '_'),
+          profileForm.region,
+          newFarm.totalCropValue,
+          'Wet Season 2026',
+          network
+        );
+        addNotification('Stellar ledger transaction confirmed!', 'success');
+      } catch (err: any) {
+        console.error('Error registering policy on chain:', err);
+        addNotification(`Blockchain registration warning: ${err.message || 'connection timeout'}. Local policy saved.`, 'warning');
+      }
     }
 
     setFarms(prev => [...prev, newFarm]);
@@ -2188,7 +2202,7 @@ function App() {
                   <p>We do not use any marketing cookies, tracking pixels, or third-party web analytics (such as Google Analytics or Facebook Pixels). Your movements through our dashboard are never recorded, aggregated, or shared with corporate advertising entities.</p>
                   
                   <h4 className="font-bold text-white uppercase text-xs tracking-wider">2. Resilient Browser Local Storage</h4>
-                  <p>To provide a highly resilient session experience and protect active workspaces from accidental page refreshes, we utilize standard HTML5 Local Storage (`localStorage`). This stores local session indicators including your active tab selection, network choice, wallet connection state, public wallet address, verified farm details, and historical claim logs. This information never leaves your browser sandbox.</p>
+                  <p>To provide a highly resilient session experience and protect active workspaces from accidental page refreshes, we utilize standard HTML5 Local Storage (<code>localStorage</code>). This stores local session indicators including your active tab selection, network choice, wallet connection state, public wallet address, verified farm details, and historical claim logs. This information never leaves your browser sandbox.</p>
                 </>
               )}
 
@@ -2483,17 +2497,19 @@ function App() {
                           onClick={async () => {
                             const willSeek = !profileForm.isSeekingAssistance;
                             setProfileForm(prev => ({ ...prev, isSeekingAssistance: willSeek }));
-                            
+
                             if (willSeek) {
                               if (farms.length > 0) {
-                                await registerForSubsidy(walletAddress, farms[0]);
+                                addNotification(`Registering your farm for financial assistance...`, 'info');
+                                await registerForSubsidy(walletAddress, farms[0], network);
+                                addNotification('Farm successfully listed in the Subsidy Marketplace.', 'success');
+                              } else {
+                                addNotification('Financial assistance enabled. Please add a farm to list it in the marketplace.', 'info');
                               }
-                              addNotification('Profile added to the Subsidy Marketplace.', 'success');
                             } else {
-                              addNotification('Profile removed from the Subsidy Marketplace.', 'info');
+                              addNotification('Financial assistance disabled for future farms.', 'info');
                             }
-                          }}
-                          className={`w-12 h-6 rounded-full transition-colors relative ${
+                          }}                          className={`w-12 h-6 rounded-full transition-colors relative ${
                             profileForm.isSeekingAssistance 
                               ? (isMainnet ? 'bg-emerald-500' : 'bg-sky-500') 
                               : 'bg-slate-700'

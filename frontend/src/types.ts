@@ -27,6 +27,9 @@ export interface FarmData {
     docType: 'deed_of_sale' | 'land_title';
     uploadedAt: string;
   };
+  govSubsidyPercent?: number;
+  ngoSubsidyPercent?: number;
+  paymentPlan?: 'full' | '2-parts' | '4-parts';
 }
 
 export interface Farm extends FarmData {

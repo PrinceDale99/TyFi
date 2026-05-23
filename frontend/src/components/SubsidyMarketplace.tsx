@@ -53,11 +53,11 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+  }, [network]);
 
   const fetchRequests = async () => {
     setIsLoading(true);
-    const data = await getActiveSubsidyRequests();
+    const data = await getActiveSubsidyRequests(network);
     setRequests(data);
     setIsLoading(false);
   };
