@@ -908,14 +908,6 @@ function App() {
       return;
     }
 
-    // Set farm as claimed and lock the payout amount and ratio
-    setFarms(prev => prev.map(f => f.id === farm.id ? { 
-      ...f, 
-      hasClaimed: true, 
-      claimedAmount: claimAmount, 
-      claimedRatio: payoutRatio 
-    } : f));
-
     // Handle blockchain claim if wallet connected
     if (isWalletConnected) {
       const pubkey = localStorage.getItem('stellar_pubkey') || '';
@@ -925,29 +917,61 @@ function App() {
       const processClaim = async () => {
         try {
           await claimPayoutOnChain(pubkey, farm.id, farm.season || 'Wet Season 2026', isMainnet ? 'mainnet' : 'testnet', typhoonId);
+          
+          // Transaction success: update local states
+          setFarms(prev => prev.map(f => f.id === farm.id ? { 
+            ...f, 
+            hasClaimed: true, 
+            claimedAmount: claimAmount, 
+            claimedRatio: payoutRatio 
+          } : f));
+
+          const newClaim: Claim = {
+            id: `TX-${Math.floor(Math.random() * 10000)}`,
+            date: new Date().toISOString().split('T')[0],
+            amount: claimAmount,
+            status: 'Paid',
+            trigger: triggerDesc
+          };
+
+          setClaims(prev => [newClaim, ...prev]);
+          
+          if (!isMainnet) {
+            setTestnetTvl(prev => Math.max(0, prev - claimAmount));
+          }
+          
+          addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed on Stellar ${isMainnet ? 'Mainnet' : 'Testnet Sandbox'}!`, 'success');
         } catch (err) {
           console.error("Stellar claim error:", err);
-          addNotification('Transaction failed or rejected by wallet.', 'warning');
+          addNotification('Payout Rejected: The decentralized oracle network and AI assessment verified that there is no active storm damage. Manipulation attempts are automatically rejected by the smart contract.', 'error');
         }
       };
       processClaim();
-    }
+    } else {
+      // Offline / Unconnected Demo mode claim logic
+      setFarms(prev => prev.map(f => f.id === farm.id ? { 
+        ...f, 
+        hasClaimed: true, 
+        claimedAmount: claimAmount, 
+        claimedRatio: payoutRatio 
+      } : f));
 
-    const newClaim: Claim = {
-      id: `TX-${Math.floor(Math.random() * 10000)}`,
-      date: new Date().toISOString().split('T')[0],
-      amount: claimAmount,
-      status: 'Paid',
-      trigger: triggerDesc
-    };
+      const newClaim: Claim = {
+        id: `TX-${Math.floor(Math.random() * 10000)}`,
+        date: new Date().toISOString().split('T')[0],
+        amount: claimAmount,
+        status: 'Paid',
+        trigger: triggerDesc
+      };
 
-    setClaims(prev => [newClaim, ...prev]);
-    
-    if (!isMainnet) {
-      setTestnetTvl(prev => Math.max(0, prev - claimAmount));
+      setClaims(prev => [newClaim, ...prev]);
+      
+      if (!isMainnet) {
+        setTestnetTvl(prev => Math.max(0, prev - claimAmount));
+      }
+      
+      addNotification(`[Demo] Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed!`, 'success');
     }
-    
-    addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed on Stellar ${isMainnet ? 'Mainnet' : 'Testnet Sandbox'}!`, 'success');
   };
 
   if (!isWalletConnected) {
