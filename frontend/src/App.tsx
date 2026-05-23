@@ -115,6 +115,15 @@ function App() {
   const [walletAddress, setWalletAddress] = useState(() => {
     return localStorage.getItem('typhoon_vault_walletAddress') || '';
   });
+  const [userRole, setUserRole] = useState<'farmer' | 'sponsor' | null>(() => {
+    const initialNetwork = localStorage.getItem('typhoon_vault_network') || 'testnet';
+    const initialAddress = localStorage.getItem('typhoon_vault_walletAddress') || '';
+    if (initialAddress) {
+      const saved = localStorage.getItem(`typhoon_vault_role_${initialNetwork}_${initialAddress}`);
+      return saved as 'farmer' | 'sponsor' | null;
+    }
+    return null;
+  });
   const [isVerified, setIsVerified] = useState(() => {
     const initialNetwork = localStorage.getItem('typhoon_vault_network') || 'testnet';
     const initialAddress = localStorage.getItem('typhoon_vault_walletAddress') || '';
@@ -1275,7 +1284,71 @@ function App() {
     );
   }
 
-  if (!isVerified && farms.length === 0) {
+  if (hasAgreedToLegal && !userRole && farms.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        {/* Animated Background */}
+        <div className={`absolute inset-0 bg-grid-slate-900/[0.04] bg-[bottom_1px_center] ${isMainnet ? 'bg-grid-emerald-500/[0.02]' : 'bg-grid-sky-500/[0.02]'}`} style={{ maskImage: 'linear-gradient(to bottom, transparent, black)' }} />
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full filter blur-[120px] transition-colors duration-1000 -z-10 ${
+          isMainnet ? 'bg-emerald-500/10' : 'bg-sky-500/10'
+        }`} />
+
+        <div className="relative z-10 max-w-4xl w-full">
+          <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-4">Select your role</h1>
+            <p className="text-slate-400 text-lg">Choose how you want to interact with the TyFi protocol</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+            {/* Farmer Role */}
+            <button
+              onClick={() => {
+                localStorage.setItem(`typhoon_vault_role_${network}_${walletAddress}`, 'farmer');
+                setUserRole('farmer');
+              }}
+              className="text-left group relative glass-panel p-8 hover:border-sky-500/50 transition-all duration-300 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-sky-500/20 transition-all" />
+              <div className="w-16 h-16 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+                <Sprout size={32} />
+              </div>
+              <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-3">Farmer</h2>
+              <p className="text-slate-400 leading-relaxed mb-6">
+                Register your agricultural assets to secure parametric weather insurance. Get automatic payouts directly to your wallet when disaster strikes, and request premium subsidies from donors.
+              </p>
+              <div className="text-xs font-black text-sky-400 uppercase tracking-widest flex items-center gap-2 group-hover:translate-x-2 transition-transform">
+                Register as Farmer <ArrowUpRight size={14} />
+              </div>
+            </button>
+
+            {/* Sponsor Role */}
+            <button
+              onClick={() => {
+                localStorage.setItem(`typhoon_vault_role_${network}_${walletAddress}`, 'sponsor');
+                setUserRole('sponsor');
+                setIsVerified(true); // Sponsors don't need farm verification
+              }}
+              className="text-left group relative glass-panel p-8 hover:border-emerald-500/50 transition-all duration-300 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/20 transition-all" />
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+                <Globe size={32} />
+              </div>
+              <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-3">Donor / NGO / Investor</h2>
+              <p className="text-slate-400 leading-relaxed mb-6">
+                Sponsor insurance premiums for vulnerable farmers or provide liquidity to the protocol's vault. Track the real-world impact of your funds and earn yield on your capital.
+              </p>
+              <div className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2 group-hover:translate-x-2 transition-transform">
+                Enter as Sponsor <ArrowUpRight size={14} />
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasAgreedToLegal && userRole === 'farmer' && !isVerified && farms.length === 0) {
     return (
       <FarmerVerification 
         onVerificationComplete={handleVerificationComplete} 
@@ -1458,17 +1531,20 @@ function App() {
             </div>
             
             <div className="flex flex-col gap-8">
-              {(['monitor', 'calc', 'history', 'vault', 'marketplace'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => { setActiveTab(tab); setIsMobileMenuOpen(false); }}
-                  className={`text-2xl font-black uppercase tracking-tighter text-left transition-all ${
-                    activeTab === tab ? (isMainnet ? 'text-emerald-400' : 'text-sky-400') : 'text-slate-600'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+              {(['monitor', 'calc', 'history', 'vault', 'marketplace'] as const).map((tab) => {
+                if (userRole === 'sponsor' && tab === 'calc') return null;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => { setActiveTab(tab); setIsMobileMenuOpen(false); }}
+                    className={`text-2xl font-black uppercase tracking-tighter text-left transition-all ${
+                      activeTab === tab ? (isMainnet ? 'text-emerald-400' : 'text-sky-400') : 'text-slate-600'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="mt-auto pt-12 border-t border-white/10 space-y-8">
@@ -2003,20 +2079,22 @@ function App() {
                     <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
 
-                  <button
-                    onClick={() => setActiveTab('calc')}
-                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                      activeTab === 'calc' 
-                        ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
-                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                      <Calculator size={20} />
-                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Calculator</span>
-                    </div>
-                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
+                  {userRole === 'farmer' && (
+                    <button
+                      onClick={() => setActiveTab('calc')}
+                      className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
+                        activeTab === 'calc' 
+                          ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
+                          : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
+                        <Calculator size={20} />
+                        <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Calculator</span>
+                      </div>
+                      <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  )}
 
                   <button
                     onClick={() => setActiveTab('marketplace')}
@@ -2046,18 +2124,20 @@ function App() {
                     <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
 
-                  <button
-                    onClick={() => setIsAddFarmModalOpen(true)}
-                    className="p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex flex-col md:flex-row items-center md:justify-between group cursor-pointer gap-3"
-                  >
-                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                      <div className={`p-1.5 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                        <Plus size={16} />
+                  {userRole === 'farmer' && (
+                    <button
+                      onClick={() => setIsAddFarmModalOpen(true)}
+                      className="p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex flex-col md:flex-row items-center md:justify-between group cursor-pointer gap-3"
+                    >
+                      <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
+                        <div className={`p-1.5 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                          <Plus size={16} />
+                        </div>
+                        <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight text-white">Add Farm</span>
                       </div>
-                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight text-white">Add Farm</span>
-                    </div>
-                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
+                      <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  )}
                 </div>
               </div>
 
