@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Globe, Upload, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
+import { registerSponsor } from '../services/firebaseService';
 
 interface SponsorVerificationProps {
   onVerificationComplete: () => void;
@@ -20,6 +21,19 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
 
   const [isUploadingId, setIsUploadingId] = useState(false);
   const [uploadedId, setUploadedId] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  const handleCompleteRegistration = async () => {
+    setIsRegistering(true);
+    try {
+      await registerSponsor(walletAddress, sponsorInfo, network);
+      onVerificationComplete();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -34,8 +48,8 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
             <Globe size={32} />
           </div>
-          <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter mb-4">Sponsor Registration</h1>
-          <p className="text-slate-400 text-sm">Please provide your details to securely access the vault and marketplace.</p>
+          <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter mb-4">Institutional & Sponsor Onboarding</h1>
+          <p className="text-slate-400 text-sm">Complete your institutional profile to securely deploy liquidity and subsidize agricultural resilience.</p>
         </div>
 
         <div className="glass-panel p-6 md:p-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 border border-white/10">
@@ -142,16 +156,16 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
                 </button>
               )}
               <button 
-                onClick={onVerificationComplete}
-                disabled={!sponsorInfo.name || !sponsorInfo.email || !sponsorInfo.birthDate || !uploadedId}
+                onClick={handleCompleteRegistration}
+                disabled={!sponsorInfo.name || !sponsorInfo.email || !sponsorInfo.birthDate || !uploadedId || isRegistering}
                 className={`flex-1 py-3.5 rounded-xl font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   isMainnet 
                     ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
                     : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_0_20px_rgba(14,165,233,0.2)]'
                 }`}
               >
-                <ShieldCheck size={20} />
-                Complete Registration
+                {isRegistering ? <Loader2 size={20} className="animate-spin" /> : <ShieldCheck size={20} />}
+                {isRegistering ? 'Registering on Firebase...' : 'Complete Registration'}
               </button>
             </div>
 

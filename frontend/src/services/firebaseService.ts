@@ -154,3 +154,24 @@ export const unlistFromSubsidy = async (requestId: string) => {
     return false;
   }
 };
+
+/**
+ * Registers a Sponsor/Donor/NGO profile in Firestore.
+ */
+export const registerSponsor = async (walletAddress: string, sponsorInfo: any, network: string = 'testnet') => {
+  try {
+    const docRef = await addDoc(collection(db, "sponsors"), {
+      walletAddress: walletAddress,
+      name: sponsorInfo.name,
+      email: sponsorInfo.email,
+      birthDate: sponsorInfo.birthDate,
+      sponsorType: sponsorInfo.sponsorType,
+      network: network,
+      timestamp: serverTimestamp(),
+    });
+    return docRef.id;
+  } catch (e) {
+    console.error("Error registering sponsor: ", e);
+    return null;
+  }
+};
