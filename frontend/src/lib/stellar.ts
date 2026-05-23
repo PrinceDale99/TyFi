@@ -86,8 +86,16 @@ export const connectWallet = async (network: 'testnet' | 'mainnet' = 'testnet', 
   try {
     initKit(network);
     StellarWalletsKit.setWallet(walletId);
+    
+    // Check if the selected wallet extension/app is available
+    const isAvailable = await StellarWalletsKit.selectedModule.isAvailable();
+    if (!isAvailable) {
+      throw new Error(`WALLET_NOT_INSTALLED:${walletId}`);
+    }
+
     currentWalletId = walletId;
-    const { address } = await StellarWalletsKit.getAddress();
+    // fetchAddress prompts the user to connect (unlike getAddress which gets memory)
+    const { address } = await StellarWalletsKit.fetchAddress();
     currentUserAddress = address;
     return address;
   } catch (error: any) {
