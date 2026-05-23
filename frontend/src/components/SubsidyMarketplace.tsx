@@ -145,7 +145,7 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {userFarms.map((farm) => {
-              const isListed = requests.some(r => r.farmerAddress === sponsorAddress && r.farmName === farm.farmName);
+              const listedRequest = requests.find(r => r.farmerAddress === sponsorAddress && r.farmName === farm.farmName);
               
               return (
                 <div key={farm.id} className="p-4 rounded-xl bg-slate-950/50 border border-white/5 flex items-center justify-between">
@@ -153,34 +153,59 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
                     <h4 className="font-bold text-white text-sm">{farm.farmName}</h4>
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest">{farm.cropType} • {farm.farmSize} Hectares</p>
                   </div>
-                  <button
-                    disabled={isListed || isProcessing === farm.id}
-                    onClick={async () => {
-                      setIsProcessing(farm.id);
-                      try {
-                        addNotification(`Registering ${farm.farmName} for financial assistance...`, 'info');
-                        const { registerForSubsidy } = await import('../services/firebaseService');
-                        await registerForSubsidy(sponsorAddress, farm, network);
-                        addNotification(`${farm.farmName} successfully listed in the Subsidy Marketplace.`, 'success');
-                        fetchRequests(); // Refresh the list
-                      } catch (e) {
-                        addNotification(`Failed to list ${farm.farmName}.`, 'warning');
-                      } finally {
-                        setIsProcessing(null);
-                      }
-                    }}
-                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-                      isListed 
-                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                        : isProcessing === farm.id 
+                  {listedRequest ? (
+                    <button
+                      disabled={isProcessing === farm.id}
+                      onClick={async () => {
+                        setIsProcessing(farm.id);
+                        try {
+                          addNotification(`Unlisting ${farm.farmName} from the marketplace...`, 'info');
+                          const { unlistFromSubsidy } = await import('../services/firebaseService');
+                          await unlistFromSubsidy(listedRequest.id);
+                          addNotification(`${farm.farmName} has been removed from the marketplace.`, 'success');
+                          fetchRequests(); // Refresh the list
+                        } catch (e) {
+                          addNotification(`Failed to unlist ${farm.farmName}.`, 'warning');
+                        } finally {
+                          setIsProcessing(null);
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                        isProcessing === farm.id 
+                          ? 'bg-rose-900/50 text-rose-500/50 cursor-wait border border-rose-900/30'
+                          : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.1)]'
+                      }`}
+                    >
+                      {isProcessing === farm.id ? 'Unlisting...' : 'Unlist Farm'}
+                    </button>
+                  ) : (
+                    <button
+                      disabled={isProcessing === farm.id}
+                      onClick={async () => {
+                        setIsProcessing(farm.id);
+                        try {
+                          addNotification(`Registering ${farm.farmName} for financial assistance...`, 'info');
+                          const { registerForSubsidy } = await import('../services/firebaseService');
+                          await registerForSubsidy(sponsorAddress, farm, network);
+                          addNotification(`${farm.farmName} successfully listed in the Subsidy Marketplace.`, 'success');
+                          fetchRequests(); // Refresh the list
+                        } catch (e) {
+                          addNotification(`Failed to list ${farm.farmName}.`, 'warning');
+                        } finally {
+                          setIsProcessing(null);
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                        isProcessing === farm.id 
                           ? 'bg-slate-700 text-slate-400 cursor-wait'
                           : network === 'mainnet' 
                             ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
                             : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_0_15px_rgba(14,165,233,0.2)]'
-                    }`}
-                  >
-                    {isListed ? 'Already Listed' : isProcessing === farm.id ? 'Listing...' : 'List Farm'}
-                  </button>
+                      }`}
+                    >
+                      {isProcessing === farm.id ? 'Listing...' : 'List Farm'}
+                    </button>
+                  )}
                 </div>
               );
             })}
