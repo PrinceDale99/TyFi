@@ -2470,7 +2470,9 @@ function App() {
                   <User size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-white tracking-tight uppercase italic">Farmer Profile Dashboard</h2>
+                  <h2 className="text-xl font-black text-white tracking-tight uppercase italic">
+                    {userRole === 'sponsor' ? 'Institutional Sponsor Dashboard' : 'Farmer Profile Dashboard'}
+                  </h2>
                   <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Protocol Participant Information</p>
                 </div>
               </div>
@@ -2518,9 +2520,22 @@ function App() {
                 </div>
               </div>
 
-              {/* Farmer Info Grid */}
+              {/* Profile Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {[
+                {userRole === 'sponsor' ? [
+                  { label: 'Entity Name', value: sponsorInfo?.name, icon: User },
+                  { label: 'Type', value: sponsorInfo?.sponsorType, icon: Globe },
+                  { label: 'Contact', value: sponsorInfo?.email, icon: Phone },
+                  { label: 'Incorp. Date', value: sponsorInfo?.birthDate, icon: MapPin },
+                ].map((info, i) => (
+                  <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 group hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <info.icon size={12} className={isMainnet ? 'text-emerald-400' : 'text-sky-400'} />
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{info.label}</span>
+                    </div>
+                    <div className="text-sm font-bold text-white truncate">{info.value || 'Not Set'}</div>
+                  </div>
+                )) : [
                   { label: 'Farmer Name', value: profileForm.farmerName, icon: User },
                   { label: 'RSBSA Number', value: profileForm.rsbsaNumber, icon: Shield },
                   { label: 'Primary Region', value: profileForm.region, icon: MapPin },
@@ -2536,6 +2551,7 @@ function App() {
                 ))}
               </div>
 
+              {userRole === 'farmer' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Left: Farms List */}
                 <div className="lg:col-span-7 space-y-4">
