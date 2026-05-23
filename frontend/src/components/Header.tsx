@@ -1,5 +1,5 @@
-import React from 'react';
-import { Wallet, Bell, Search, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Wallet, Bell, Search, User, WifiOff } from 'lucide-react';
 import { useXlmToPhp } from '../hooks/useXlmToPhp';
 
 interface HeaderProps {
@@ -11,6 +11,19 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ walletAddress, balance, onConnect, onDisconnect }) => {
   const { formatPhp } = useXlmToPhp();
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const formatAddress = (addr: string) => {
     if (!addr) return '';
     return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
@@ -24,6 +37,13 @@ const Header: React.FC<HeaderProps> = ({ walletAddress, balance, onConnect, onDi
       </div>
 
       <div className="header-actions">
+        {isOffline && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 animate-pulse">
+            <WifiOff size={14} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Offline Mode</span>
+          </div>
+        )}
+
         <div className="balance-display glass flex flex-col items-end justify-center py-1 px-3">
           <div className="flex items-center gap-1">
             <span className="balance-label text-xs">XLM</span>

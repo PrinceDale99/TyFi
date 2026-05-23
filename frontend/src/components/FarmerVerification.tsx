@@ -68,6 +68,23 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [needsSubsidy, setNeedsSubsidy] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  
+  // Payment & Subsidy States
+  const [paymentPlan, setPaymentPlan] = useState<'full' | '2-parts' | '4-parts'>('full');
+  const [govSubsidyPercent, setGovSubsidyPercent] = useState(0); // e.g. 30% from DA
+  const [ngoSubsidyPercent, setNgoSubsidyPercent] = useState(0); // e.g. 20% from Red Cross
+
+  React.useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   
   const isMainnet = network === 'mainnet';
 
@@ -81,6 +98,16 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
 
   // Farms List
   const [farms, setFarms] = useState<FarmData[]>([]);
+
+  // Derivations for Step 3
+  const totalPremium = Math.round(farms.reduce((acc, f) => acc + (f.expectedHarvestValue || 0), 0) * 0.1);
+  const subsidyPercent = govSubsidyPercent + ngoSubsidyPercent;
+  const subsidyAmount = Math.round(totalPremium * (subsidyPercent / 100));
+  const finalPremium = Math.max(0, totalPremium - subsidyAmount);
+  
+  const installmentAmount = paymentPlan === 'full' ? finalPremium 
+    : paymentPlan === '2-parts' ? Math.round(finalPremium / 2)
+    : Math.round(finalPremium / 4);
 
   // Current Farm being edited
   const [currentFarm, setCurrentFarm] = useState<{
@@ -235,7 +262,10 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
     }
     
     setIsAnalyzing(true);
+    // Simulate checking for available subsidies based on region/RSBSA
     setTimeout(() => {
+      setGovSubsidyPercent(30); // Demo: 30% Government Subsidy found
+      setNgoSubsidyPercent(15); // Demo: 15% NGO Support found
       setIsAnalyzing(false);
       setStep(3);
     }, 4000);
@@ -244,48 +274,76 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
   const handleSubmit = async () => {
     setIsSubmitting(true);
     
-    try {
-      if (needsSubsidy) {
-        // Register for subsidy instead of paying immediately
-        for (const farm of farms) {
-          await registerForSubsidy(walletAddress, {
-            ...farmerInfo,
-            ...farm
-          });
-        }
-        console.log('Farms registered for subsidy requests');
-      } else {
-        // Original immediate payment flow
-        for (const farm of farms) {
-          const premium = Math.round(farm.expectedHarvestValue * 0.1);
-          await registerPolicyOnChain(
-            walletAddress,
-            farm.farmName.replace(/\s+/g, '_'),
-            farm.region || 'Albay',
-            premium,
-            farm.season || 'Wet Season 2026',
-            network
-          );
-        }
-      }
+    // Enrich farms with payment data
+    const enrichedFarms = farms.map(f => ({
+      ...f,
+      paymentPlan,
+      govSubsidyPercent,
+      ngoSubsidyPercent,
+      premiumPaid: needsSubsidy ? 0 : installmentAmount,
+      isInsured: !needsSubsidy, // Insured immediately if they pay the first installment
+    }));
 
-      const pubkey = localStorage.getItem('stellar_pubkey') || walletAddress;
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-      await fetch(`${BACKEND_URL}/api/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: pubkey,
-          fcmToken: `testnet-fcm-${farmerInfo.phoneNumber}`
-        })
-      });
-      console.log('Registered for notifications');
+    try {
+      if (isOffline) {
+        // Queue intents for when we return online
+        const intents = enrichedFarms.map(farm => ({
+          type: needsSubsidy ? 'subsidy_request' : 'policy_registration',
+          farmName: farm.farmName,
+          data: { ...farmerInfo, ...farm },
+          timestamp: Date.now()
+        }));
+        const existing = JSON.parse(localStorage.getItem('vault_pending_actions') || '[]');
+        localStorage.setItem('vault_pending_actions', JSON.stringify([...existing, ...intents]));
+        
+        // Even if offline, registerForSubsidy uses Firestore persistence which will sync automatically
+        if (needsSubsidy) {
+          for (const farm of enrichedFarms) {
+            registerForSubsidy(walletAddress, { ...farmerInfo, ...farm }).catch(console.error);
+          }
+        }
+        console.log('Offline: Queued farm registration intents');
+      } else {
+        if (needsSubsidy) {
+          // Register for subsidy instead of paying immediately
+          for (const farm of enrichedFarms) {
+            await registerForSubsidy(walletAddress, {
+              ...farmerInfo,
+              ...farm
+            });
+          }
+          console.log('Farms registered for subsidy requests');
+        } else {
+          // Original immediate payment flow
+          for (const farm of enrichedFarms) {
+            await registerPolicyOnChain(
+              walletAddress,
+              farm.farmName.replace(/\s+/g, '_'),
+              farm.region || 'Albay',
+              installmentAmount, // Pay the first installment
+              farm.season || 'Wet Season 2026',
+              network
+            );
+          }
+        }
+
+        const pubkey = localStorage.getItem('stellar_pubkey') || walletAddress;
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+        fetch(`${BACKEND_URL}/api/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: pubkey,
+            fcmToken: `testnet-fcm-${farmerInfo.phoneNumber}`
+          })
+        }).catch(console.error);
+      }
     } catch (error) {
       console.error('Failed to complete submission:', error);
     }
 
     setIsSubmitting(false);
-    onVerificationComplete(farms);
+    onVerificationComplete(enrichedFarms);
   };
 
   return (
@@ -1021,8 +1079,16 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                                 <ArrowLeft size={20} />
                             </button>
                             <button 
-                                onClick={startAnalysis}
-                                disabled={farms.length === 0 && !currentFarm.farmName}
+                                onClick={() => {
+                                  if (farms.length === 0) {
+                                    if (confirm("Are you sure you want to add farms later? You can always add them from your profile dashboard.")) {
+                                      onVerificationComplete([]);
+                                    }
+                                  } else {
+                                    startAnalysis();
+                                  }
+                                }}
+                                disabled={isAnalyzing}
                                 className={`flex-1 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all ${
                                   isMainnet 
                                     ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
@@ -1035,7 +1101,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                                     Analyzing Satellite Polygons...
                                     </>
                                 ) : (
-                                    'Register All Farms'
+                                    farms.length === 0 && !currentFarm.farmName ? 'Add Later' : 'Register All Farms'
                                 )}
                             </button>
                         </div>
@@ -1046,79 +1112,149 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
         )}
 
         {step === 3 && (
-          <div className="animate-fade-in text-center py-8 px-8">
-            <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-8 relative">
-              <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping"></div>
-              <CheckCircle2 className="text-emerald-500" size={48} />
+          <div className="animate-fade-in py-8 px-8">
+            <div className="text-center mb-10">
+              <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping"></div>
+                <ShieldCheck className="text-emerald-500" size={40} />
+              </div>
+              <h3 className="text-3xl font-black text-white mb-2 tracking-tight uppercase italic">Activation Pending</h3>
+              <p className="text-slate-400 max-w-md mx-auto font-medium">
+                Your {farms.length} farm{farms.length > 1 ? 's are' : ' is'} mapped. Deposit the protection premium to activate your parametric coverage.
+              </p>
             </div>
-            
-            <h3 className="text-3xl font-black text-white mb-2 tracking-tight uppercase italic">Vaults Secured!</h3>
-            <p className="text-slate-400 mb-12 max-w-md mx-auto font-medium">
-              Your {farms.length} farm{farms.length > 1 ? 's have' : ' has'} been registered in the Resilience Vault. The smart contract is now monitoring weather triggers for each location.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                <FileText className={`${isMainnet ? 'text-emerald-400' : 'text-sky-400'} mx-auto mb-2`} size={24} />
-                <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Policies Active</div>
-                <div className="text-xl text-white font-black">{farms.length}</div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+              {/* Premium Breakdown */}
+              <div className="glass-panel bg-white/5 border-white/10 p-6 space-y-6">
+                <h4 className="text-white font-black uppercase text-xs tracking-widest flex items-center gap-2">
+                  <DollarSign size={14} className="text-indigo-400" />
+                  Premium Breakdown
+                </h4>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-400 font-medium">Base Seasonal Premium</span>
+                    <span className="text-white font-bold">{totalPremium.toLocaleString()} XLM</span>
+                  </div>
+                  
+                  {govSubsidyPercent > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 font-medium">Government Subsidy (DA)</span>
+                        <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">-{govSubsidyPercent}%</span>
+                      </div>
+                      <span className="text-emerald-400 font-bold">-{Math.round(totalPremium * (govSubsidyPercent / 100)).toLocaleString()} XLM</span>
+                    </div>
+                  )}
+
+                  {ngoSubsidyPercent > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sky-400 font-medium">NGO Resilience Grant</span>
+                        <span className="text-[10px] font-black bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded">-{ngoSubsidyPercent}%</span>
+                      </div>
+                      <span className="text-sky-400 font-bold">-{Math.round(totalPremium * (ngoSubsidyPercent / 100)).toLocaleString()} XLM</span>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t border-white/5 flex justify-between items-center">
+                    <span className="text-lg font-black text-white uppercase italic tracking-tight">Final Premium</span>
+                    <div className="text-right">
+                      <div className="text-2xl font-black text-indigo-400">{finalPremium.toLocaleString()} XLM</div>
+                      <div className="text-[10px] text-slate-500 font-bold uppercase">For {farms[0]?.season}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                <TrendingUp className="text-emerald-400 mx-auto mb-2" size={24} />
-                <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Total Coverage</div>
-                <div className="text-xl text-white font-black">{farms.reduce((acc, f) => acc + (f.totalCropValue || 0), 0).toLocaleString()} XLM</div>
-              </div>
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                <Shield className="text-indigo-400 mx-auto mb-2" size={24} />
-                <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Oracle Trigger</div>
-                <div className="text-lg text-white font-black">Enabled</div>
+
+              {/* Payment Plan */}
+              <div className="glass-panel bg-white/5 border-white/10 p-6 space-y-6">
+                <h4 className="text-white font-black uppercase text-xs tracking-widest flex items-center gap-2">
+                  <Calendar size={14} className="text-emerald-400" />
+                  Select Payment Plan
+                </h4>
+                
+                <div className="grid grid-cols-1 gap-3">
+                  {(['full', '2-parts', '4-parts'] as const).map((plan) => (
+                    <button
+                      key={plan}
+                      onClick={() => setPaymentPlan(plan)}
+                      className={`p-4 rounded-2xl border text-left transition-all ${
+                        paymentPlan === plan 
+                          ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-sky-500/10 border-sky-500 shadow-[0_0_15px_rgba(14,165,233,0.1)]')
+                          : 'bg-slate-900/50 border-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className={`text-xs font-black uppercase tracking-wider ${paymentPlan === plan ? (isMainnet ? 'text-emerald-400' : 'text-sky-400') : 'text-white'}`}>
+                            {plan === 'full' ? 'Single Payment' : plan === '2-parts' ? '2 Installments' : '4 Installments'}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-medium">
+                            {plan === 'full' ? 'Pay entire premium now' : `Pay in ${plan.split('-')[0]} monthly parts`}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-black text-white">
+                            {plan === 'full' ? finalPremium : plan === '2-parts' ? Math.round(finalPremium / 2) : Math.round(finalPremium / 4)} XLM
+                          </div>
+                          <div className="text-[9px] text-slate-500 font-bold uppercase">per deposit</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Add Subsidy Toggle */}
-            <div className="max-w-md mx-auto mb-8 p-6 rounded-3xl bg-rose-500/5 border border-rose-500/10 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div className="text-left">
-                  <h4 className="text-sm font-black text-white uppercase italic">Financial Assistance?</h4>
-                  <p className="text-[10px] text-slate-500 font-medium">Request sponsorship for your premium deposit.</p>
-                </div>
-                <button 
-                  onClick={() => setNeedsSubsidy(!needsSubsidy)}
-                  className={`w-12 h-6 rounded-full relative transition-all ${needsSubsidy ? 'bg-rose-500' : 'bg-slate-700'}`}
-                >
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${needsSubsidy ? 'right-1' : 'left-1'}`} />
-                </button>
+            {/* Marketplace Option */}
+            <div className="max-w-2xl mx-auto mb-10 p-6 rounded-3xl bg-rose-500/5 border border-rose-500/10 flex flex-col md:flex-row items-center gap-6">
+              <div className="flex-1 text-center md:text-left">
+                <h4 className="text-sm font-black text-white uppercase italic mb-1 flex items-center justify-center md:justify-start gap-2">
+                  <Heart size={16} className="text-rose-500" />
+                  Cannot afford the deposit?
+                </h4>
+                <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                  List your farm on the **Subsidy Marketplace**. Global donors and NGOs can sponsor your premium. Your protection activates once a sponsor pays the first installment.
+                </p>
               </div>
-              {needsSubsidy && (
-                <div className="flex gap-3 items-start animate-in fade-in slide-in-from-top-1">
-                  <Heart size={14} className="text-rose-400 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-rose-400 font-bold leading-relaxed text-left">
-                    Your farm will be listed in the **Subsidy Marketplace**. Global sponsors can pay your premium to activate your protection.
-                  </p>
-                </div>
-              )}
+              <button 
+                onClick={() => setNeedsSubsidy(!needsSubsidy)}
+                className={`w-14 h-7 rounded-full relative transition-all flex-shrink-0 ${needsSubsidy ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)]' : 'bg-slate-700'}`}
+              >
+                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${needsSubsidy ? 'right-1' : 'left-1'}`} />
+              </button>
             </div>
 
-            <button 
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className={`w-full py-5 rounded-2xl font-black text-xl transition-all transform tracking-tight uppercase italic ${
-                isSubmitting 
-                  ? 'bg-slate-700 cursor-not-allowed' 
-                  : (isMainnet 
-                      ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_20px_50px_rgba(16,185,129,0.3)] hover:scale-[1.02]' 
-                      : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_20px_50px_rgba(14,165,233,0.3)] hover:scale-[1.02]')
-              }`}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center justify-center gap-3">
-                  <Loader2 className="animate-spin" size={24} />
-                  {needsSubsidy ? 'Posting to Marketplace...' : 'Anchoring to Stellar...'}
-                </div>
-              ) : (
-                needsSubsidy ? "List on Subsidy Marketplace" : "Enter Resilience Dashboard"
-              )}
-            </button>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setStep(2)}
+                className="px-8 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black hover:bg-white/10 transition-all"
+              >
+                <ArrowLeft size={24} />
+              </button>
+              <button 
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className={`flex-1 py-5 rounded-2xl font-black text-xl transition-all transform tracking-tight uppercase italic ${
+                  isSubmitting 
+                    ? 'bg-slate-700 cursor-not-allowed' 
+                    : (isMainnet 
+                        ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_20px_50px_rgba(16,185,129,0.3)] hover:scale-[1.01]' 
+                        : 'bg-sky-500 hover:bg-sky-400 text-white shadow-[0_20px_50px_rgba(14,165,233,0.3)] hover:scale-[1.01]')
+                }`}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <Loader2 className="animate-spin" size={24} />
+                    {needsSubsidy ? 'Listing...' : 'Processing Deposit...'}
+                  </div>
+                ) : (
+                  needsSubsidy ? "List on Marketplace" : `Pay ${installmentAmount.toLocaleString()} XLM & Activate`
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>

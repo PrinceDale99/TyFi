@@ -1,11 +1,13 @@
 import React from 'react';
-import { X, Shield, Activity, ChevronRight } from 'lucide-react';
-import { isConnected, getAddress, setAllowed } from "@stellar/freighter-api";
+import { X, Shield, Activity, ChevronRight, Smartphone, Globe } from 'lucide-react';
+import { FREIGHTER_ID } from '@creit.tech/stellar-wallets-kit/modules/freighter';
+import { ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
+import { WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
 
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConnect: (address: string) => void;
+  onConnect: (walletId: string) => void;
   network?: 'testnet' | 'mainnet';
 }
 
@@ -14,35 +16,13 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
 
   const isMainnet = network === 'mainnet';
 
-  const handleFreighterConnect = async () => {
+  const handleConnect = async (walletId: string) => {
     try {
-      const connected = await isConnected();
-      if (!connected) {
-        window.open("https://chromewebstore.google.com/detail/freighter/kaojnmgeecghoocplkaeoojagghgocho", "_blank");
-        return;
-      }
-
-      const allowed = await setAllowed();
-      
-      if (!allowed) {
-        return;
-      }
-
-      const { address, error } = await getAddress();
-      
-      if (address) {
-        onConnect(address);
-        onClose();
-      } else {
-        console.error("Freighter error:", error);
-        if (error && error.includes("User declined")) {
-          return;
-        }
-        alert("Failed to get address from Freighter. Please make sure you are logged in.");
-      }
+      onConnect(walletId);
+      onClose();
     } catch (err) {
       console.error("Connection error:", err);
-      alert("An error occurred while connecting to Freighter.");
+      alert("An error occurred while connecting to the wallet.");
     }
   };
 
@@ -86,7 +66,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
 
           <div className="w-full flex flex-col gap-3">
             <button
-              onClick={handleFreighterConnect}
+              onClick={() => handleConnect(FREIGHTER_ID)}
               className={`w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group ${
                 isMainnet ? 'hover:border-emerald-500/50' : 'hover:border-sky-500/50'
               }`}
@@ -112,6 +92,46 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
             </button>
 
+            <button
+              onClick={() => handleConnect(WALLET_CONNECT_ID)}
+              className={`w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group ${
+                isMainnet ? 'hover:border-emerald-500/50' : 'hover:border-sky-500/50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400">
+                  <Smartphone size={20} />
+                </div>
+                <div className="text-left">
+                  <div className={`font-bold text-white transition-colors ${
+                    isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'
+                  }`}>WalletConnect (Mobile)</div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase">LOBSTR, xBull, etc.</div>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition-colors" />
+            </button>
+
+            <button
+              onClick={() => handleConnect(ALBEDO_ID)}
+              className={`w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group ${
+                isMainnet ? 'hover:border-emerald-500/50' : 'hover:border-sky-500/50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-sky-500/20 rounded-lg flex items-center justify-center text-sky-400">
+                  <Globe size={20} />
+                </div>
+                <div className="text-left">
+                  <div className={`font-bold text-white transition-colors ${
+                    isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'
+                  }`}>Albedo</div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase">Web Wallet</div>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition-colors" />
+            </button>
+
             {!isMainnet && (
               <button
                 onClick={() => {
@@ -133,20 +153,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
               </button>
             )}
 
-            <button
-              disabled
-              className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 opacity-50 cursor-not-allowed"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center">
-                  <Shield size={20} className="text-slate-500" />
-                </div>
-                <div className="text-left">
-                  <div className="font-bold text-slate-500">Other Wallets</div>
-                  <div className="text-[10px] text-slate-600 font-bold uppercase">Coming Soon</div>
-                </div>
-              </div>
-            </button>
+
           </div>
 
           <p className="text-[10px] text-slate-500 leading-relaxed">

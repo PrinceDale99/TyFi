@@ -43,7 +43,7 @@ import AiCopilot from './components/AiCopilot';
 import LedgerStream from './components/LedgerStream';
 import { fetchWeather } from './services/weatherService';
 import type { WeatherData, FarmData, Claim } from "./types";
-import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain } from './lib/stellar';
+import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance } from './lib/stellar';
 import { calculateCombinedDamage } from './utils/DamageCalculator';
 import { useXlmToPhp } from './hooks/useXlmToPhp';
 import { WeatherChart } from './components/WeatherChart';
@@ -99,6 +99,14 @@ function App() {
   const [isWalletConnected, setIsWalletConnected] = useState(() => {
     return localStorage.getItem('typhoon_vault_isWalletConnected') === 'true';
   });
+  const [hasAgreedToLegal, setHasAgreedToLegal] = useState(() => {
+    const initialNetwork = localStorage.getItem('typhoon_vault_network') || 'testnet';
+    const initialAddress = localStorage.getItem('typhoon_vault_walletAddress') || '';
+    if (initialAddress) {
+      return localStorage.getItem(`typhoon_vault_legal_consent_${initialNetwork}_${initialAddress}`) === 'true';
+    }
+    return false;
+  });
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [walletAddress, setWalletAddress] = useState(() => {
     return localStorage.getItem('typhoon_vault_walletAddress') || '';
@@ -148,6 +156,24 @@ function App() {
 
   // 🚪 Signout Confirmation State
   const [isSignoutConfirmOpen, setIsSignoutConfirmOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // ─── Offline-First Intent Recovery ──────────────────────────────────────────
+  useEffect(() => {
+    const handleOnline = () => {
+      const pendingClaims = JSON.parse(localStorage.getItem('vault_pending_claims') || '[]');
+      const pendingActions = JSON.parse(localStorage.getItem('vault_pending_actions') || '[]');
+      
+      if (pendingClaims.length > 0 || pendingActions.length > 0) {
+        addNotification('Connection restored! You have pending items to finalize.', 'success');
+        // We don't automatically process as they require wallet signatures
+        // but we ensure the UI is ready to prompt the user
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
 
   // 👤 Profile Dashboard State
   const [isProfileDashboardOpen, setIsProfileDashboardOpen] = useState(false);
@@ -251,6 +277,7 @@ function App() {
   const [fundingAmount, setFundingAmount] = useState(100);
   const [contractTvl, setContractTvl] = useState<number>(0);
   const [contractSubsidy, setContractSubsidy] = useState<number>(0);
+  const [userLpBalance, setUserLpBalance] = useState<number>(0);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -260,6 +287,11 @@ function App() {
         const subsidy = await getContractSubsidy(network);
         setContractTvl(tvl);
         setContractSubsidy(subsidy);
+
+        if (walletAddress) {
+          const lpBal = await getUserLpBalance(walletAddress, network);
+          setUserLpBalance(lpBal);
+        }
       } catch (e) {
         console.error("Failed to fetch contract stats", e);
       }
@@ -267,7 +299,7 @@ function App() {
     fetchStats();
     const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
-  }, [network]);
+  }, [network, walletAddress]);
 
   const [testnetTvl, setTestnetTvl] = useState(1500000);
   const [subsidyBalance, setSubsidyBalance] = useState(750000);
@@ -277,10 +309,6 @@ function App() {
 
   const currentTvl = contractTvl;
   const currentSubsidy = contractSubsidy;
-  const [lpDeposit, setLpDeposit] = useState(() => {
-    const saved = localStorage.getItem('typhoon_vault_lpDeposit');
-    return saved ? parseFloat(saved) : 0;
-  });
 
   // Open Policy modal state
   const [openPolicy, setOpenPolicy] = useState<'tos' | 'privacy' | 'cookie' | 'agreement' | null>(null);
@@ -316,8 +344,7 @@ function App() {
   useEffect(() => {
     localStorage.setItem('typhoon_vault_testnetTvl', String(testnetTvl));
     localStorage.setItem('typhoon_vault_subsidyBalance', String(subsidyBalance));
-    localStorage.setItem('typhoon_vault_lpDeposit', String(lpDeposit));
-  }, [testnetTvl, subsidyBalance, lpDeposit]);
+  }, [testnetTvl, subsidyBalance]);
 
   // Persist connection details globally
   useEffect(() => {
@@ -503,14 +530,8 @@ function App() {
       
       if (type === 'lp') {
         if (stakingMode === 'withdraw') {
-          if (lpDeposit < fundingAmount) {
-            addNotification('Insufficient personal sandbox staked balance to withdraw', 'warning');
-            return;
-          }
-          setLpDeposit(prev => Math.max(0, prev - fundingAmount));
           addNotification(`Success! Withdrew ${fundingAmount.toLocaleString()} XLM from Reinsurance Pool. LP shares burned.`, 'success');
         } else {
-          setLpDeposit(prev => prev + fundingAmount);
           addNotification(`Success! Contributed ${fundingAmount.toLocaleString()} XLM to Reinsurance Pool. LP shares issued.`, 'success');
         }
       } else {
@@ -547,9 +568,14 @@ function App() {
   }, [notificationHistory, isWalletConnected, walletAddress, network]);
 
 
-  const handleConnectWallet = async () => {
+  const handleConnectWallet = async (walletId: string) => {
     try {
-      const address = await connectWallet();
+      if (walletId.startsWith("DEMO_TESTNET")) {
+        // Special case for demo mode bypass
+        handleWalletConnected(walletId);
+        return;
+      }
+      const address = await connectWallet(network, walletId);
       handleWalletConnected(address);
     } catch (error: any) {
       addNotification(error.message || 'Failed to connect wallet', 'warning');
@@ -560,12 +586,18 @@ function App() {
     setWalletAddress(address);
     setIsWalletConnected(true);
     
+    // Check both standalone key and the combined data object for consent
+    let consent = localStorage.getItem(`typhoon_vault_legal_consent_${network}_${address}`) === 'true';
+
     const savedData = localStorage.getItem(`typhoon_vault_${network}_${address}`);
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
         setFarms(parsed.farms || []);
         setIsVerified(parsed.isVerified || false);
+        if (parsed.hasAgreedToLegal !== undefined) {
+          consent = parsed.hasAgreedToLegal;
+        }
         if (parsed.claims) {
           setClaims(parsed.claims);
         }
@@ -577,6 +609,7 @@ function App() {
       }
     }
     
+    setHasAgreedToLegal(consent);
     addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
   };
 
@@ -587,12 +620,17 @@ function App() {
     setIsSimulatingWeather(false);
 
     if (isWalletConnected && walletAddress) {
+      let consent = localStorage.getItem(`typhoon_vault_legal_consent_${network}_${walletAddress}`) === 'true';
+
       const savedData = localStorage.getItem(`typhoon_vault_${network}_${walletAddress}`);
       if (savedData) {
         try {
           const parsed = JSON.parse(savedData);
           setFarms(parsed.farms || []);
           setIsVerified(parsed.isVerified || false);
+          if (parsed.hasAgreedToLegal !== undefined) {
+            consent = parsed.hasAgreedToLegal;
+          }
           setClaims(parsed.claims || (network === 'mainnet' ? [] : [
             { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
           ]));
@@ -609,9 +647,11 @@ function App() {
           { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
         ]);
       }
+      setHasAgreedToLegal(consent);
     } else {
       setFarms([]);
       setIsVerified(false);
+      setHasAgreedToLegal(false);
       setClaims(network === 'mainnet' ? [] : [
         { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
       ]);
@@ -628,6 +668,7 @@ function App() {
           const parsed = JSON.parse(savedData);
           if (JSON.stringify(parsed.farms) === JSON.stringify(farms) &&
               parsed.isVerified === isVerified &&
+              parsed.hasAgreedToLegal === hasAgreedToLegal &&
               JSON.stringify(parsed.claims) === JSON.stringify(claims) &&
               JSON.stringify(parsed.profileForm) === JSON.stringify(profileForm)) {
             shouldSave = false;
@@ -635,11 +676,11 @@ function App() {
         } catch (e) {}
       }
       if (shouldSave) {
-        const data = { farms, isVerified, claims, profileForm };
+        const data = { farms, isVerified, claims, profileForm, hasAgreedToLegal };
         localStorage.setItem(`typhoon_vault_${network}_${walletAddress}`, JSON.stringify(data));
       }
     }
-  }, [farms, isVerified, claims, network, walletAddress, profileForm]);
+  }, [farms, isVerified, claims, network, walletAddress, profileForm, hasAgreedToLegal]);
 
   // Sync profile form inputs with the first farm's details (if they exist)
   useEffect(() => {
@@ -764,6 +805,7 @@ function App() {
     setWalletAddress('');
     setIsWalletConnected(false);
     setIsVerified(false);
+    setHasAgreedToLegal(false);
     setFarms([]);
     setClaims(network === 'mainnet' ? [] : [
       { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
@@ -958,9 +1000,168 @@ function App() {
         <WalletModal 
           isOpen={isWalletModalOpen} 
           onClose={() => setIsWalletModalOpen(false)}
-          onConnect={handleWalletConnected}
+          onConnect={handleConnectWallet}
           network={network}
         />
+      </div>
+    );
+  }
+
+  if (!hasAgreedToLegal) {
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
+          <div className="p-8 border-b border-white/5 bg-white/5">
+            <div className="flex items-center gap-4 mb-2">
+              <div className={`p-2.5 rounded-xl ${isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'}`}>
+                <ShieldCheck size={28} />
+              </div>
+              <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">Protocol Onboarding</h2>
+            </div>
+            <p className="text-slate-400 text-sm font-medium">Please review and accept our legal policies to proceed with TyFi.</p>
+          </div>
+
+          <div className="p-8 overflow-y-auto space-y-10 text-[13px] text-slate-300 leading-relaxed custom-scrollbar">
+            {/* 1. COMPREHENSIVE TERMS OF SERVICE */}
+            <section className="space-y-5">
+              <h3 className="text-white font-black uppercase tracking-widest text-xs border-l-4 border-sky-500 pl-4 bg-sky-500/5 py-1">1. Master Terms of Service & Platform Governance</h3>
+              <p className="font-bold text-slate-200">PLEASE READ THESE TERMS CAREFULLY. BY ACCESSING THE TYFI INTERFACE AND CONNECTING A DISTRIBUTED LEDGER TECHNOLOGY (DLT) WALLET, YOU UNCONDITIONALLY ACCEPT AND AGREE TO BE BOUND BY THESE MASTER TERMS.</p>
+              
+              <div className="pl-4 space-y-4 border-l border-white/10">
+                <div className="space-y-2">
+                  <h4 className="font-black text-white uppercase text-[11px] tracking-widest">1.1 Distributed Ledger Environment (Mainnet vs. Testnet)</h4>
+                  <p className="text-xs text-slate-400">The Platform operates across two distinct cryptographic environments. The "Testnet Sandbox" is a simulated environment utilizing non-value assets (Test-XLM) for educational and protocol-testing purposes; actions herein do not constitute financial obligations. Conversely, the "Mainnet" is the production Stellar Public Ledger. Transactions executed on Mainnet involve Real-World Assets (RWA) and constitute legally binding, immutable entries on a global decentralized database.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-black text-white uppercase text-[11px] tracking-widest">1.2 Decentralized Autonomous Underwriting</h4>
+                  <p className="text-xs text-slate-400">You acknowledge that TyFi is a non-custodial decentralized application (dApp). Underwriting logic, premium distribution, and payout mechanisms are governed exclusively by Soroban Smart Contracts (the "Code"). There is no central administrative authority, board of directors, or manual overrides. The "Code is Law"; the protocol operates exactly as programmed, regardless of external circumstances or perceived inequities.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-black text-white uppercase text-[11px] tracking-widest">1.3 Limitation of Liability & Disclaimer of Warranties</h4>
+                  <p className="text-xs text-slate-400">THE PLATFORM IS PROVIDED ON AN "AS-IS" AND "AS-AVAILABLE" BASIS. TO THE MAXIMUM EXTENT PERMITTED BY LAW, TYFI DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED. WE SHALL NOT BE LIABLE FOR ANY DAMAGES ARISING FROM SMART CONTRACT VULNERABILITIES, NETWORK CONGESTION, WALLET INCOMPATIBILITY, OR LOSS OF PRIVATE KEYS. YOU ASSUME ALL RISKS ASSOCIATED WITH CRYPTOGRAPHIC TRANSACTIONS.</p>
+                </div>
+              </div>
+            </section>
+
+            {/* 2. PARAMETRIC INSURANCE AGREEMENT */}
+            <section className="space-y-5">
+              <h3 className="text-white font-black uppercase tracking-widest text-xs border-l-4 border-emerald-500 pl-4 bg-emerald-500/5 py-1">2. Parametric Risk-Pooling & Disbursal Agreement</h3>
+              <p className="italic text-slate-400">This section governs the specific parametric triggers, premium structures, and the automated settlement process between the Enrolled Farmer and the Underwriting Vault.</p>
+              
+              <div className="p-5 bg-white/5 border border-white/5 rounded-3xl space-y-6">
+                <div className="space-y-3">
+                  <h4 className="font-black text-white uppercase text-[11px] tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    2.1 The "Immutable Oracle" Consensus
+                  </h4>
+                  <p className="text-xs leading-relaxed text-slate-400">
+                    Settlement is determined via a multi-source "Oracle Consensus" model. This protocol aggregates geospatial and meteorological data from Open-Meteo, GDACS, and NASA-affiliated microwave precipitation radiometry. By enrolling, you irrevocably waive the right to contest these measurements. No manual damage assessment, adjuster field visit, or local testimony shall be admissible in modifying the contract's autonomous output.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-slate-950/50 border border-white/5 space-y-2">
+                    <span className="font-black text-white text-[10px] uppercase tracking-tighter text-sky-400">Trigger Alpha: Wind Velocity</span>
+                    <p className="text-[11px] text-slate-500 leading-tight">
+                      Requires sustained 3-second gusts &ge; 150 km/h (Mainnet) or sliding scale &ge; 100 km/h (Testnet). Measured at the centroid of the registered farm polygon.
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-950/50 border border-white/5 space-y-2">
+                    <span className="font-black text-white text-[10px] uppercase tracking-tighter text-emerald-400">Trigger Beta: Precipitation</span>
+                    <p className="text-[11px] text-slate-500 leading-tight">
+                      Requires cumulative liquid rainfall &ge; 200 mm within a rolling 24-hour window. Validated by at least two (2) independent satellite-derived data points.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-black text-white uppercase text-[11px] tracking-widest flex items-center gap-2 text-rose-400">
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    2.2 Premium Forfeiture & No-Refund Policy
+                  </h4>
+                  <p className="text-xs leading-relaxed text-slate-400">
+                    Once a premium deposit is transmitted to the Soroban contract, it is immediately allocated to the Reinsurance Vault. These funds are locked for the duration of the defined "Season." There are no cancellations, partial refunds, or withdrawals permitted once the policy has been active for more than 48 hours.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* 3. PRIVACY, DATA MINIMIZATION & COOKIES */}
+            <section className="space-y-5">
+              <h3 className="text-white font-black uppercase tracking-widest text-xs border-l-4 border-indigo-500 pl-4 bg-indigo-500/5 py-1">3. Privacy Architecture & Data Sovereignty Policy</h3>
+              <p className="text-slate-400">TyFi is engineered for maximum user sovereignty. We do not maintain a "User Account" in the traditional sense; your Identity is your Public Key.</p>
+              
+              <div className="pl-4 space-y-4 border-l border-white/10">
+                <div className="space-y-2">
+                  <h4 className="font-black text-white uppercase text-[11px] tracking-widest">3.1 Immutable Geospatial Publication</h4>
+                  <p className="text-xs text-slate-400">To enable parametric monitoring, your farm's coordinate bounds must be published to the Stellar Ledger. This data is **public, permanent, and immutable**. By registering, you understand that your farm location is viewable by any entity with access to a Stellar explorer.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-black text-white uppercase text-[11px] tracking-widest">3.2 Local-Only Identity Storage</h4>
+                  <p className="text-xs text-slate-400">Sensitive credentials (RSBSA numbers, phone numbers, and land document filenames) are stored exclusively in your browser's "LocalStorage." Our backend servers never receive, store, or process this data. If you clear your browser cache or change devices without a backup, this information will be permanently lost.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-black text-white uppercase text-[11px] tracking-widest">3.3 Zero-Cookie Tracking Protocol</h4>
+                  <p className="text-xs text-slate-400">The Platform does not utilize HTTP Cookies, tracking pixels, or third-party behavioral analytics. Your interaction with this interface is strictly private between your browser and the decentralized RPC nodes of the Stellar Network.</p>
+                </div>
+              </div>
+            </section>
+
+            {/* 4. GOVERNING LAW & DISPUTE RESOLUTION */}
+            <section className="space-y-5">
+              <h3 className="text-white font-black uppercase tracking-widest text-xs border-l-4 border-rose-500 pl-4 bg-rose-500/5 py-1">4. Governing Law & Jurisdictional Disclosures</h3>
+              <div className="pl-4 space-y-4 border-l border-white/10">
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  These Terms and any non-contractual obligations arising out of or in connection with them shall be governed by and construed in accordance with the laws of the **Republic of the Philippines** for agricultural matters, and the **Laws of Singapore** for matters pertaining to cryptographic assets and decentralized protocols. Any dispute, controversy, or claim arising out of or relating to this agreement shall be referred to and finally resolved by arbitration administered by the Singapore International Arbitration Centre (SIAC).
+                </p>
+              </div>
+            </section>
+
+            {/* 5. PROHIBITED JURISDICTIONS & SANCTIONS */}
+            <section className="space-y-5">
+              <h3 className="text-white font-black uppercase tracking-widest text-xs border-l-4 border-amber-500 pl-4 bg-amber-500/5 py-1">5. Prohibited Jurisdictions & Global Sanctions Compliance</h3>
+              <div className="pl-4 space-y-4 border-l border-white/10 text-xs text-slate-400">
+                <p>By accepting these terms, you represent and warrant that you are not a citizen, resident, or organized under the laws of any jurisdiction that is subject to comprehensive sanctions by the United Nations, the United States Office of Foreign Assets Control (OFAC), or the European Union. Furthermore, you represent that you are not on the Specially Designated Nationals (SDN) list or any equivalent restricted party list.</p>
+              </div>
+            </section>
+
+            {/* 6. INTELLECTUAL PROPERTY */}
+            <section className="space-y-5">
+              <h3 className="text-white font-black uppercase tracking-widest text-xs border-l-4 border-teal-500 pl-4 bg-teal-500/5 py-1">6. Intellectual Property & Interface Licensing</h3>
+              <div className="pl-4 space-y-4 border-l border-white/10 text-xs text-slate-400">
+                <p>The TyFi Interface is a front-end portal to the underlying decentralized smart contracts. While the smart contracts are deployed under open-source licenses (MIT/Apache 2.0), the visual design, branding, and proprietary "TyFi" trademark remain the exclusive property of the Protocol Founders. You are granted a limited, revocable, non-exclusive license to use the interface purely for the purpose of interacting with the Soroban protocol.</p>
+              </div>
+            </section>
+            
+            <div className="p-5 rounded-3xl bg-sky-500/5 border border-sky-500/10 flex items-start gap-4">
+              <Info size={22} className="text-sky-400 mt-1 shrink-0" />
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                <span className="text-white font-black uppercase tracking-tighter">Attestation:</span> By clicking the confirmation button below, you represent that you have the legal capacity to enter into this agreement, that you understand the high-risk nature of decentralized finance, and that you have independently verified the parametric trigger conditions as defined in the Soroban smart contract source code.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-8 border-t border-white/5 bg-white/5">
+            <button
+              onClick={() => {
+                localStorage.setItem(`typhoon_vault_legal_consent_${network}_${walletAddress}`, 'true');
+                setHasAgreedToLegal(true);
+                addNotification('Legal policies accepted. Welcome to TyFi!', 'success');
+              }}
+              className={`w-full py-4 rounded-2xl font-black text-base transition-all transform hover:scale-[1.01] uppercase tracking-wider ${
+                isMainnet 
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/20' 
+                  : 'bg-sky-500 hover:bg-sky-400 text-white shadow-lg shadow-sky-500/20'
+              }`}
+            >
+              I Agree & Accept All Policies
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -985,81 +1186,55 @@ function App() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 -ml-2 text-slate-400 hover:text-white md:hidden"
+            >
+              <Menu size={24} />
+            </button>
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-colors duration-700 ${
               isMainnet ? 'bg-emerald-500 shadow-emerald-500/20' : isTestnet ? 'bg-sky-500 shadow-sky-500/20' : 'bg-indigo-500 shadow-indigo-500/20'
             }`}>
               <img src="/logo.svg" alt="TyFi Logo" className="w-7 h-7" />
             </div>
-            <div>
+            <div className="hidden xs:block">
               <div className="text-sm font-black text-white tracking-tighter uppercase italic">TyFi</div>
-              <div className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-700 ${
+              <div className={`text-[9px] font-bold uppercase tracking-widest transition-colors duration-700 ${
                 isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400'
               }`}>
-                {isMainnet ? 'Mainnet' : isTestnet ? 'Testnet' : 'Demo Sandbox'} Active
+                {isMainnet ? 'Mainnet' : 'Testnet'}
               </div>
             </div>
           </div>
 
           <div className="hidden md:flex items-center gap-6">
-            <button
-              onClick={() => setActiveTab('monitor')}
-              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'monitor' ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
-            >
-              Monitor
-            </button>
-            <button
-              onClick={() => setActiveTab('calc')}
-              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'calc' ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
-            >
-              Calculator
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'history' ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
-            >
-              Claims
-            </button>
-            <button
-              onClick={() => setActiveTab('vault')}
-              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'vault' ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
-            >
-              Vault
-            </button>
-            <button
-              onClick={() => setActiveTab('marketplace')}
-              className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'marketplace' ? 'text-rose-400' : 'text-slate-500 hover:text-white'}`}
-            >
-              Marketplace
-            </button>
+            {(['monitor', 'calc', 'history', 'vault', 'marketplace'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === tab ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Sleek Pill Network Toggle */}
-            <div className="flex items-center bg-white/5 p-1 rounded-full border border-white/5 gap-1 select-none">
-
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Sleek Pill Network Toggle - Desktop only or compact on mobile */}
+            <div className="hidden sm:flex items-center bg-white/5 p-1 rounded-full border border-white/5 gap-1 select-none">
               <button
-                onClick={() => {
-                  setNetwork('testnet');
-                  addNotification('Switched to Stellar Testnet (v2.4 Sandbox)', 'info');
-                }}
+                onClick={() => setNetwork('testnet')}
                 className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all duration-300 ${
-                  network === 'testnet'
-                    ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20'
-                    : 'text-slate-400 hover:text-white'
+                  network === 'testnet' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Testnet
               </button>
               <button
-                onClick={() => {
-                  setNetwork('mainnet');
-                  addNotification('Switched to Stellar Mainnet (Production Ready)', 'success');
-                }}
+                onClick={() => setNetwork('mainnet')}
                 className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all duration-300 ${
-                  network === 'mainnet'
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                    : 'text-slate-400 hover:text-white'
+                  network === 'mainnet' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Mainnet
@@ -1143,35 +1318,63 @@ function App() {
               )}
             </div>
 
-            <div className="h-8 w-[1px] bg-white/5 mx-2" />
             <div className={`flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border transition-all cursor-pointer group hover:bg-white/10 ${
               isProfileDashboardOpen 
                 ? (isMainnet ? 'border-emerald-500/30 ring-1 ring-emerald-500/20' : 'border-sky-500/30 ring-1 ring-sky-500/20')
                 : 'border-white/5'
             }`} onClick={() => setIsProfileDashboardOpen(true)}>
               <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-700 ${
-                isMainnet ? 'bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500/30' : 'bg-sky-500/20 text-sky-400 group-hover:bg-sky-500/30'
+                isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'
               }`}>
                 <Wallet size={14} />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-mono text-slate-300 group-hover:text-white transition-colors">{formatAddress(walletAddress)}</span>
-                <span className="text-[8px] text-slate-500 font-black uppercase tracking-widest leading-none">Farmer Profile</span>
-              </div>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsSignoutConfirmOpen(true);
-                }}
-                className="ml-1 p-1 text-slate-600 hover:text-rose-400 transition-colors cursor-pointer"
-                title="Disconnect Wallet"
-              >
-                <Lock size={12} />
-              </button>
+              <span className="hidden xs:block text-[10px] font-mono text-slate-300">{formatAddress(walletAddress)}</span>
             </div>
           </div>
         </div>
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-2xl animate-in fade-in duration-300 md:hidden">
+          <div className="flex flex-col h-full p-6">
+            <div className="flex items-center justify-between mb-12">
+              <div className="flex items-center gap-3">
+                <img src="/logo.svg" alt="Logo" className="w-8 h-8" />
+                <span className="text-xl font-black text-white italic tracking-tighter">TyFi</span>
+              </div>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-white">
+                <X size={32} />
+              </button>
+            </div>
+            
+            <div className="flex flex-col gap-8">
+              {(['monitor', 'calc', 'history', 'vault', 'marketplace'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => { setActiveTab(tab); setIsMobileMenuOpen(false); }}
+                  className={`text-2xl font-black uppercase tracking-tighter text-left transition-all ${
+                    activeTab === tab ? (isMainnet ? 'text-emerald-400' : 'text-sky-400') : 'text-slate-600'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-auto pt-12 border-t border-white/10 space-y-8">
+              <div className="space-y-4">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Network Environment</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setNetwork('testnet')} className={`py-3 rounded-xl text-xs font-black uppercase border ${network === 'testnet' ? 'bg-sky-500 border-sky-400 text-white' : 'border-white/10 text-slate-500'}`}>Testnet</button>
+                  <button onClick={() => setNetwork('mainnet')} className={`py-3 rounded-xl text-xs font-black uppercase border ${network === 'mainnet' ? 'bg-emerald-500 border-emerald-400 text-white' : 'border-white/10 text-slate-500'}`}>Mainnet</button>
+                </div>
+              </div>
+              <button onClick={handleDisconnect} className="w-full py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 font-black uppercase tracking-widest text-sm">Disconnect Wallet</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="pt-24 pb-12 px-4 max-w-7xl mx-auto">
         <div className="container mx-auto">
@@ -1196,22 +1399,22 @@ function App() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 text-xs font-bold bg-white/5 p-1 rounded-lg border border-white/5">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:flex-wrap md:overflow-visible">
                   <button
                     onClick={() => setActiveTab('monitor')}
-                    className={`px-4 py-2 rounded-md transition-all ${activeTab === 'monitor' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'text-slate-400 hover:text-white'}`}
+                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'monitor' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
                   >
                     {t('nav.liveMonitor')}
                   </button>
                   <button
                     onClick={() => setActiveTab('history')}
-                    className={`px-4 py-2 rounded-md transition-all ${activeTab === 'history' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'text-slate-400 hover:text-white'}`}
+                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
                   >
                     {t('nav.claims')}
                   </button>
                   <button
                     onClick={() => setActiveTab('vault')}
-                    className={`px-4 py-2 rounded-md transition-all ${activeTab === 'vault' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'text-slate-400 hover:text-white'}`}
+                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'vault' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
                   >
                     {t('nav.vault')}
                   </button>
@@ -1335,7 +1538,7 @@ function App() {
                           { name: 'Luzon Agriculture Fund', share: '20%', amount: '480,000 XLM' },
                           { name: 'Asian Development Bank', share: '18%', amount: '432,000 XLM' },
                           { name: 'Protocol Reserves', share: '10%', amount: '240,000 XLM' },
-                          ...(lpDeposit > 0 ? [{ name: 'Your Sandbox Liquidity', share: `${((lpDeposit / currentTvl) * 100).toFixed(1)}%`, amount: `${lpDeposit.toLocaleString()} XLM` }] : [])
+                          ...(userLpBalance > 0 ? [{ name: 'Your Reinsurance Stake', share: `${((userLpBalance / currentTvl) * 100).toFixed(1)}%`, amount: `${userLpBalance.toLocaleString()} XLM` }] : [])
                         ].map((lp, i) => (
                           <div key={i} className="flex items-center justify-between p-3 border-b border-white/5 last:border-0 hover:bg-white/[0.01] rounded-lg transition-colors">
                             <div className="flex items-center gap-3">
@@ -1362,31 +1565,32 @@ function App() {
                     </div>
                   )}
 
-                  {lpDeposit > 0 && (
+                  {userLpBalance > 0 && (
                      <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
                         <h3 className="font-black text-white mb-6 uppercase tracking-wider text-sm">Your Reinsurance Positions</h3>
                         <div className="flex items-center justify-between p-3 border border-emerald-500/20 bg-emerald-500/5 rounded-lg">
                            <div className="flex items-center gap-3">
                              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                             <div className="text-sm font-bold text-slate-300">Your Reinsurance Deposit</div>
+                             <div className="text-sm font-bold text-slate-300">Verified On-Chain Deposit</div>
                            </div>
                            <div className="flex gap-8">
                              <div className="text-right">
-                               <div className="text-[10px] text-slate-500 uppercase font-black">Underwritten Amount</div>
-                               <div className="text-xs font-bold text-white">{lpDeposit.toLocaleString()} XLM</div>
+                               <div className="text-[10px] text-slate-500 uppercase font-black">Current Value</div>
+                               <div className="text-xs font-bold text-white">{userLpBalance.toLocaleString()} XLM</div>
                              </div>
                              <div className="text-right">
-                               <div className="text-[10px] text-slate-500 uppercase font-black">Share</div>
-                               <div className="text-xs font-bold text-white">{currentTvl > 0 ? ((lpDeposit / currentTvl) * 100).toFixed(1) : '100'}%</div>
+                               <div className="text-[10px] text-slate-500 uppercase font-black">Pool Share</div>
+                               <div className="text-xs font-bold text-white">{currentTvl > 0 ? ((userLpBalance / currentTvl) * 100).toFixed(1) : '100'}%</div>
                              </div>
                              <div className="text-right w-20">
                                <div className="text-[10px] text-slate-500 uppercase font-black">Status</div>
-                               <div className="text-xs font-bold text-emerald-400">Active</div>
+                               <div className="text-xs font-bold text-emerald-400">Yield Bearing</div>
                              </div>
                            </div>
                         </div>
                      </div>
                   )}
+
                   {/* Staking / Provisioning Operations */}
                   <div className="glass-panel border border-white/5 relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
                     <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-sky-500/5 blur-2xl pointer-events-none" />
@@ -1490,16 +1694,16 @@ function App() {
                                       Projected Yield ({projectionPeriod === '1m' ? '1 Month' : projectionPeriod === '6m' ? '6 Months' : '1 Year'})
                                     </div>
                                     <div className="text-sm font-black text-emerald-400 font-mono">
-                                      +{((fundingAmount || lpDeposit) * 0.084 * (projectionPeriod === '1m' ? (1/12) : projectionPeriod === '6m' ? (0.5) : 1)).toFixed(2)} XLM
+                                      +{((fundingAmount || userLpBalance) * 0.084 * (projectionPeriod === '1m' ? (1/12) : projectionPeriod === '6m' ? (0.5) : 1)).toFixed(2)} XLM
                                     </div>
                                     <div className="text-[8px] text-slate-500 font-bold font-mono">
-                                      {formatPhp((fundingAmount || lpDeposit) * 0.084 * (projectionPeriod === '1m' ? (1/12) : projectionPeriod === '6m' ? (0.5) : 1))} PHP
+                                      {formatPhp((fundingAmount || userLpBalance) * 0.084 * (projectionPeriod === '1m' ? (1/12) : projectionPeriod === '6m' ? (0.5) : 1))} PHP
                                     </div>
                                   </div>
                                   <div className="text-right">
                                     <div className="text-[8px] text-slate-500 uppercase font-black">Total Value</div>
                                     <div className="text-xs font-black text-white font-mono">
-                                      {((fundingAmount || lpDeposit) * (1 + 0.084 * (projectionPeriod === '1m' ? (1/12) : projectionPeriod === '6m' ? (0.5) : 1))).toFixed(2)} XLM
+                                      {((fundingAmount || userLpBalance) * (1 + 0.084 * (projectionPeriod === '1m' ? (1/12) : projectionPeriod === '6m' ? (0.5) : 1))).toFixed(2)} XLM
                                     </div>
                                   </div>
                                 </div>
@@ -1586,108 +1790,107 @@ function App() {
             {/* Right Column - Controls */}
             <div className="lg:col-span-4 space-y-6">
               <div className="glass-panel">
-                <h3 className="font-black text-white mb-6">Quick Protocol Access</h3>
-                <div className="grid grid-cols-1 gap-3">
+                <h3 className="font-black text-white mb-6 uppercase tracking-widest text-sm">Quick Protocol Access</h3>
+                <div className="grid grid-cols-2 md:grid-cols-1 gap-3">
                   <button
                     onClick={() => setActiveTab('monitor')}
-                    className={`w-full p-4 rounded-xl border flex items-center justify-between group transition-all ${
+                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
                       activeTab === 'monitor' 
                         ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
                         : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                       <Wind size={20} />
-                      <span className="font-bold">Live Monitor</span>
+                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Monitor</span>
                     </div>
-                    <ArrowUpRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
 
                   <button
                     onClick={() => setActiveTab('history')}
-                    className={`w-full p-4 rounded-xl border flex items-center justify-between group transition-all ${
+                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
                       activeTab === 'history' 
                         ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
                         : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                       <History size={20} />
-                      <span className="font-bold">Claim History</span>
+                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Claims</span>
                     </div>
-                    <ArrowUpRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
 
                   <button
                     onClick={() => setActiveTab('vault')}
-                    className={`w-full p-4 rounded-xl border flex items-center justify-between group transition-all ${
+                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
                       activeTab === 'vault' 
                         ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
                         : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                       <Database size={20} />
-                      <span className="font-bold">Vault Balance</span>
+                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Vault</span>
                     </div>
-                    <ArrowUpRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
 
                   <button
                     onClick={() => setActiveTab('calc')}
-                    className={`w-full p-4 rounded-xl border flex items-center justify-between group transition-all ${
+                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
                       activeTab === 'calc' 
                         ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
                         : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                       <Calculator size={20} />
-                      <span className="font-bold">Smart Calculator</span>
+                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Calculator</span>
                     </div>
-                    <ArrowUpRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
 
                   <button
                     onClick={() => setActiveTab('marketplace')}
-                    className={`w-full p-4 rounded-xl border flex items-center justify-between group transition-all ${
+                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
                       activeTab === 'marketplace' 
                         ? 'bg-rose-500/10 border-rose-500 text-rose-400' 
                         : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                       <Heart size={20} />
-                      <span className="font-bold">Subsidy Marketplace</span>
+                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Market</span>
                     </div>
-                    <ArrowUpRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
-                  {/* Edit Profile Button */}
+                  
                   <button
                     onClick={() => setIsEditProfileModalOpen(true)}
-                    className="w-full p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex items-center justify-between group cursor-pointer"
+                    className="p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex flex-col md:flex-row items-center md:justify-between group cursor-pointer gap-3"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                       <div className={`p-1.5 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
                         <User size={16} />
                       </div>
-                      <span className="font-bold">Edit Profile</span>
+                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Profile</span>
                     </div>
-                    <ArrowUpRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
 
-                  {/* Add Farm Button */}
                   <button
                     onClick={() => setIsAddFarmModalOpen(true)}
-                    className="w-full p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex items-center justify-between group cursor-pointer"
+                    className="p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex flex-col md:flex-row items-center md:justify-between group cursor-pointer gap-3"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                       <div className={`p-1.5 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
                         <Plus size={16} />
                       </div>
-                      <span className="font-bold">Add Farm</span>
+                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight text-white">Add Farm</span>
                     </div>
-                    <ArrowUpRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
                 </div>
               </div>
@@ -1799,6 +2002,7 @@ function App() {
 
               {farms.length > 0 && (
                 <AiCopilot
+                  accountId={walletAddress}
                   weather={weather}
                   farms={farms}
                   claims={claims}

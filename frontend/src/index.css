@@ -91,14 +91,59 @@ h4,
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-left: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1.5rem;
-  padding: 2rem;
+  padding: 1.5rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .glass-panel {
+    padding: 2rem;
+  }
 }
 
 .glass-panel:hover {
   transform: translateY(-2px);
   box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 640px) {
+  h1 { font-size: 1.875rem !important; }
+  h2 { font-size: 1.5rem !important; }
+  h3 { font-size: 1.25rem !important; }
+  .text-4xl { font-size: 2rem !important; }
+  
+  .glass-panel {
+    padding: 1.25rem;
+  }
+}
+
+/* Scrollbar Hide Utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Responsive Grid Fixes */
+@media (max-width: 768px) {
+  .grid-cols-12 {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .lg\:col-span-8, .lg\:col-span-4 {
+    width: 100%;
+  }
+}
+
+/* Button & Link Accessibility on Mobile */
+@media (max-width: 480px) {
+  button, a {
+    min-height: 44px; /* Apple's recommended minimum touch target size */
+  }
 }
 
 .premium-input {
