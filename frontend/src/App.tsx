@@ -151,6 +151,19 @@ function App() {
     }
     return [];
   });
+  const [sponsorInfo, setSponsorInfo] = useState<{name: string, email: string, sponsorType: string, birthDate: string} | null>(() => {
+    const initialNetwork = localStorage.getItem('typhoon_vault_network') || 'testnet';
+    const initialAddress = localStorage.getItem('typhoon_vault_walletAddress') || '';
+    if (initialAddress) {
+      const saved = localStorage.getItem(`typhoon_vault_${initialNetwork}_${initialAddress}`);
+      if (saved) {
+        try {
+          return JSON.parse(saved).sponsorInfo || null;
+        } catch (e) {}
+      }
+    }
+    return null;
+  });
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<{ id: string, text: string, type: 'info' | 'success' | 'warning', timestamp: number }[]>([]);
@@ -1368,13 +1381,15 @@ function App() {
       <SponsorVerification
         walletAddress={walletAddress}
         network={network}
-        onVerificationComplete={() => {
+        onVerificationComplete={(sponsorInfo) => {
           localStorage.setItem(`typhoon_vault_${network}_${walletAddress}`, JSON.stringify({
             userRole: 'sponsor',
             isVerified: true,
-            farms: []
+            farms: [],
+            sponsorInfo
           }));
           setIsVerified(true);
+          setSponsorInfo(sponsorInfo);
         }}
         onBack={() => {
           localStorage.removeItem(`typhoon_vault_role_${network}_${walletAddress}`);

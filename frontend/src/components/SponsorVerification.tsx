@@ -3,7 +3,7 @@ import { ArrowLeft, Globe, Upload, CheckCircle2, Loader2, ShieldCheck } from 'lu
 import { registerSponsor } from '../services/firebaseService';
 
 interface SponsorVerificationProps {
-  onVerificationComplete: () => void;
+  onVerificationComplete: (sponsorInfo: {name: string, email: string, sponsorType: string, birthDate: string}) => void;
   walletAddress: string;
   network?: 'testnet' | 'mainnet';
   onBack?: () => void;
@@ -27,7 +27,7 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
     setIsRegistering(true);
     try {
       await registerSponsor(walletAddress, sponsorInfo, network);
-      onVerificationComplete();
+      onVerificationComplete(sponsorInfo);
     } catch (e) {
       console.error(e);
     } finally {
