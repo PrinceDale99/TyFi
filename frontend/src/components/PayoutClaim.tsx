@@ -35,7 +35,7 @@ const RISK_COLORS: Record<string, string> = {
 
 const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmData, weather }) => {
   const { formatPhp } = useXlmToPhp();
-  const [step, setStep]           = useState<'review' | 'processing' | 'success' | 'offline_queued'>('review');
+  const [step, setStep]           = useState<'review' | 'processing' | 'success' | 'offline_queued' | 'rejected'>('review');
   const [txHash, setTxHash]       = useState('');
   const [aiResult, setAiResult]   = useState<AiPredictionResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -125,8 +125,7 @@ const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmDa
       setStep('success');
     } catch (err) {
       console.error('Error executing claim payout:', err);
-      // Fallback or retry logic
-      setStep('review');
+      setStep('rejected');
     }
   };
 
@@ -181,6 +180,38 @@ const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmDa
         <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
           Executing smart contract. Verifying oracle + AI signatures and triggering instant Stellar transaction…
         </p>
+      </div>
+    );
+  }
+
+  // ─── Rejected ───────────────────────────────────────────────────────────────
+  if (step === 'rejected') {
+    return (
+      <div className="glass-panel p-10 overflow-hidden relative">
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-rose-500/10 blur-[100px] rounded-full" />
+        <div className="relative z-10 text-center">
+          <div className="w-20 h-20 bg-rose-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-rose-500/30">
+            <AlertCircle className="text-rose-400" size={40} />
+          </div>
+          <h3 className="text-3xl font-black text-white mb-2">Payout Rejected</h3>
+          <p className="text-rose-400/60 font-bold text-sm uppercase tracking-widest mb-8">
+            Oracle Consensus Failed
+          </p>
+          <div className="bg-black/40 rounded-3xl p-6 border border-white/5 text-left mb-6">
+            <p className="text-sm text-slate-300 leading-relaxed">
+              The smart contract has rejected this claim. The decentralized oracle network and AI assessment verified that there are currently no active storms or sufficient damage thresholds met in your region.
+            </p>
+            <p className="text-xs text-slate-500 mt-4 italic font-bold">
+              Attempting to bypass the protocol or manipulate weather data will automatically result in transaction failure to protect the vault's liquidity from hacking and exploitation.
+            </p>
+          </div>
+          <button
+            onClick={() => setStep('review')}
+            className="w-full py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold transition-all border border-white/5"
+          >
+            Return to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
