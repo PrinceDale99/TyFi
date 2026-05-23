@@ -7,6 +7,8 @@ import {
   orderBy, 
   limit, 
   serverTimestamp,
+  deleteDoc,
+  doc,
   type DocumentData
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -137,5 +139,18 @@ export const getActiveSubsidyRequests = async (network: string = 'testnet') => {
   } catch (e) {
     console.error("Error getting subsidy requests: ", e);
     return [];
+  }
+};
+
+/**
+ * Removes a farm from the Subsidy Marketplace.
+ */
+export const unlistFromSubsidy = async (requestId: string) => {
+  try {
+    await deleteDoc(doc(db, "subsidy_requests", requestId));
+    return true;
+  } catch (e) {
+    console.error("Error unlisting subsidy request: ", e);
+    return false;
   }
 };
