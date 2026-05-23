@@ -4,7 +4,6 @@ import {
 } from '@creit.tech/stellar-wallets-kit';
 import { FreighterModule, FREIGHTER_ID } from '@creit.tech/stellar-wallets-kit/modules/freighter';
 import { AlbedoModule, ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
-import { WalletConnectModule, WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
 
 import {
   Address,
@@ -64,16 +63,7 @@ export const initKit = (network: 'testnet' | 'mainnet' = 'testnet') => {
       network: network === 'mainnet' ? SWKNetworks.PUBLIC : SWKNetworks.TESTNET,
       modules: [
         new FreighterModule(),
-        new AlbedoModule(),
-        new WalletConnectModule({
-          projectId: "e6704b281f629bf5bdf447aeb29a28db", // Replace with real WalletConnect ID
-          metadata: {
-            name: "TyFi Vault",
-            description: "Parametric Agricultural Insurance Protocol",
-            url: "https://tyfi.app",
-            icons: ["https://tyfi.app/logo.png"]
-          }
-        })
+        new AlbedoModule()
       ]
     });
     isKitInitialized = true;
