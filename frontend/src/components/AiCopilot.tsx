@@ -27,6 +27,7 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
   const [growthStage, setGrowthStage] = useState<'Seedling' | 'Vegetative' | 'Reproductive' | 'Maturity'>('Vegetative');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [prediction, setPrediction] = useState<AiPredictionResult | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Chat States
   const getInitialMessages = () => {
@@ -165,13 +166,7 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
           </button>
           {activeMode === 'chat' && (
             <button 
-              onClick={() => {
-                const init = [
-                  { role: 'model', text: "Mabuhay! I am your TyFi Smart Advisor. I'm here to help you protect your crops and manage your insurance. How can I assist you today?", timestamp: Date.now() }
-                ];
-                setMessages(init as ChatMessage[]);
-                if (accountId) localStorage.setItem(`typhoon_chat_${accountId}`, JSON.stringify(init));
-              }}
+              onClick={() => setShowDeleteConfirm(true)}
               className="ml-2 px-2 py-1 rounded text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-all flex items-center justify-center"
               title="Clear Chat History"
             >
@@ -180,6 +175,39 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-2xl max-w-sm w-full">
+            <h3 className="text-white font-bold text-lg mb-2">Clear Chat History?</h3>
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
+              This will permanently delete your conversation with the Smart Advisor. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2 rounded-xl border border-white/10 text-slate-300 font-bold hover:bg-white/5 transition-colors text-xs"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  const init = [
+                    { role: 'model', text: "Mabuhay! I am your TyFi Smart Advisor. I'm here to help you protect your crops and manage your insurance. How can I assist you today?", timestamp: Date.now() }
+                  ];
+                  setMessages(init as ChatMessage[]);
+                  if (accountId) localStorage.setItem(`typhoon_chat_${accountId}`, JSON.stringify(init));
+                  setShowDeleteConfirm(false);
+                }}
+                className="flex-1 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold transition-colors text-xs"
+              >
+                Clear History
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeMode === 'chat' ? (
         <>
