@@ -24,6 +24,7 @@ interface PayoutClaimProps {
   windSpeed: number;
   farmData: FarmData | null;
   weather?: WeatherData | null;
+  network?: 'testnet' | 'mainnet';
 }
 
 const RISK_COLORS: Record<string, string> = {
@@ -33,7 +34,7 @@ const RISK_COLORS: Record<string, string> = {
   Critical: 'text-rose-400    bg-rose-500/10    border-rose-500/20',
 };
 
-const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmData, weather }) => {
+const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmData, weather, network = 'testnet' }) => {
   const { formatPhp } = useXlmToPhp();
   const [step, setStep]           = useState<'review' | 'processing' | 'success' | 'offline_queued' | 'rejected'>('review');
   const [txHash, setTxHash]       = useState('');
@@ -61,14 +62,14 @@ const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmDa
     setIsAnalyzing(true);
     setAnalyzeError(false);
     try {
-      const result = await analyzeWeatherImpact(farmData, weather);
+      const result = await analyzeWeatherImpact(farmData, weather, undefined, network);
       setAiResult(result);
     } catch {
       setAnalyzeError(true);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [farmData, weather]);
+  }, [farmData, weather, network]);
 
   useEffect(() => {
     if (isVerified && farmData && weather) {

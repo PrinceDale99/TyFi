@@ -32,7 +32,8 @@ import {
   Heart,
   Globe,
   Camera,
-  Crosshair
+  Crosshair,
+  Trash2
 } from 'lucide-react';
 import FarmerVerification from './components/FarmerVerification';
 import WeatherWidget from './components/WeatherWidget';
@@ -164,6 +165,10 @@ function App() {
     }
     return null;
   });
+  // Refs to prevent state leakage between networks
+  const lastSyncedNetwork = React.useRef(network);
+  const lastSyncedAddress = React.useRef(walletAddress);
+
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<{ id: string, text: string, type: 'info' | 'success' | 'warning', timestamp: number }[]>([]);
@@ -183,6 +188,7 @@ function App() {
 
   // 🚪 Signout Confirmation State
   const [isSignoutConfirmOpen, setIsSignoutConfirmOpen] = useState(false);
+  const [farmToDelete, setFarmToDelete] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [walletError, setWalletError] = useState<{ id: string, message: string, url?: string } | null>(null);
 
@@ -414,7 +420,7 @@ function App() {
     let simulated: WeatherData;
     
     // Reset hasClaimed to false for all farms to allow clean testing of a new simulated storm
-    setFarms(prev => prev.map(f => ({ ...f, hasClaimed: false })));
+    setFarms(prev => prev.map(f => ({ ...f, hasClaimed: false, claimedAmount: undefined, claimedRatio: undefined })));
 
     if (scenario === 'normal') {
       simulated = {
@@ -531,6 +537,10 @@ function App() {
     setIsSimulatingWeather(false);
     addNotification('Reconnecting to Open-Meteo and fetching live weather feeds...', 'info');
     setIsLoading(true);
+    
+    // Reset claims for testing purposes when reverting to live data
+    setFarms(prev => prev.map(f => ({ ...f, hasClaimed: false, claimedAmount: undefined, claimedRatio: undefined })));
+
     try {
       const lat = farms.length > 0 ? farms[0].latitude : 14.5995;
       const lon = farms.length > 0 ? farms[0].longitude : 120.9842;
@@ -645,12 +655,17 @@ function App() {
     
     // Check both standalone key and the combined data object for consent
     let consent = localStorage.getItem(`typhoon_vault_legal_consent_${network}_${address}`) === 'true';
+    let role = localStorage.getItem(`typhoon_vault_role_${network}_${address}`) as 'farmer' | 'sponsor' | null;
 
     const savedData = localStorage.getItem(`typhoon_vault_${network}_${address}`);
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
         setFarms(parsed.farms || []);
+        if ((parsed.farms || []).length > 0 && !role) {
+          role = 'farmer';
+          localStorage.setItem(`typhoon_vault_role_${network}_${address}`, 'farmer');
+        }
         setIsVerified(parsed.isVerified || false);
         if (parsed.hasAgreedToLegal !== undefined) {
           consent = parsed.hasAgreedToLegal;
@@ -666,6 +681,7 @@ function App() {
       }
     }
     
+    setUserRole(role);
     setHasAgreedToLegal(consent);
     addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
   };
@@ -678,12 +694,17 @@ function App() {
 
     if (isWalletConnected && walletAddress) {
       let consent = localStorage.getItem(`typhoon_vault_legal_consent_${network}_${walletAddress}`) === 'true';
+      let role = localStorage.getItem(`typhoon_vault_role_${network}_${walletAddress}`) as 'farmer' | 'sponsor' | null;
 
       const savedData = localStorage.getItem(`typhoon_vault_${network}_${walletAddress}`);
       if (savedData) {
         try {
           const parsed = JSON.parse(savedData);
           setFarms(parsed.farms || []);
+          if ((parsed.farms || []).length > 0 && !role) {
+            role = 'farmer';
+            localStorage.setItem(`typhoon_vault_role_${network}_${walletAddress}`, 'farmer');
+          }
           setIsVerified(parsed.isVerified || false);
           if (parsed.hasAgreedToLegal !== undefined) {
             consent = parsed.hasAgreedToLegal;
@@ -704,20 +725,34 @@ function App() {
           { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
         ]);
       }
+      setUserRole(role);
       setHasAgreedToLegal(consent);
+      
+      // Update refs AFTER loading state to mark that current state belongs to this network/address
+      lastSyncedNetwork.current = network;
+      lastSyncedAddress.current = walletAddress;
     } else {
+      setUserRole(null);
       setFarms([]);
       setIsVerified(false);
       setHasAgreedToLegal(false);
       setClaims(network === 'mainnet' ? [] : [
         { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
       ]);
+      
+      lastSyncedNetwork.current = network;
+      lastSyncedAddress.current = walletAddress;
     }
   }, [walletAddress, network, isWalletConnected]);
 
   // Save account-specific data whenever it changes and matches a genuine user mutation
   useEffect(() => {
     if (isWalletConnected && walletAddress) {
+      // SECURITY CHECK: Do not save if the current memory state hasn't been synced with the current network/address yet
+      if (lastSyncedNetwork.current !== network || lastSyncedAddress.current !== walletAddress) {
+        return;
+      }
+
       const savedData = localStorage.getItem(`typhoon_vault_${network}_${walletAddress}`);
       let shouldSave = true;
       if (savedData) {
@@ -1019,6 +1054,17 @@ function App() {
       
       addNotification(`[Demo] Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed!`, 'success');
     }
+  };
+
+  const handleDeleteFarm = (farmId: string) => {
+    setFarmToDelete(farmId);
+  };
+
+  const confirmDeleteFarm = () => {
+    if (!farmToDelete) return;
+    setFarms(prev => prev.filter(f => f.id !== farmToDelete));
+    addNotification('Farm removed successfully.', 'success');
+    setFarmToDelete(null);
   };
 
   if (!isWalletConnected) {
@@ -1599,6 +1645,14 @@ function App() {
                   </button>
                 );
               })}
+              
+              <div className="h-px w-full bg-white/10 my-1"></div>
+              <div className="flex flex-col gap-6">
+                <button onClick={() => { setIsProfileDashboardOpen(true); setIsMobileMenuOpen(false); }} className="text-xl font-black uppercase tracking-tighter text-left text-slate-400 hover:text-white transition-colors">Profile & Settings</button>
+                {userRole === 'farmer' && (
+                  <button onClick={() => { setIsProfileDashboardOpen(true); setIsMobileMenuOpen(false); }} className="text-xl font-black uppercase tracking-tighter text-left text-slate-400 hover:text-white transition-colors">Edit / Manage Farms</button>
+                )}
+              </div>
             </div>
 
             <div className="mt-auto pt-12 border-t border-white/10 space-y-8">
@@ -1640,34 +1694,7 @@ function App() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:flex-wrap md:overflow-visible">
-                  {userRole !== 'sponsor' && (
-                    <button
-                      onClick={() => setActiveTab('monitor')}
-                      className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'monitor' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
-                    >
-                      {t('nav.liveMonitor')}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setActiveTab('history')}
-                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
-                  >
-                    {t('nav.claims')}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('vault')}
-                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'vault' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
-                  >
-                    {t('nav.vault')}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('marketplace')}
-                    className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'marketplace' ? (isMainnet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-sky-500 text-white shadow-lg shadow-sky-500/20') : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
-                  >
-                    Marketplace
-                  </button>
-                </div>
+
               </div>
 
               {/* Dynamic Content */}
@@ -1766,7 +1793,10 @@ function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                   {/* Left Column: Firebase History Dashboard */}
                   <div className="glass-panel">
-                    <HistoryDashboard walletAddress={walletAddress} />
+                    <HistoryDashboard 
+                      walletAddress={walletAddress} 
+                      network={network}
+                    />
                   </div>
 
                   {/* Right Column: Live Ledger Stream */}
@@ -2190,14 +2220,14 @@ function App() {
 
                   {userRole === 'farmer' && (
                     <button
-                      onClick={() => setIsAddFarmModalOpen(true)}
+                      onClick={() => setIsProfileDashboardOpen(true)}
                       className="p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex flex-col md:flex-row items-center md:justify-between group cursor-pointer gap-3"
                     >
                       <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                         <div className={`p-1.5 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                          <Plus size={16} />
+                          <Sprout size={16} />
                         </div>
-                        <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight text-white">Add Farm</span>
+                        <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight text-white">Edit Farms</span>
                       </div>
                       <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
@@ -2325,6 +2355,7 @@ function App() {
                       agromonitorStatus: status
                     } : null);
                   }}
+                  network={network}
                 />
               )}
             </div>
@@ -2496,6 +2527,35 @@ function App() {
         </div>
       )}
 
+      {/* Delete Farm Confirmation Modal */}
+      {farmToDelete && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+            <div className="w-12 h-12 bg-rose-500/10 text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={24} />
+            </div>
+            <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">Delete Farm?</h3>
+            <p className="text-xs text-slate-400 leading-relaxed mb-6">
+              Are you sure you want to remove this farm from your profile? This action cannot be undone and will detach the asset from your dashboard.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setFarmToDelete(null)}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteFarm}
+                className="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-rose-500/20 cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 👤 Profile Dashboard Modal */}
       {isProfileDashboardOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -2598,6 +2658,14 @@ function App() {
                       <Sprout size={14} className={isMainnet ? 'text-emerald-400' : 'text-sky-400'} />
                       Insured Farm Assets ({farms.length})
                     </h3>
+                    <button 
+                      onClick={() => { setIsProfileDashboardOpen(false); setIsAddFarmModalOpen(true); }}
+                      className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-colors ${
+                        isMainnet ? 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10' : 'text-sky-400 border-sky-500/20 hover:bg-sky-500/10'
+                      }`}
+                    >
+                      + Add Farm
+                    </button>
                   </div>
 
                   <div className="space-y-3">
@@ -2626,7 +2694,10 @@ function App() {
                                 <Sprout size={24} />
                               </div>
                               <div>
-                                <h4 className="font-bold text-white uppercase italic">{farm.farmName}</h4>
+                                <h4 className="font-bold text-white uppercase italic flex items-center gap-2">
+                                  {farm.farmName}
+                                  <button onClick={() => handleDeleteFarm(farm.id)} className="text-slate-500 hover:text-rose-500 p-1 rounded transition-colors" title="Delete Farm"><Trash2 size={12}/></button>
+                                </h4>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
                                     isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'

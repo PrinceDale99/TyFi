@@ -66,9 +66,9 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.post('/api/notify-payout', async (req, res) => {
-  const { address, amount, region } = req.body;
+  const { address, amount, region, network = 'testnet' } = req.body;
   
-  await logEvent('INFO', 'Received request to dispatch payout notification', { address, amount, region });
+  await logEvent('INFO', 'Received request to dispatch payout notification', { address, amount, region, network });
 
   if (!db) {
     await logEvent('ERROR', 'Firestore not initialized. Cannot retrieve FCM token.');
@@ -100,9 +100,10 @@ app.post('/api/notify-payout', async (req, res) => {
         farmerAddress: address,
         amount: Number(amount),
         region: region,
+        network: network,
         timestamp: admin.firestore.FieldValue.serverTimestamp()
       });
-      await logEvent('INFO', 'Payout event logged to Firestore', { address, amount });
+      await logEvent('INFO', 'Payout event logged to Firestore', { address, amount, network });
     }
 
     await logEvent('INFO', 'FCM message dispatched successfully', { response, address });
@@ -255,13 +256,16 @@ app.post('/api/generate-certificate', async (req, res) => {
 
 app.get('/api/certificates/:address', async (req, res) => {
   const { address } = req.params;
+  const { network = 'testnet' } = req.query;
   
   if (!db) {
     return res.status(500).json({ error: 'Firestore not initialized' });
   }
 
   try {
-    const snapshot = await db.collection('farmers').doc(address).collection('certificates').orderBy('timestamp', 'desc').get();
+    const snapshot = await db.collection('farmers').doc(address).collection('certificates')
+      .where('network', '==', network)
+      .orderBy('timestamp', 'desc').get();
     const certificates = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -269,7 +273,7 @@ app.get('/api/certificates/:address', async (req, res) => {
     
     res.json({ success: true, data: certificates });
   } catch (error: any) {
-    await logEvent('ERROR', 'Error fetching certificates', { errorMessage: error.message, address });
+    await logEvent('ERROR', 'Error fetching certificates', { errorMessage: error.message, address, network });
     res.status(500).json({ error: 'Failed to fetch certificates' });
   }
 });

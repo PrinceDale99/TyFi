@@ -14,9 +14,10 @@ import { useXlmToPhp } from '../hooks/useXlmToPhp';
 
 interface HistoryDashboardProps {
   walletAddress: string;
+  network?: 'testnet' | 'mainnet';
 }
 
-const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ walletAddress }) => {
+const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ walletAddress, network = 'testnet' }) => {
   const { formatPhp } = useXlmToPhp();
   const [predictions, setPredictions] = useState<PredictionLog[]>([]);
   const [payouts, setPayouts] = useState<PayoutLog[]>([]);
@@ -29,8 +30,8 @@ const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ walletAddress }) =>
       setLoading(true);
       try {
         const [predData, payoutData] = await Promise.all([
-          getPredictionHistory(walletAddress),
-          getPayoutHistory(walletAddress)
+          getPredictionHistory(walletAddress, network),
+          getPayoutHistory(walletAddress, network)
         ]);
         setPredictions(predData);
         setPayouts(payoutData);
@@ -41,7 +42,7 @@ const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ walletAddress }) =>
       }
     };
     fetchData();
-  }, [walletAddress]);
+  }, [walletAddress, network]);
 
   if (loading) {
     return (

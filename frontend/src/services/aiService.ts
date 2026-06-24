@@ -21,7 +21,8 @@ export interface AiPredictionResult {
 export const analyzeWeatherImpact = async (
   farm: FarmData,
   weather: WeatherData,
-  growthStage?: string
+  growthStage?: string,
+  network: string = 'testnet'
 ): Promise<AiPredictionResult> => {
   const stage = growthStage || 'Vegetative';
   const stellarPubkey = localStorage.getItem('stellar_pubkey') || farm.id;
@@ -142,7 +143,8 @@ Return the JSON block.`;
       hitProbability: result.hitProbability,
       estimatedDamage: result.estimatedDamage,
       reasoning: result.reasoning,
-      advisory: result.advisory
+      advisory: result.advisory,
+      network: network
     });
 
     // Trigger FCM notification via local backend if the AI predicts a hit (willHit === true)
@@ -193,7 +195,8 @@ Return the JSON block.`;
       hitProbability: result.hitProbability,
       estimatedDamage: result.estimatedDamage,
       reasoning: result.reasoning,
-      advisory: result.advisory
+      advisory: result.advisory,
+      network: network
     });
 
     return result;

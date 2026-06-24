@@ -98,7 +98,7 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
     };
 
     try {
-      const response = await analyzeWeatherImpact(farm, weather, data.stage);
+      const response = await analyzeWeatherImpact(farm, weather, data.stage, network);
       setData(prev => ({
         ...prev,
         destructionLevel: response.estimatedDamage

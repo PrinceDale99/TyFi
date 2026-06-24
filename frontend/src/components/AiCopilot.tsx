@@ -12,6 +12,7 @@ interface AiCopilotProps {
   claims?: any[];
   addNotification: (text: string, type?: 'info' | 'success' | 'warning') => void;
   onUpdateWeatherDamage?: (damage: number, status: string, aiDamage?: number, confidence?: number) => void;
+  network?: 'testnet' | 'mainnet';
 }
 
 const AiCopilot: React.FC<AiCopilotProps> = ({
@@ -21,6 +22,7 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
   claims = [],
   addNotification,
   onUpdateWeatherDamage,
+  network = 'testnet'
 }) => {
   const [activeMode, setActiveTab] = useState<'chat' | 'risk'>('chat');
   const [selectedFarmId, setSelectedFarmId] = useState<string>('');
@@ -114,7 +116,7 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
     
     try {
       addNotification(`Analyzing risk metrics for ${farm.farmName}...`, 'info');
-      const result = await analyzeWeatherImpact(farm, weather, growthStage);
+      const result = await analyzeWeatherImpact(farm, weather, growthStage, network);
       setPrediction(result);
       
       // Auto-inject analysis into chat

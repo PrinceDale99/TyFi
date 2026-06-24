@@ -10,11 +10,13 @@ const CONTRACT_ID = process.env.CONTRACT_ID || '';
 const BACKEND_URL = `http://localhost:${process.env.PORT || 3001}`;
 
 const server = new rpc.Server(RPC_URL);
+const NETWORK = RPC_URL.includes('testnet') ? 'testnet' : 'mainnet';
 
 async function pollEvents() {
   await logEvent('INFO', 'Starting Soroban event listener...', { 
     rpcUrl: RPC_URL, 
-    contractId: CONTRACT_ID 
+    contractId: CONTRACT_ID,
+    network: NETWORK
   });
   
   let startLedger: number | undefined;
@@ -71,14 +73,16 @@ async function pollEvents() {
               farmId,
               typhoonId,
               damage,
-              amount
+              amount,
+              network: NETWORK
             });
             
             // Call notification API
             await axios.post(`${BACKEND_URL}/api/notify-payout`, {
               address: farmer,
               amount: amount,
-              region: 'Your Region'
+              region: 'Your Region',
+              network: NETWORK
             });
           }
 
@@ -94,7 +98,8 @@ async function pollEvents() {
               season,
               premium,
               paidAmount,
-              txHash: event.id
+              txHash: event.id,
+              network: NETWORK
             });
 
             // Call certificate generation API
@@ -104,7 +109,8 @@ async function pollEvents() {
               region,
               season,
               premium,
-              txHash: event.id
+              txHash: event.id,
+              network: NETWORK
             }).catch(err => {
               logEvent('ERROR', 'Failed to trigger certificate generation', { 
                 errorMessage: err.message,
