@@ -3,7 +3,7 @@ import { Keypair, rpc, TransactionBuilder, Networks, Contract, Address, nativeTo
 
 const rpcServer = new rpc.Server('https://soroban-testnet.stellar.org');
 const networkPassphrase = Networks.TESTNET;
-const contractId = 'CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN';
+const contractId = 'CCN2PKUYBI33EVUW3NUZ57YWY7DW5V7BS4LMDJTWOMYQUJOFHQAQVFJT';
 
 async function fundWithFriendbot(pubkey) {
   const res = await fetch(`https://friendbot.stellar.org/?addr=${pubkey}`);

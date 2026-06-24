@@ -21,6 +21,7 @@ export interface PredictionLog extends DocumentData {
   estimatedDamage: number;
   reasoning: string;
   advisory: string;
+  network: string;
   timestamp: any;
 }
 
@@ -28,6 +29,7 @@ export interface PayoutLog extends DocumentData {
   farmerAddress: string;
   amount: number;
   region: string;
+  network: string;
   timestamp: any;
 }
 
@@ -44,11 +46,12 @@ export const logPrediction = async (prediction: Omit<PredictionLog, 'timestamp'>
   }
 };
 
-export const getPredictionHistory = async (farmerAddress: string, maxResults = 10) => {
+export const getPredictionHistory = async (farmerAddress: string, network: string = 'testnet', maxResults = 10) => {
   try {
     const q = query(
       collection(db, "predictions"),
       where("farmerAddress", "==", farmerAddress),
+      where("network", "==", network),
       orderBy("timestamp", "desc"),
       limit(maxResults)
     );
@@ -63,11 +66,12 @@ export const getPredictionHistory = async (farmerAddress: string, maxResults = 1
   }
 };
 
-export const getPayoutHistory = async (farmerAddress: string, maxResults = 10) => {
+export const getPayoutHistory = async (farmerAddress: string, network: string = 'testnet', maxResults = 10) => {
   try {
     const q = query(
       collection(db, "payouts"),
       where("farmerAddress", "==", farmerAddress),
+      where("network", "==", network),
       orderBy("timestamp", "desc"),
       limit(maxResults)
     );
@@ -124,12 +128,12 @@ export const getActiveSubsidyRequests = async (network: string = 'testnet') => {
   try {
     const q = query(
       collection(db, "subsidy_requests"),
-      where("isFunded", "==", false)
+      where("isFunded", "==", false),
+      where("network", "==", network)
     );
     const querySnapshot = await getDocs(q);
     const docs = querySnapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() } as any))
-      .filter(doc => (doc.network || 'testnet') === network);
+      .map(doc => ({ id: doc.id, ...doc.data() } as any));
     
     return docs.sort((a, b) => {
       const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;

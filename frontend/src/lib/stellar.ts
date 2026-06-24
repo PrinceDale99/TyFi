@@ -33,8 +33,8 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
 
   testnet: {
     name: 'Testnet',
-    xlmTokenId: 'CDLZFC3SYJYDZT7KMGCCEEH45FAZ6COCYPIBA67KEHWOAAZ5KVHQ64VL',
-    vaultContractId: 'CBMNXUY6U2PO56JB5TZNUNQQZFXVUJ6XOZ3T3LJZJ3U6RH64RXTP3WRN',
+    xlmTokenId: 'CAMB6K2KOVZGEGXX5V7C3QMI6FVLZM7LS5TJOOUX74MFOMP32RCEAYIQ',
+    vaultContractId: 'CCN2PKUYBI33EVUW3NUZ57YWY7DW5V7BS4LMDJTWOMYQUJOFHQAQVFJT',
     horizonUrl: 'https://horizon-testnet.stellar.org',
     sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
     passphrase: Networks.TESTNET,

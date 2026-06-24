@@ -10,8 +10,9 @@ export async function generateCertificate(data: {
   season: string;
   premium: number;
   txHash: string;
+  network?: string;
 }) {
-  const { address, farmId, region, season, premium, txHash } = data;
+  const { address, farmId, region, season, premium, txHash, network = 'testnet' } = data;
   const payoutAmount = premium * 10;
   
   return new Promise<string>(async (resolve, reject) => {
@@ -55,10 +56,11 @@ export async function generateCertificate(data: {
             payoutAmount,
             txHash,
             downloadUrl: url,
+            network,
             timestamp: admin.firestore.FieldValue.serverTimestamp()
           });
           
-          await logEvent('INFO', 'Certificate generated and stored successfully', { address, txHash });
+          await logEvent('INFO', 'Certificate generated and stored successfully', { address, txHash, network });
           resolve(url);
         } catch (uploadErr: any) {
           await logEvent('ERROR', 'Failed to save certificate to Storage/Firestore', { errorMessage: uploadErr.message });
@@ -79,7 +81,7 @@ export async function generateCertificate(data: {
       doc.fillColor('#94a3b8').fontSize(8).font('Helvetica').text('PROTOCOL VERSION', 450, 50, { align: 'right' });
       doc.fillColor('#ffffff').fontSize(10).font('Helvetica-Bold').text('v2.4-STABLE', 450, 62, { align: 'right' });
       doc.fillColor('#94a3b8').fontSize(8).font('Helvetica').text('NETWORK', 450, 85, { align: 'right' });
-      doc.fillColor('#38bdf8').fontSize(10).font('Helvetica-Bold').text('STELLAR SOROBAN', 450, 97, { align: 'right' });
+      doc.fillColor('#38bdf8').fontSize(10).font('Helvetica-Bold').text(network.toUpperCase(), 450, 97, { align: 'right' });
 
       // Main Title
       doc.fillColor('#020617').fontSize(26).font('Helvetica-Bold').text('CERTIFICATE OF INSURANCE', 50, 180, { align: 'center' });
@@ -110,7 +112,7 @@ export async function generateCertificate(data: {
       doc.fillColor('#64748b').fontSize(10).font('Helvetica-Bold').text('LEDGER VERIFICATION', 50, 490);
       
       // QR Code for blockchain verification
-      const qrData = `https://stellar.expert/explorer/testnet/tx/${txHash}`;
+      const qrData = `https://stellar.expert/explorer/${network}/tx/${txHash}`;
       const qrImage = await QRCode.toDataURL(qrData);
       doc.image(qrImage, 50, 510, { width: 90 });
       

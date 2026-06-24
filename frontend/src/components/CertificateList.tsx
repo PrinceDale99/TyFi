@@ -18,7 +18,7 @@ interface CertificateListProps {
   network?: string;
 }
 
-const CertificateList: React.FC<CertificateListProps> = ({ address, network }) => {
+const CertificateList: React.FC<CertificateListProps> = ({ address, network = 'testnet' }) => {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +30,7 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network }) =
       setIsLoading(true);
       try {
         const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-        const response = await fetch(`${BACKEND_URL}/api/certificates/${address}`);
+        const response = await fetch(`${BACKEND_URL}/api/certificates/${address}?network=${network}`);
         const result = await response.json();
         
         if (result.success) {
@@ -46,7 +46,7 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network }) =
     };
 
     fetchCertificates();
-  }, [address]);
+  }, [address, network]);
 
   const handleGenerateDemoCert = () => {
     const demoCert: Certificate = {
@@ -156,7 +156,7 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network }) =
                   <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">PDF</span>
                 </a>
                 <a 
-                  href={`https://stellar.expert/explorer/testnet/tx/${cert.txHash}`} 
+                  href={`https://stellar.expert/explorer/${network}/tx/${cert.txHash}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
