@@ -34,7 +34,7 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
   testnet: {
     name: 'Testnet',
     xlmTokenId: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
-    vaultContractId: 'CD3DIZYGHVYPB6VP7D642MZ23LNVKTL3AOND7HM2GEUX2CAXNA7OO7HH',
+    vaultContractId: 'CDSJ2G3EVYPFXBGITE6DI7ZO3VAOYYWUOZZCQDXSPFBTTXVXVNYNJLFK',
     horizonUrl: 'https://horizon-testnet.stellar.org',
     sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
     passphrase: Networks.TESTNET,
@@ -260,7 +260,8 @@ export const claimPayoutOnChain = async (
   farmId: string, 
   season: string, 
   network: 'testnet' | 'mainnet' = 'testnet',
-  typhoonId: string = 'DEFAULT_TYPHOON'
+  typhoonId: string = 'DEFAULT_TYPHOON',
+  amount: number = 0
 ) => {
   try {
     const config = NETWORK_CONFIGS[network as 'testnet' | 'mainnet'];
@@ -271,15 +272,18 @@ export const claimPayoutOnChain = async (
     console.log(`[${config.name}] Claiming payout on chain for farm ${farmId}...`);
     
     const account = await server.getAccount(farmer);
-    const tx = new TransactionBuilder(
-      account,
-      {
-        fee: BASE_FEE,
-        networkPassphrase: config.passphrase,
-      }
-    )
-    .addOperation(
-      contract.call(
+    let operation;
+    if (network === 'testnet') {
+      const valToPass = BigInt(Math.floor(amount * 10000000));
+      operation = contract.call(
+        "testnet_claim_payout",
+        ...[
+          farmerAddress.toScVal(),
+          nativeToScVal(valToPass, { type: 'i128' })
+        ]
+      );
+    } else {
+      operation = contract.call(
         "claim_payout",
         ...[
           farmerAddress.toScVal(),
@@ -287,8 +291,17 @@ export const claimPayoutOnChain = async (
           xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
           xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId))
         ]
-      )
+      );
+    }
+
+    const tx = new TransactionBuilder(
+      account,
+      {
+        fee: BASE_FEE,
+        networkPassphrase: config.passphrase,
+      }
     )
+    .addOperation(operation)
     .setTimeout(30)
     .build();
 

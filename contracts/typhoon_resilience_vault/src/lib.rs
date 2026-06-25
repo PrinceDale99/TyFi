@@ -270,6 +270,21 @@ impl TyphoonVault {
         Ok(amount)
     }
 
+    /// TESTNET ONLY: Claim payout without policy or oracle checks
+    pub fn testnet_claim_payout(env: Env, farmer: Address, amount: i128) -> Result<i128, Error> {
+        farmer.require_auth();
+        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
+        let client = token::Client::new(&env, &xlm_token_addr);
+        
+        let contract_balance = client.balance(&env.current_contract_address());
+        if contract_balance < amount {
+            return Err(Error::InsufficientLiquidity);
+        }
+        
+        client.transfer(&env.current_contract_address(), &farmer, &amount);
+        Ok(amount)
+    }
+
     /// Get details of LP shares
     pub fn get_lp_shares(env: Env, lp: Address) -> i128 {
         env.storage().persistent().get(&DataKey::LpShares(lp)).unwrap_or(0)
