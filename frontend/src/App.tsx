@@ -1955,7 +1955,6 @@ function App() {
                           </p>
                         </div>
                         <div className="space-y-4">
-                          {isTestnet ? (
                             <>
                               {/* Staking Mode Selector */}
                               <div className="flex bg-slate-950 p-1 rounded-xl border border-white/5 gap-1">
@@ -2044,14 +2043,6 @@ function App() {
                                 </div>
                               </div>
                             </>
-                          ) : (
-                            <button
-                              disabled
-                              className="w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-slate-500 font-bold cursor-not-allowed uppercase tracking-wider"
-                            >
-                              🔒 Connect Freighter on Mainnet
-                            </button>
-                          )}
                         </div>
                       </div>
 
@@ -2067,7 +2058,6 @@ function App() {
                           </p>
                         </div>
                         <div className="space-y-3">
-                          {isTestnet ? (
                             <div className="flex gap-2">
                               <input
                                 type="number"
@@ -2084,14 +2074,6 @@ function App() {
                                 Deposit Subsidy
                               </button>
                             </div>
-                          ) : (
-                            <button
-                              disabled
-                              className="w-full py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-slate-500 font-bold cursor-not-allowed uppercase tracking-wider"
-                            >
-                              🔒 Connect Freighter on Mainnet
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
