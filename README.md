@@ -1,7 +1,7 @@
 # 🌀 TyFi — Parametric Typhoon Insurance on Stellar
 
 [![Stellar](https://img.shields.io/badge/Stellar-Soroban-blue.svg)](https://stellar.org)
-[![Testnet](https://img.shields.io/badge/Testnet-Live-brightgreen.svg)](https://lab.stellar.org/r/testnet/contract/CCN2PKUYBI33EVUW3NUZ57YWY7DW5V7BS4LMDJTWOMYQUJOFHQAQVFJT)
+[![Testnet](https://img.shields.io/badge/Testnet-Live-brightgreen.svg)](https://lab.stellar.org/r/testnet/contract/CA5LYHCA4PVITUBE6TBEVMHADXEE5G2DL3QXLUNBODLDS6JUOR6IBX47)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -153,13 +153,13 @@ npm run dev
 
 ## 🌐 Deployment
 
-### Testnet
-- Contract / App Address: `CCN2PKUYBI33EVUW3NUZ57YWY7DW5V7BS4LMDJTWOMYQUJOFHQAQVFJT` 
+### Test Net Transaction
+- Contract / App Address: `CA5LYHCA4PVITUBE6TBEVMHADXEE5G2DL3QXLUNBODLDS6JUOR6IBX47` 
 - 📸 Screenshot — Stellar Expert (Testnet)
   ![Testnet Screenshot](public/testnet.png)
-- Link: [Stellar Expert Testnet](https://stellar.expert/explorer/testnet/contract/CCN2PKUYBI33EVUW3NUZ57YWY7DW5V7BS4LMDJTWOMYQUJOFHQAQVFJT)
+- Link: [Stellar Expert Testnet](https://stellar.expert/explorer/testnet/contract/CA5LYHCA4PVITUBE6TBEVMHADXEE5G2DL3QXLUNBODLDS6JUOR6IBX47)
 
-### Mainnet
+### Main Net Transaction
 - Contract / App Address: `CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK`
 - 📸 Screenshot — Stellar Expert (Mainnet)
   ![Mainnet Screenshot](public/mainnet.png)
@@ -197,3 +197,22 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## 📈 Monthly Growth Report
+*(Growth metrics and data will be added here on a monthly basis.)*
+
+## 🌟 Community Contribution Proof
+TyFi won **Best on Stellar** at the recent Stellar x RiseIn Philippines hackathon due to its insane potential to help local farmers!
+![Community Contribution](public/contribution.jpg)
+
+## 📱 Social Media & Updates
+- **Instagram**: [https://www.instagram.com/_vertigral/](https://www.instagram.com/_vertigral/)
+- **Product Updates**: [https://www.instagram.com/p/DZ_pm_xk-2B/](https://www.instagram.com/p/DZ_pm_xk-2B/)
+
+## 🔧 Product Improvement Commits
+- **Local Language Support**: [893717d](https://github.com/PrinceDale99/TyFi/commit/893717d)
+- **Livestock & Asset Coverage**: [f3ee9f5](https://github.com/PrinceDale99/TyFi/commit/f3ee9f5)
+- **Offline Map Caching**: [69a778f](https://github.com/PrinceDale99/TyFi/commit/69a778f)
+- **SMS Claim Filing**: [ee85c42](https://github.com/PrinceDale99/TyFi/commit/ee85c42)
+- **Live Weather Radar**: [8224406](https://github.com/PrinceDale99/TyFi/commit/8224406)
+- **Cooperative & Shared Accounts**: [45cb144](https://github.com/PrinceDale99/TyFi/commit/45cb144)
