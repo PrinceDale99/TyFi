@@ -98,7 +98,8 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
     };
 
     try {
-      const response = await analyzeWeatherImpact(farm, weather, data.stage, network);
+      const currentNetwork = localStorage.getItem('typhoon_vault_network') || 'testnet';
+      const response = await analyzeWeatherImpact(farm, weather, data.stage, currentNetwork as 'testnet' | 'mainnet');
       setData(prev => ({
         ...prev,
         destructionLevel: response.estimatedDamage
