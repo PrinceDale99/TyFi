@@ -33,7 +33,8 @@ import {
   Globe,
   Camera,
   Crosshair,
-  Trash2
+  Trash2,
+  BookOpen
 } from 'lucide-react';
 import FarmerVerification from './components/FarmerVerification';
 import WeatherWidget from './components/WeatherWidget';
@@ -58,6 +59,7 @@ import HistoryDashboard from './components/HistoryDashboard';
 import { useTranslation } from 'react-i18next';
 import CertificateList from './components/CertificateList';
 import SubsidyMarketplace from './components/SubsidyMarketplace';
+import DocsTab from './components/DocsTab';
 import SponsorVerification from './components/SponsorVerification';
 import { registerForSubsidy } from './services/firebaseService';
 
@@ -96,7 +98,7 @@ function App() {
   const [stakingMode, setStakingMode] = useState<'deposit' | 'withdraw'>('deposit');
   const [projectionPeriod, setProjectionPeriod] = useState<'1m' | '6m' | '1y'>('1y');
 
-  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace'>(() => {
+  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace' | 'docs'>(() => {
     return (localStorage.getItem('typhoon_vault_activeTab') as any) || 'monitor';
   });
   const [network, setNetwork] = useState<'testnet' | 'mainnet'>(() => {
@@ -186,13 +188,13 @@ function App() {
     return [];
   });
 
-  // 🚪 Signout Confirmation State
+  // ≡ƒÜ¬ Signout Confirmation State
   const [isSignoutConfirmOpen, setIsSignoutConfirmOpen] = useState(false);
   const [farmToDelete, setFarmToDelete] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [walletError, setWalletError] = useState<{ id: string, message: string, url?: string } | null>(null);
 
-  // ─── Offline-First Intent Recovery ──────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇ Offline-First Intent Recovery ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   useEffect(() => {
     const handleOnline = () => {
       const pendingClaims = JSON.parse(localStorage.getItem('vault_pending_claims') || '[]');
@@ -209,11 +211,11 @@ function App() {
     return () => window.removeEventListener('online', handleOnline);
   }, []);
 
-  // 👤 Profile Dashboard State
+  // ≡ƒæñ Profile Dashboard State
   const [isProfileDashboardOpen, setIsProfileDashboardOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 
-  // ➕ Add Farm & 👤 Edit Profile Modals States
+  // Γ₧ò Add Farm & ≡ƒæñ Edit Profile Modals States
   const [isAddFarmModalOpen, setIsAddFarmModalOpen] = useState(false);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
 
@@ -291,7 +293,7 @@ function App() {
   }, [newFarmForm.cropType, newFarmForm.farmSize, profileForm.region, isAddFarmModalOpen]);
 
 
-  // 🧪 Testnet Developer Sandbox States
+  // ≡ƒº¬ Testnet Developer Sandbox States
   const [isSimulatingWeather, setIsSimulatingWeather] = useState(false);
 
   useEffect(() => {
@@ -471,7 +473,7 @@ function App() {
         hourlyWindSpeed: Array.from({ length: 24 }, (_, i) => i < 12 ? 30 + i * 8 : 115 - (i - 12) * 5),
         hourlyPrecipitation: Array.from({ length: 24 }, () => 5 + Math.random() * 10),
       };
-      addNotification('💨 Moderate Typhoon trigger (30% payout) simulated! Contract parametric claim enabled.', 'warning');
+      addNotification('≡ƒÆ¿ Moderate Typhoon trigger (30% payout) simulated! Contract parametric claim enabled.', 'warning');
     } else if (scenario === 'rain_trigger') {
       simulated = {
         temperature: 25.5,
@@ -499,7 +501,7 @@ function App() {
         hourlyWindSpeed: Array.from({ length: 24 }, () => 20 + Math.random() * 10),
         hourlyPrecipitation: Array.from({ length: 24 }, (_, i) => i < 12 ? 10 + i * 3 : 30 - (i - 12) * 2),
       };
-      addNotification('🌧️ Severe Typhoon trigger (70% payout) simulated! Contract parametric claim enabled.', 'warning');
+      addNotification('≡ƒîº∩╕Å Severe Typhoon trigger (70% payout) simulated! Contract parametric claim enabled.', 'warning');
     } else { // double_trigger
       simulated = {
         temperature: 23.0,
@@ -527,7 +529,7 @@ function App() {
         hourlyWindSpeed: Array.from({ length: 24 }, (_, i) => i < 12 ? 50 + i * 11 : 165 - (i - 12) * 8),
         hourlyPrecipitation: Array.from({ length: 24 }, (_, i) => i < 12 ? 15 + i * 4 : 40 - (i - 12) * 3),
       };
-      addNotification('🌀 SUPER TYPHOON double trigger met! 90% full parametric claim enabled on Testnet.', 'warning');
+      addNotification('≡ƒîÇ SUPER TYPHOON double trigger met! 90% full parametric claim enabled on Testnet.', 'warning');
     }
 
     setWeather(simulated);
@@ -1144,7 +1146,7 @@ function App() {
                 ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' 
                 : 'text-sky-400 border-sky-500/20 bg-sky-500/5'
             }`}>
-              {isMainnet ? '💎 Production Environment Active' : '🧪 Developer Sandbox Active'}
+              {isMainnet ? '≡ƒÆÄ Production Environment Active' : '≡ƒº¬ Developer Sandbox Active'}
             </div>
             <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">
               Ty<span className={isMainnet ? 'text-emerald-500 transition-colors duration-700' : 'text-sky-500 transition-colors duration-700'}>Fi</span>
@@ -1508,10 +1510,10 @@ function App() {
           </div>
 
           <div className="hidden md:flex items-center gap-6">
-            {(['monitor', 'calc', 'history', 'vault', 'marketplace'] as const)
+            {(['monitor', 'calc', 'history', 'vault', 'marketplace', 'docs'] as const)
               .filter(tab => {
                 if (userRole === 'sponsor') {
-                  return ['history', 'vault', 'marketplace'].includes(tab);
+                  return ['history', 'vault', 'marketplace', 'docs'].includes(tab);
                 }
                 return true;
               })
@@ -1655,7 +1657,7 @@ function App() {
             </div>
             
             <div className="flex flex-col gap-8">
-              {(['monitor', 'calc', 'history', 'vault', 'marketplace'] as const).map((tab) => {
+              {(['monitor', 'calc', 'history', 'vault', 'marketplace', 'docs'] as const).map((tab) => {
                 if (userRole === 'sponsor' && tab === 'calc') return null;
                 return (
                   <button
@@ -1707,13 +1709,15 @@ function App() {
                     {activeTab === 'monitor' ? t('header.protocolMonitoring') :
                       activeTab === 'calc' ? t('header.smartCalculator') :
                         activeTab === 'history' ? t('header.claimHistory') : 
-                          activeTab === 'marketplace' ? 'Subsidy Marketplace' : t('header.vaultInfrastructure')}
+                          activeTab === 'marketplace' ? 'Subsidy Marketplace' : 
+                            activeTab === 'docs' ? 'System Overview' : t('header.vaultInfrastructure')}
                   </h1>
                   <p className="text-slate-400 mt-1">
                     {activeTab === 'monitor' ? `Automated smart contracts for ${farms[0]?.farmName || 'your farms'}` :
                       activeTab === 'calc' ? 'Analyze damage and estimate recovery payouts' :
                         activeTab === 'history' ? 'Transparency report of all triggered payouts' :
                           activeTab === 'marketplace' ? 'Fund climate resilience for verified farmers' :
+                            activeTab === 'docs' ? 'How TyFi Decentralized Parametric Insurance works' :
                           'Proof of liquidity and capital reserves'}
                   </p>
                 </div>
@@ -1769,7 +1773,7 @@ function App() {
                               <div className="flex items-center justify-between mb-3">
                                  <div>
                                     <h4 className="text-xs font-black text-white truncate max-w-[150px]">{farm.farmName}</h4>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest">{farm.region} • {farm.cropType}</p>
+                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest">{farm.region} ΓÇó {farm.cropType}</p>
                                  </div>
                                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-[9px] font-black text-rose-500 uppercase tracking-widest animate-pulse">
                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
@@ -2116,6 +2120,12 @@ function App() {
                 </div>
               )}
 
+              {activeTab === 'docs' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <DocsTab />
+                </div>
+              )}
+
               {weather && farms.length > 0 && (
                 <PayoutStatus
                   weather={weather}
@@ -2207,6 +2217,21 @@ function App() {
                     <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                       <Heart size={20} />
                       <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Market</span>
+                    </div>
+                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('docs')}
+                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
+                      activeTab === 'docs' 
+                        ? 'bg-purple-500/10 border-purple-500 text-purple-400' 
+                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
+                      <BookOpen size={20} />
+                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Docs</span>
                     </div>
                     <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
@@ -2372,7 +2397,7 @@ function App() {
       {/* Premium Footer */}
       <footer className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500 relative z-10">
         <div>
-          © {new Date().getFullYear()} TyFi. Underwritten Parametric Pool. All rights reserved.
+          ┬⌐ {new Date().getFullYear()} TyFi. Underwritten Parametric Pool. All rights reserved.
         </div>
         <div className="flex flex-wrap items-center justify-center gap-6 font-medium">
           <button onClick={() => setOpenPolicy('tos')} className="hover:text-white transition-colors">Terms of Service</button>
@@ -2562,7 +2587,7 @@ function App() {
         </div>
       )}
 
-      {/* 👤 Profile Dashboard Modal */}
+      {/* ≡ƒæñ Profile Dashboard Modal */}
       {isProfileDashboardOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setIsProfileDashboardOpen(false)}></div>
@@ -2616,7 +2641,7 @@ function App() {
                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
                           isMainnet ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
                         }`}>
-                          {network === 'mainnet' ? '🟢 Mainnet' : '🔵 Testnet Sandbox'}
+                          {network === 'mainnet' ? '≡ƒƒó Mainnet' : '≡ƒö╡ Testnet Sandbox'}
                         </span>
                       </div>
                     </div>
@@ -2711,7 +2736,7 @@ function App() {
                                     {farm.cropType}
                                   </span>
                                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
-                                    {farm.farmSize} Hectares • {farm.season}
+                                    {farm.farmSize} Hectares ΓÇó {farm.season}
                                   </span>
                                 </div>
                               </div>
@@ -2827,7 +2852,7 @@ function App() {
             {/* Footer */}
             <div className="p-4 bg-slate-950 text-center border-t border-white/5">
               <p className="text-[9px] text-slate-600 font-black uppercase tracking-[0.2em]">
-                TyFi • On-Chain Identity Proof • {network.toUpperCase()}
+                TyFi ΓÇó On-Chain Identity Proof ΓÇó {network.toUpperCase()}
               </p>
             </div>
           </div>
@@ -2844,7 +2869,7 @@ function App() {
                 onClick={() => setIsEditProfileModalOpen(false)}
                 className="text-slate-400 hover:text-white transition-colors cursor-pointer text-sm font-bold"
               >
-                ✕
+                Γ£ò
               </button>
             </div>
             <form onSubmit={handleEditProfileSubmit} className="space-y-4">
@@ -2900,11 +2925,11 @@ function App() {
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-center">
-                  <div className="text-emerald-500 font-bold text-xs">✓ RSBSA Verified</div>
+                  <div className="text-emerald-500 font-bold text-xs">Γ£ô RSBSA Verified</div>
                   <div className="text-[9px] text-slate-500 truncate">{profileForm.uploadedRsbsa || 'demo-rsbsa.pdf'}</div>
                 </div>
                 <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-center">
-                  <div className="text-emerald-500 font-bold text-xs">✓ Gov ID Verified</div>
+                  <div className="text-emerald-500 font-bold text-xs">Γ£ô Gov ID Verified</div>
                   <div className="text-[9px] text-slate-500 truncate">{profileForm.uploadedValidId || 'demo-id.png'}</div>
                 </div>
               </div>
@@ -2946,7 +2971,7 @@ function App() {
                 onClick={() => setIsAddFarmModalOpen(false)}
                 className="text-slate-400 hover:text-white transition-colors cursor-pointer text-sm font-bold"
               >
-                ✕
+                Γ£ò
               </button>
             </div>
             
@@ -3034,14 +3059,14 @@ function App() {
 
                   {modalValuationExplanation && (
                     <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-[10px] text-slate-400 leading-relaxed">
-                      <span className="font-extrabold text-white block mb-0.5">🌾 Crop Valuation Model (Confidence: {modalValuationConfidence}%)</span>
+                      <span className="font-extrabold text-white block mb-0.5">≡ƒî╛ Crop Valuation Model (Confidence: {modalValuationConfidence}%)</span>
                       {modalValuationExplanation}
                     </div>
                   )}
 
                   <div className="space-y-1">
                     <label className="flex items-center justify-between text-[10px] mb-1">
-                      <span className="text-slate-400 font-black uppercase tracking-wider">📍 Farm Location Search (OpenStreetMap)</span>
+                      <span className="text-slate-400 font-black uppercase tracking-wider">≡ƒôì Farm Location Search (OpenStreetMap)</span>
                       {newFarmForm.latitude !== undefined && (
                         <span className="text-[8px] text-emerald-400 font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
                           {newFarmForm.latitude.toFixed(4)}, {newFarmForm.longitude.toFixed(4)}
@@ -3107,7 +3132,7 @@ function App() {
                 {/* Right Column: Sat Hybrid Map & Land Ownership Upload */}
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">🗺️ Pinpoint Farm Location</label>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">≡ƒù║∩╕Å Pinpoint Farm Location</label>
                     <div className="h-[150px] w-full rounded-xl overflow-hidden border border-white/10 relative z-10">
                       <MapContainer
                         center={[
@@ -3119,7 +3144,7 @@ function App() {
                         className="w-full h-full"
                       >
                         <TileLayer
-                          attribution='© Google Maps'
+                          attribution='┬⌐ Google Maps'
                           url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
                         />
                         <MapEventsHandler 
@@ -3186,7 +3211,7 @@ function App() {
                             : 'text-slate-500 hover:text-white'
                         }`}
                       >
-                        🏛️ Land Title
+                        ≡ƒÅ¢∩╕Å Land Title
                       </button>
                       <button
                         type="button"
@@ -3197,7 +3222,7 @@ function App() {
                             : 'text-slate-500 hover:text-white'
                         }`}
                       >
-                        📄 Deed of Sale
+                        ≡ƒôä Deed of Sale
                       </button>
                     </div>
 
@@ -3239,7 +3264,7 @@ function App() {
                             {modalUploadedLandDoc}
                           </p>
                           <p className="text-emerald-400 text-[8px] font-bold mt-0.5">
-                            ✓ {modalLandDocType === 'land_title' ? 'Land Title' : 'Deed of Sale'} Verified
+                            Γ£ô {modalLandDocType === 'land_title' ? 'Land Title' : 'Deed of Sale'} Verified
                           </p>
                           <button
                             type="button"
