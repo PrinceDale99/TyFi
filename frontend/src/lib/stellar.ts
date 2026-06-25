@@ -489,7 +489,31 @@ export const contributeLiquidityOnChain = async (
       methodName = stakingMode === 'withdraw' ? 'withdraw_reinsurance' : 'deposit_reinsurance';
     }
 
-    const stroops = Math.floor(amount * 10000000);
+    let valToPass = BigInt(Math.floor(amount * 10000000)); // Default to stroops
+
+    if (methodName === 'withdraw_reinsurance') {
+      const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
+      const txShares = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+        .addOperation(contract.call("get_total_reinsurance_shares"))
+        .setTimeout(30).build();
+      const txDep = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+        .addOperation(contract.call("get_total_reinsurance_deposited"))
+        .setTimeout(30).build();
+
+      const [resShares, resDep] = await Promise.all([
+        server.simulateTransaction(txShares),
+        server.simulateTransaction(txDep)
+      ]);
+
+      if (rpc.Api.isSimulationSuccess(resShares) && rpc.Api.isSimulationSuccess(resDep)) {
+        const totalShares = BigInt(scValToNative(resShares.result!.retval!));
+        const totalDeposited = BigInt(scValToNative(resDep.result!.retval!));
+        if (totalDeposited > 0n) {
+          // shares = (amount_stroops * totalShares) / totalDeposited
+          valToPass = (valToPass * totalShares) / totalDeposited;
+        }
+      }
+    }
 
     const account = await server.getAccount(user);
     const tx = new TransactionBuilder(
@@ -504,7 +528,7 @@ export const contributeLiquidityOnChain = async (
         methodName,
         ...[
           userAddress.toScVal(),
-          nativeToScVal(BigInt(stroops), { type: 'i128' })
+          nativeToScVal(valToPass, { type: 'i128' })
         ]
       )
     )
