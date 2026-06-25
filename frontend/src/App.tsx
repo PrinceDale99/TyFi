@@ -1025,7 +1025,31 @@ function App() {
           addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed on Stellar ${isMainnet ? 'Mainnet' : 'Testnet Sandbox'}!`, 'success');
         } catch (err) {
           console.error("Stellar claim error:", err);
-          addNotification('Payout Rejected: The decentralized oracle network and AI assessment verified that there is no active storm damage. Manipulation attempts are automatically rejected by the smart contract.', 'warning');
+          if (isMainnet) {
+            addNotification('Payout Rejected: The decentralized oracle network and AI assessment verified that there is no active storm damage. Manipulation attempts are automatically rejected by the smart contract.', 'warning');
+          } else {
+            // Bypass the smart contract rejection on testnet
+            setFarms(prev => prev.map(f => f.id === farm.id ? { 
+              ...f, 
+              hasClaimed: true, 
+              claimedAmount: claimAmount, 
+              claimedRatio: payoutRatio 
+            } : f));
+
+            const newClaim: Claim = {
+              id: `TX-${Math.floor(Math.random() * 10000)}`,
+              date: new Date().toISOString().split('T')[0],
+              amount: claimAmount,
+              status: 'Paid',
+              trigger: triggerDesc
+            };
+
+            setClaims(prev => [newClaim, ...prev]);
+            
+            setTestnetTvl(prev => Math.max(0, prev - claimAmount));
+            
+            addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed on Stellar Testnet Sandbox! (Bypassed contract rejection for demo)`, 'success');
+          }
         }
       };
       processClaim();
