@@ -998,7 +998,7 @@ function App() {
       
       const processClaim = async () => {
         try {
-          await claimPayoutOnChain(pubkey, farm.id, farm.season || 'Wet Season 2026', isMainnet ? 'mainnet' : 'testnet', typhoonId);
+          await claimPayoutOnChain(pubkey, farm.id, farm.season || 'Wet Season 2026', isMainnet ? 'mainnet' : 'testnet', typhoonId, claimAmount);
           
           // Transaction success: update local states
           setFarms(prev => prev.map(f => f.id === farm.id ? { 
