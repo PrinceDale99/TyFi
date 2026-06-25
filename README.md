@@ -199,17 +199,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ## 📈 Monthly Growth Report
-Here is a snapshot of our latest monthly traction during the Testnet pilot phase:
+Here is a snapshot of our latest monthly traction across Testnet and our early Mainnet pilot phase:
 
 | Metric | Last Month | This Month | MoM Growth |
 |--------|------------|------------|------------|
-| **Registered Farmers** | 120 | **450** | 🚀 +275% |
+| **Registered Farmers (Testnet)** | 120 | **450** | 🚀 +275% |
+| **Active Mainnet Users** | 0 | **55** | 🌐 New |
 | **Hectares Covered** | 450 ha | **1,200 ha** | 📈 +166% |
 | **TVL (Testnet XLM)** | 500,000 | **2,150,000** | 💰 +330% |
 | **Reinsurance LPs** | 15 | **84** | 🧑‍🌾 +460% |
 | **Successful Payouts** | 0 | **12** (Simulated) | ⚡ N/A |
 
-*Growth highlights: We successfully verified over 300 new RSBSA land titles and onboarded two local farming cooperatives in Albay. The LP reinsurance pool surpassed our 2M XLM target liquidity.*
+*Growth highlights: We successfully verified over 300 new RSBSA land titles and onboarded two local farming cooperatives in Albay. The LP reinsurance pool surpassed our 2M XLM target liquidity. We also successfully launched our Mainnet pilot, onboarding our first 55 early-adopter farmers.*
+
+## 📋 User Feedback
+We actively iterate on the TyFi protocol based on real-world farmer and liquidity provider feedback.
+- **Product Feedback Sheet (55+ Mainnet Users)**: [View Feedback & Data](https://docs.google.com/spreadsheets/d/14zmDuArHgwdZZ8enZozHWemufqvJ_VBTI82fKxwkHfY/edit?usp=sharing)
 
 ## 🌟 Community Contribution Proof
 TyFi won **Best on Stellar** at the recent Stellar x RiseIn Philippines hackathon due to its insane potential to help local farmers!
