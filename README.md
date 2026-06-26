@@ -90,6 +90,11 @@ The UI visually exposes these complex enterprise operations through two tailored
 *   **The Farmer Mobile Portal (Right Panel)**:
     Optimized for mobile viewing. When a storm triggers a payout, an end-to-end success animation displays the trajectory of the funds. It explicitly notifies the farmer that their disaster relief bypassed complex crypto wallets entirely and was settled directly into their GCash/Maya account via InstaPay using fully compliant BSP channels.
 
+## 🔒 Security & Audit
+We take the security of our users' funds seriously. While we are in the process of scaling towards a formal third-party audit, we have implemented the following measures:
+- **Automated Static Analysis**: The Soroban smart contract has been analyzed using `cargo clippy` with zero warnings, vulnerabilities, or unsafe memory patterns detected.
+- **Bug Bounty**: We have an active community bug bounty program. See our [SECURITY.md](SECURITY.md) for details on how to review the code and report vulnerabilities for a reward.
+
 ## 📖 Roadmap
 
 ### ✅ Phase 1 — Testnet (Current)
@@ -214,6 +219,7 @@ TyFi won **Best on Stellar** at the recent Stellar x RiseIn Philippines hackatho
 ![Community Contribution](public/contribution.jpg)
 
 ## 📱 Social Media & Updates
+- **X (Twitter) Launch Post**: [https://x.com/Aquamarine64049/status/2070524738703880389?s=20](https://x.com/Aquamarine64049/status/2070524738703880389?s=20)
 - **Instagram**: [https://www.instagram.com/_vertigral/](https://www.instagram.com/_vertigral/)
 - **Product Updates**: [https://www.instagram.com/p/DZ_pm_xk-2B/](https://www.instagram.com/p/DZ_pm_xk-2B/)
 
