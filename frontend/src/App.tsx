@@ -34,7 +34,8 @@ import {
   Camera,
   Crosshair,
   Trash2,
-  BookOpen
+  BookOpen,
+  ArrowLeft
 } from 'lucide-react';
 import FarmerVerification from './components/FarmerVerification';
 import WeatherWidget from './components/WeatherWidget';
@@ -1279,8 +1280,18 @@ function App() {
     return (
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
         <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
-          <div className="p-8 border-b border-white/5 bg-white/5">
-            <div className="flex items-center gap-4 mb-2">
+          <div className="p-8 border-b border-white/5 bg-white/5 relative">
+            <button
+              onClick={() => {
+                setIsWalletConnected(false);
+                setWalletAddress('');
+              }}
+              className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"
+              title="Disconnect Wallet"
+            >
+              <X size={24} />
+            </button>
+            <div className="flex items-center gap-4 mb-2 pr-8">
               <div className={`p-2.5 rounded-xl ${isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'}`}>
                 <ShieldCheck size={28} />
               </div>
@@ -1445,6 +1456,18 @@ function App() {
         <div className="absolute bottom-1/3 left-1/4 w-[600px] h-[600px] rounded-full filter blur-[150px] transition-colors duration-1000 -z-10 bg-indigo-500/10" />
 
         <div className="relative z-10 max-w-5xl w-full">
+          <button 
+            onClick={() => {
+              setIsWalletConnected(false);
+              setWalletAddress('');
+              setHasAgreedToLegal(false);
+            }}
+            className="absolute -top-12 md:-top-16 left-0 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20"
+          >
+            <ArrowLeft size={16} />
+            <span className="text-sm font-bold uppercase tracking-wider">Disconnect Wallet</span>
+          </button>
+          
           <div className="text-center mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border inline-block mb-6 shadow-2xl ${
                   isMainnet 

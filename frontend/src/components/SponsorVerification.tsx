@@ -43,7 +43,16 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
         isMainnet ? 'bg-emerald-500/10' : 'bg-sky-500/10'
       }`} />
 
-      <div className="relative z-10 max-w-2xl w-full">
+      <div className="relative z-10 max-w-2xl w-full mt-12 md:mt-0">
+        {onBack && (
+          <button 
+            onClick={onBack}
+            className="absolute -top-12 md:-top-16 left-0 text-slate-400 hover:text-white flex items-center gap-2 transition-colors"
+          >
+            <ArrowLeft size={16} />
+            <span className="text-sm font-bold uppercase tracking-wider">Back to Profiles</span>
+          </button>
+        )}
         <div className="text-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
             <Globe size={32} />
