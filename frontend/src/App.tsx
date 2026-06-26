@@ -638,7 +638,7 @@ function App() {
   }, [notificationHistory, isWalletConnected, walletAddress, network]);
 
 
-  const loadProfile = async (address: string, net: string) => {
+  const loadProfile = async (address: string, net: 'testnet' | 'mainnet') => {
     let consent = localStorage.getItem(`typhoon_vault_legal_consent_${net}_${address}`) === 'true';
     let role = localStorage.getItem(`typhoon_vault_role_${net}_${address}`) as 'farmer' | 'sponsor' | null;
 
@@ -651,7 +651,7 @@ function App() {
         localStorage.setItem(`typhoon_vault_${net}_${address}`, JSON.stringify(fb));
         if (fb.role) {
           role = fb.role;
-          localStorage.setItem(`typhoon_vault_role_${net}_${address}`, role);
+          localStorage.setItem(`typhoon_vault_role_${net}_${address}`, role || '');
         }
         if (fb.hasAgreedToLegal !== undefined) {
           consent = fb.hasAgreedToLegal;
