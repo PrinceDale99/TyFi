@@ -49,6 +49,8 @@ pub enum DataKey {
     ReportedOracles(Symbol, Symbol), // List of oracles that have reported: (typhoon_id, region) -> Vec<Address>
     ConsensusDamagePercentage(Symbol, Symbol), // Calculated consensus damage percentage: (typhoon_id, region) -> u32
     ConsensusReached(Symbol, Symbol),   // Whether consensus is reached: (typhoon_id, region) -> bool
+    DaoAddress,                         // Address of the DAO contract
+    RiskZoneMultiplier(Symbol),         // Premium multiplier per zone (region) -> u32
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -247,6 +249,21 @@ impl TyphoonVault {
         require_multisig_auth(&env, payload, signatures)?;
         
         env.storage().instance().set(&DataKey::QuorumThreshold, &threshold);
+        Ok(())
+    }
+
+    /// Set the DAO Address (Admin transition)
+    pub fn set_dao_address(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, dao: Address) -> Result<(), Error> {
+        require_multisig_auth(&env, payload, signatures)?;
+        env.storage().instance().set(&DataKey::DaoAddress, &dao);
+        Ok(())
+    }
+
+    /// DAO ONLY: Update premium rate multiplier for a geospatial risk zone
+    pub fn update_premium_rate(env: Env, region: Symbol, multiplier: u32) -> Result<(), Error> {
+        let dao: Address = env.storage().instance().get(&DataKey::DaoAddress).ok_or(Error::Unauthorized)?;
+        dao.require_auth();
+        env.storage().persistent().set(&DataKey::RiskZoneMultiplier(region), &multiplier);
         Ok(())
     }
 
@@ -455,9 +472,14 @@ impl TyphoonVault {
             }
         };
 
-        client.transfer(&farmer, &env.current_contract_address(), &farmer_to_pay);
+        // Apply Risk Zone Multiplier if exists
+        let risk_multiplier: u32 = env.storage().persistent().get(&DataKey::RiskZoneMultiplier(region.clone())).unwrap_or(100);
+        let adjusted_premium = (premium * risk_multiplier as i128) / 100;
+        let adjusted_farmer_to_pay = (farmer_to_pay * risk_multiplier as i128) / 100;
 
-        let payout_amount = premium.checked_mul(10).ok_or(Error::Overflow)?;
+        client.transfer(&farmer, &env.current_contract_address(), &adjusted_farmer_to_pay);
+
+        let payout_amount = adjusted_premium.checked_mul(10).ok_or(Error::Overflow)?;
 
         let policy = Policy {
             farm_id: farm_id.clone(),
