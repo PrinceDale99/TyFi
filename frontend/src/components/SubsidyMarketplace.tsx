@@ -13,7 +13,7 @@ import {
   MapPin,
   Calendar
 } from 'lucide-react';
-import { getActiveSubsidyRequests } from '../services/firebaseService';
+import { getActiveSubsidyRequests, getSponsoredFarms } from '../services/firebaseService';
 import { registerPolicyOnChain, contributeLiquidityOnChain } from '../lib/stellar';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -49,18 +49,23 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
   userFarms = []
 }) => {
   const [requests, setRequests] = useState<SubsidyRequest[]>([]);
+  const [sponsoredFarms, setSponsoredFarms] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchRequests();
-  }, [network]);
+  }, [network, sponsorAddress]);
 
   const fetchRequests = async () => {
     setIsLoading(true);
-    const data = await getActiveSubsidyRequests(network);
+    const [data, sponsoredData] = await Promise.all([
+      getActiveSubsidyRequests(network),
+      sponsorAddress ? getSponsoredFarms(sponsorAddress, network) : Promise.resolve([])
+    ]);
     setRequests(data);
+    setSponsoredFarms(sponsoredData);
     setIsLoading(false);
   };
 
@@ -137,6 +142,58 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
           />
         </div>
       </div>
+
+      {/* Sponsored Farms Section */}
+      {sponsoredFarms.length > 0 && (
+        <div className="mb-10">
+          <h3 className="text-xl font-black text-white uppercase italic mb-4 flex items-center gap-2">
+            <Sprout className="text-emerald-400" />
+            My Sponsored Farms
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sponsoredFarms.map((farm) => {
+              // Deterministic progress between 30% and 90% based on farm ID
+              const progress = 30 + (parseInt(farm.id.slice(0, 4), 16) % 60);
+              return (
+                <div key={`sponsored-${farm.id}`} className="glass-panel p-5 bg-emerald-900/10 border-emerald-500/20 hover:border-emerald-500/40 transition-all relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h4 className="font-black text-white text-sm uppercase italic">{farm.farmName}</h4>
+                      <p className="text-[10px] text-slate-400 uppercase tracking-widest">{farm.farmerName} • {farm.cropType}</p>
+                    </div>
+                    <div className="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 uppercase tracking-wider text-right">
+                      {farm.season}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                        <span className="text-slate-400">Season Progress</span>
+                        <span className="text-emerald-400">{progress}%</span>
+                      </div>
+                      <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-white/5">
+                        <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000 relative" style={{ width: `${progress}%` }}>
+                          <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-3 bg-black/20 rounded-xl border border-white/5 flex justify-between items-center mt-4">
+                      <div>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">Your Contribution</span>
+                        <span className="text-sm font-black text-emerald-400">{farm.premiumNeeded.toLocaleString()} XLM</span>
+                      </div>
+                      <ShieldCheck className="text-emerald-500/50" size={24} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* User's Own Farms Configuration Section */}
       {userFarms.length > 0 && (

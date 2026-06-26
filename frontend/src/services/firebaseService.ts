@@ -162,6 +162,32 @@ export const getActiveSubsidyRequests = async (network: string = 'testnet') => {
 };
 
 /**
+ * Retrieves farms that a specific sponsor has funded.
+ */
+export const getSponsoredFarms = async (sponsorAddress: string, network: string = 'testnet') => {
+  try {
+    const q = query(
+      collection(db, "subsidy_requests"),
+      where("isFunded", "==", true),
+      where("fundedBy", "==", sponsorAddress),
+      where("network", "==", network)
+    );
+    const querySnapshot = await getDocs(q);
+    const docs = querySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as any));
+    
+    return docs.sort((a, b) => {
+      const timeA = a.fundedAt ? new Date(a.fundedAt).getTime() : 0;
+      const timeB = b.fundedAt ? new Date(b.fundedAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  } catch (e) {
+    console.error("Error getting sponsored farms: ", e);
+    return [];
+  }
+};
+
+/**
  * Removes a farm from the Subsidy Marketplace.
  */
 export const unlistFromSubsidy = async (requestId: string) => {
