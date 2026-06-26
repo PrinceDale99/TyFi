@@ -1022,7 +1022,22 @@ function App() {
       
       const processClaim = async () => {
         try {
-          await claimPayoutOnChain(pubkey, farm.id, farm.season || 'Wet Season 2026', isMainnet ? 'mainnet' : 'testnet', typhoonId, claimAmount);
+          // Attempt the actual backend trigger (Soroban + PDAX flow)
+          const res = await fetch('http://localhost:3001/api/v1/weather-trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              lat: 14.5995, 
+              lon: 120.9842, 
+              severity: triggerDesc, 
+              targetAddress: pubkey 
+            })
+          });
+          
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || "Backend or PDAX integration failed");
+          }
           
           // Transaction success: update local states
           setFarms(prev => prev.map(f => f.id === farm.id ? { 
@@ -1046,34 +1061,10 @@ function App() {
             setTestnetTvl(prev => Math.max(0, prev - claimAmount));
           }
           
-          addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed on Stellar ${isMainnet ? 'Mainnet' : 'Testnet Sandbox'}!`, 'success');
-        } catch (err) {
-          console.error("Stellar claim error:", err);
-          if (isMainnet) {
-            addNotification('Payout Rejected: The decentralized oracle network and AI assessment verified that there is no active storm damage. Manipulation attempts are automatically rejected by the smart contract.', 'warning');
-          } else {
-            // Bypass the smart contract rejection on testnet
-            setFarms(prev => prev.map(f => f.id === farm.id ? { 
-              ...f, 
-              hasClaimed: true, 
-              claimedAmount: claimAmount, 
-              claimedRatio: payoutRatio 
-            } : f));
-
-            const newClaim: Claim = {
-              id: `TX-${Math.floor(Math.random() * 10000)}`,
-              date: new Date().toISOString().split('T')[0],
-              amount: claimAmount,
-              status: 'Paid',
-              trigger: triggerDesc
-            };
-
-            setClaims(prev => [newClaim, ...prev]);
-            
-            setTestnetTvl(prev => Math.max(0, prev - claimAmount));
-            
-            addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed on Stellar Testnet Sandbox! (Bypassed contract rejection for demo)`, 'success');
-          }
+          addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed via Smart Contract! InstaPay/PDAX Sweep initiated.`, 'success');
+        } catch (err: any) {
+          console.error("Payout trigger error:", err);
+          addNotification(`Payout Failed: ${err.message || "Could not execute smart contract or fiat bridge."}`, 'error');
         }
       };
       processClaim();
