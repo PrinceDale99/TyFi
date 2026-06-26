@@ -4,6 +4,7 @@ import { BookOpen, Shield, CloudLightning, Coins, Users, Globe, TrendingUp } fro
 
 const DocsTab: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
+  const [activeUserStep, setActiveUserStep] = useState(0);
 
   const steps = [
     {
@@ -43,13 +44,52 @@ const DocsTab: React.FC = () => {
     }
   ];
 
+  const userSteps = [
+    {
+      id: 0,
+      title: "1. Connect Identity",
+      icon: <Users className="w-8 h-8 text-indigo-400" />,
+      description: "Link your Stellar wallet. NGOs deposit funds instantly, while farmers undergo automated RSBSA verification.",
+      animation: "pulse"
+    },
+    {
+      id: 1,
+      title: "2. Lock & Subscribe",
+      icon: <Shield className="w-8 h-8 text-emerald-400" />,
+      description: "Farmers select their farm and lock in their insurance premium. The smart contract actively stakes the capital to generate continuous yield.",
+      animation: "lock"
+    },
+    {
+      id: 2,
+      title: "3. Live Monitoring",
+      icon: <BookOpen className="w-8 h-8 text-sky-400" />,
+      description: "Watch your yields tick up in real-time. Track live PAGASA weather data and monitor typhoon paths directly on the radar dashboard.",
+      animation: "spin"
+    },
+    {
+      id: 3,
+      title: "4. Parametric Trigger",
+      icon: <CloudLightning className="w-8 h-8 text-amber-400" />,
+      description: "When disaster strikes, the off-chain oracle generates a Zero-Knowledge Proof. Click 'Simulate Disaster' to trigger the verification pipeline.",
+      animation: "shake"
+    },
+    {
+      id: 4,
+      title: "5. Fiat Disbursement",
+      icon: <Coins className="w-8 h-8 text-green-400" />,
+      description: "The Soroban contract unwinds the pool. Within seconds, funds are routed via PDAX and disbursed in PHP straight to the farmer's GCash wallet.",
+      animation: "up"
+    }
+  ];
+
   // Auto-advance the animation every 5 seconds if not hovered
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % steps.length);
+      setActiveUserStep((prev) => (prev + 1) % userSteps.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [steps.length]);
+  }, [steps.length, userSteps.length]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-12 pb-16">
@@ -180,6 +220,91 @@ const DocsTab: React.FC = () => {
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* App User Flow Animated Section */}
+      <div className="mt-16">
+        <div className="text-center space-y-4 mb-10">
+          <h2 className="text-3xl font-black text-white">How to Use the App</h2>
+          <p className="text-slate-400">Chronological step-by-step user journey.</p>
+        </div>
+
+        {/* Horizontal Timeline Flow */}
+        <div className="relative pt-12 pb-24">
+          <div className="absolute top-[4.5rem] left-4 right-4 flex gap-4">
+            {userSteps.map((step) => {
+              const isActive = activeUserStep === step.id;
+              const isPast = activeUserStep > step.id;
+              
+              return (
+                <div key={step.id} className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden relative">
+                  <motion.div
+                    key={`${step.id}-${isActive}`}
+                    initial={{ width: isPast ? "100%" : "0%" }}
+                    animate={{ width: isPast ? "100%" : isActive ? "100%" : "0%" }}
+                    transition={{ 
+                      duration: isActive ? 5 : 0.2, 
+                      ease: "linear" 
+                    }}
+                    className="absolute inset-0 bg-gradient-to-r from-blue-500 to-emerald-500"
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-5 gap-4 relative z-10">
+            {userSteps.map((step, idx) => {
+              const isActive = activeUserStep === step.id;
+              const isPast = activeUserStep > step.id;
+              
+              return (
+                <div key={step.id} className="flex flex-col items-center text-center group cursor-pointer" onClick={() => setActiveUserStep(step.id)}>
+                  <motion.div
+                    animate={
+                      isActive ? (
+                        step.animation === 'shake' ? { x: [-5, 5, -5, 5, 0], scale: 1.1 } :
+                        step.animation === 'pulse' ? { scale: [1, 1.1, 1] } :
+                        step.animation === 'lock' ? { scale: [1.2, 1], rotate: [0, 360] } :
+                        step.animation === 'spin' ? { rotate: 360, scale: 1.1 } :
+                        { y: [0, -10, 0], scale: 1.1 }
+                      ) : { scale: 1, rotate: 0, x: 0, y: 0 }
+                    }
+                    transition={{ repeat: isActive ? Infinity : 0, duration: step.animation === 'spin' ? 4 : 1.5 }}
+                    className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 border-2 mb-6 shadow-xl ${
+                      isActive 
+                        ? 'bg-slate-800 border-blue-500 text-white' 
+                        : isPast 
+                          ? 'bg-slate-900 border-emerald-500/50 text-emerald-500/50' 
+                          : 'bg-slate-900 border-slate-700 text-slate-600 hover:border-slate-500'
+                    }`}
+                  >
+                    {React.cloneElement(step.icon as React.ReactElement<any>, { className: 'w-8 h-8' })}
+                  </motion.div>
+                  
+                  <h3 className={`font-bold text-sm md:text-base mb-2 transition-colors ${isActive ? 'text-white' : isPast ? 'text-slate-300' : 'text-slate-500'}`}>
+                    {step.title}
+                  </h3>
+                  
+                  <AnimatePresence>
+                    {isActive && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute bottom-0 left-0 right-0 transform translate-y-full pt-4"
+                      >
+                        <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700 p-4 rounded-xl shadow-2xl mx-auto w-full max-w-sm">
+                          <p className="text-slate-300 text-sm">{step.description}</p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

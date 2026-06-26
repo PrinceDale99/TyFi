@@ -60,6 +60,7 @@ import { useTranslation } from 'react-i18next';
 import CertificateList from './components/CertificateList';
 import SubsidyMarketplace from './components/SubsidyMarketplace';
 import DocsTab from './components/DocsTab';
+import WeatherTrigger from './components/WeatherTrigger';
 import SponsorVerification from './components/SponsorVerification';
 import { registerForSubsidy } from './services/firebaseService';
 
@@ -1706,11 +1707,11 @@ function App() {
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                   <h1 className="text-4xl font-black text-white tracking-tight">
-                    {activeTab === 'monitor' ? t('header.protocolMonitoring') :
-                      activeTab === 'calc' ? t('header.smartCalculator') :
-                        activeTab === 'history' ? t('header.claimHistory') : 
+                    {activeTab === 'monitor' ? 'Protocol Monitoring' :
+                      activeTab === 'calc' ? 'Smart Calculator' :
+                        activeTab === 'history' ? 'Claim History' : 
                           activeTab === 'marketplace' ? 'Subsidy Marketplace' : 
-                            activeTab === 'docs' ? 'System Overview' : t('header.vaultInfrastructure')}
+                            activeTab === 'docs' ? 'System Overview' : 'Vault Infrastructure'}
                   </h1>
                   <p className="text-slate-400 mt-1">
                     {activeTab === 'monitor' ? `Automated smart contracts for ${farms[0]?.farmName || 'your farms'}` :
@@ -2141,6 +2142,10 @@ function App() {
 
             {/* Right Column - Controls */}
             <div className="lg:col-span-4 space-y-6">
+              
+              {/* Weather Disaster Testing Trigger */}
+              <WeatherTrigger />
+
               <div className="glass-panel">
                 <h3 className="font-black text-white mb-6 uppercase tracking-widest text-sm">Quick Protocol Access</h3>
                 <div className="grid grid-cols-2 md:grid-cols-1 gap-3">
