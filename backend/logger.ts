@@ -71,3 +71,10 @@ export const logEvent = async (
     }
   }
 };
+
+export const logger = {
+  info: (msg: string, meta?: any) => logEvent('INFO', msg, meta),
+  warn: (msg: string, meta?: any) => logEvent('WARNING', msg, meta),
+  error: (msg: string, meta?: any) => logEvent('ERROR', msg, meta),
+  notice: (msg: string, meta?: any) => logEvent('NOTICE', msg, meta),
+};
