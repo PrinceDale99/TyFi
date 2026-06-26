@@ -7,6 +7,7 @@ import * as cheerio from 'cheerio';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { oracleRouter } from './oracle';
+import { initiateFiatDeposit } from './pdax';
 
 dotenv.config();
 
@@ -14,6 +15,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/', oracleRouter);
+
+app.post('/api/v1/fiat-deposit', async (req, res) => {
+  const { amountPHP, paymentMethod = 'grabpay_cashin' } = req.body;
+  if (!amountPHP) {
+    return res.status(400).json({ success: false, error: 'amountPHP is required' });
+  }
+
+  try {
+    await logEvent('INFO', `Requesting PDAX fiat deposit checkout URL`, { amountPHP, paymentMethod });
+    const result = await initiateFiatDeposit(amountPHP, paymentMethod);
+    res.json(result);
+  } catch (error: any) {
+    await logEvent('ERROR', `PDAX Fiat Deposit API failed`, { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 
 const PORT = process.env.PORT || 3001;
 

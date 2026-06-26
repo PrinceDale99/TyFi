@@ -65,7 +65,7 @@ import AiCopilot from './components/AiCopilot';
 import LedgerStream from './components/LedgerStream';
 import { fetchWeather } from './services/weatherService';
 import type { WeatherData, FarmData, Claim } from "./types";
-import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance } from './lib/stellar';
+import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance, NETWORK_CONFIGS } from './lib/stellar';
 import { calculateCombinedDamage } from './utils/DamageCalculator';
 import { useXlmToPhp } from './hooks/useXlmToPhp';
 import { WeatherChart } from './components/WeatherChart';
@@ -78,9 +78,9 @@ import CertificateList from './components/CertificateList';
 import SubsidyMarketplace from './components/SubsidyMarketplace';
 import DocsTab from './components/DocsTab';
 import { useContinuousYield } from './hooks/useContinuousYield';
-import { WeatherTrigger } from './components/WeatherTrigger';
+
 import SponsorVerification from './components/SponsorVerification';
-import { registerForSubsidy, getUserProfile, saveUserProfile } from './services/firebaseService';
+import { registerForSubsidy, getUserProfile, saveUserProfile, logPayout } from './services/firebaseService';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -242,6 +242,7 @@ function App() {
     date: string;
     method: string;
     accountName: string;
+    accountNumber: string;
   } | null>(null);
 
   // Add Farm & Edit Profile Modals States
@@ -622,6 +623,35 @@ function App() {
       addNotification(`Operation failed: ${e.message || 'Cancelled'}`, 'warning');
     }
   };
+
+  const handleFiatDeposit = async () => {
+    if (fundingAmount <= 0) {
+      addNotification('Please enter a valid amount greater than 0', 'warning');
+      return;
+    }
+
+    addNotification(`Initiating fiat deposit via PDAX API for PHP ${fundingAmount * 15}...`, 'info');
+    
+    try {
+      const response = await fetch('http://localhost:3001/api/v1/fiat-deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amountPHP: fundingAmount * 15, paymentMethod: 'grabpay_cashin' })
+      });
+      
+      const data = await response.json();
+      if (data.success && data.data?.payment_checkout_url) {
+        addNotification(`PDAX checkout generated. Opening secure payment gateway...`, 'success');
+        window.open(data.data.payment_checkout_url, '_blank');
+      } else {
+        throw new Error(data.error || 'Failed to generate checkout URL');
+      }
+    } catch (e: any) {
+      console.error(e);
+      addNotification(`PDAX Deposit failed: ${e.message}`, 'warning');
+    }
+  };
+
 
   const addNotification = (text: string, type: 'info' | 'success' | 'warning' = 'info') => {
     const id = Math.random().toString(36).slice(2, 9);
@@ -1025,33 +1055,59 @@ function App() {
 
     // Handle blockchain claim if wallet connected
     if (isWalletConnected) {
-      const pubkey = localStorage.getItem('stellar_pubkey') || '';
+      const pubkey = walletAddress;
       const typhoonId = weather?.activeStorm?.name || 'TROPICAL_DEPRESSION_CONSENSUS';
       const region = farm.region || 'Central Luzon';
       
       const processClaim = async () => {
         try {
-          // Attempt the actual backend trigger (Soroban + PDAX flow)
-          const res = await fetch('http://localhost:3001/api/v1/weather-trigger', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              lat: 14.5995, 
-              lon: 120.9842, 
-              severity: triggerDesc, 
-              targetAddress: pubkey 
-            })
-          });
+          const prefs = JSON.parse(localStorage.getItem(`typhoon_vault_payment_${pubkey}`) || '{"method":"web3"}');
           
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            throw new Error(errorData.error || "Backend or PDAX integration failed");
-          }
-          
-          const responseData = await res.json();
-          const prefs = JSON.parse(localStorage.getItem(`typhoon_vault_payment_${isMainnet ? 'mainnet' : 'testnet'}_${pubkey}`) || '{"method":"web3"}');
+          // 1. ALWAYS execute the Smart Contract claim first to deduct XLM from the vault TVL
+          addNotification('Requesting smart contract signature to authorize payout and deduct from vault...', 'info');
+          const scTxHash = await claimPayoutOnChain(
+            pubkey, 
+            farm.id, 
+            'Wet Season 2026', 
+            network, 
+            typhoonId, 
+            claimAmount
+          );
 
-          
+          if (prefs.method === 'fiat') {
+            // 2. If Fiat, trigger the backend bridge to push InstaPay
+            addNotification('Smart contract executed. Bridging to Fiat via PDAX...', 'info');
+            const res = await fetch('http://localhost:3001/api/v1/weather-trigger', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                lat: 14.5995, 
+                lon: 120.9842, 
+                severity: triggerDesc, 
+                targetAddress: pubkey,
+                paymentPrefs: prefs
+              })
+            });
+            
+            if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              throw new Error(errorData.error || "Backend or PDAX integration failed");
+            }
+            
+            const responseData = await res.json();
+            
+            setInstapayReceipt({
+              amountPHP: responseData.amountPHP || (claimAmount * 4.2),
+              txHash: responseData.pdaxTxId || 'UNKNOWN_TX',
+              date: new Date().toLocaleString(),
+              method: prefs.provider || 'InstaPay',
+              accountName: prefs.accountName || 'Farmer Account',
+              accountNumber: prefs.accountNumber || '09XXXXXXXXX'
+            });
+          } else {
+            addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed via Smart Contract directly to your Web3 Wallet! Tx Hash: ${scTxHash}`, 'success');
+          }
+
           // Transaction success: update local states
           setFarms(prev => prev.map(f => f.id === farm.id ? { 
             ...f, 
@@ -1070,20 +1126,16 @@ function App() {
 
           setClaims(prev => [newClaim, ...prev]);
           
+          logPayout({
+            farmerAddress: walletAddress,
+            amount: claimAmount,
+            region: farm.region || farm.name,
+            network: isMainnet ? 'mainnet' : 'testnet'
+          }).catch(err => console.error("Failed to log payout:", err));
+          
           if (!isMainnet) {
             setTestnetTvl(prev => Math.max(0, prev - claimAmount));
-          }
-          
-          if (prefs.method === 'fiat') {
-            setInstapayReceipt({
-              amountPHP: responseData.amountPHP || (claimAmount * 4.2),
-              txHash: responseData.txHash || 'MOCK_TX_123',
-              date: new Date().toLocaleString(),
-              method: prefs.fiatProvider || 'InstaPay',
-              accountName: prefs.fiatAccountName || 'Farmer Account'
-            });
-          } else {
-            addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed via Smart Contract directly to your Web3 Wallet!`, 'success');
+            setContractTvl(prev => Math.max(0, prev - claimAmount));
           }
         } catch (err: any) {
           console.error("Payout trigger error:", err);
@@ -1112,6 +1164,7 @@ function App() {
       
       if (!isMainnet) {
         setTestnetTvl(prev => Math.max(0, prev - claimAmount));
+        setContractTvl(prev => Math.max(0, prev - claimAmount));
       }
       
       addNotification(`[Demo] Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed!`, 'success');
@@ -1989,12 +2042,18 @@ function App() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* TVL */}
-                    <div className={`glass-panel border transition-all duration-700 ${isMainnet ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]' : isTestnet ? 'border-sky-500/20 shadow-[0_0_20px_rgba(14,165,233,0.05)]' : 'border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)]'}`}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                          <Lock size={20} />
+                    <div 
+                      className={`glass-panel border transition-all duration-700 cursor-pointer ${isMainnet ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-500/50' : isTestnet ? 'border-sky-500/20 shadow-[0_0_20px_rgba(14,165,233,0.05)] hover:border-sky-500/50' : 'border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)] hover:border-indigo-500/50'}`}
+                      onClick={() => window.open(`https://stellar.expert/explorer/${network}/contract/${NETWORK_CONFIGS[network as 'testnet' | 'mainnet'].vaultContractId}`, '_blank')}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                            <Lock size={20} />
+                          </div>
+                          <h3 className="font-black text-white text-sm">Total Value Locked</h3>
                         </div>
-                        <h3 className="font-black text-white text-sm">Total Value Locked</h3>
+                        <ArrowUpRight size={16} className="text-slate-500 opacity-50" />
                       </div>
                       <div className="text-2xl font-black text-white mb-1 tracking-tight">
                         {isMainnet 
@@ -2257,6 +2316,15 @@ function App() {
                                 Deposit Subsidy
                               </button>
                             </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleFiatDeposit}
+                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] flex items-center justify-center gap-2 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                              >
+                                <DollarSign size={14} />
+                                Fund via PDAX Fiat (PHP)
+                              </button>
+                            </div>
                         </div>
                       </div>
                     </div>
@@ -2297,8 +2365,7 @@ function App() {
             {/* Right Column - Controls */}
             <div className="lg:col-span-4 space-y-6">
               
-              {/* Weather Disaster Testing Trigger */}
-              <WeatherTrigger targetAddress={walletAddress} activeYieldBalance={liveYield} />
+
 
               <div className="glass-panel">
                 <h3 className="font-black text-white mb-6 uppercase tracking-widest text-sm">Quick Protocol Access</h3>
@@ -3547,13 +3614,21 @@ function App() {
                 <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Date</span>
                 <span className="text-xs text-white font-medium">{instapayReceipt.date}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Destination</span>
-                <span className="text-xs text-white font-medium">{instapayReceipt.method} ({instapayReceipt.accountName})</span>
+              <div className="flex justify-between items-start">
+                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider pt-0.5">Destination</span>
+                <div className="text-right flex flex-col gap-0.5">
+                  <span className="text-xs text-white font-bold">{instapayReceipt.method}</span>
+                  <span className="text-[10px] text-slate-400 font-medium">{instapayReceipt.accountName}</span>
+                  <span className="text-[10px] text-slate-400 font-mono tracking-wide">{instapayReceipt.accountNumber}</span>
+                </div>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Ref No.</span>
                 <span className="text-xs font-mono text-emerald-400">{instapayReceipt.txHash}</span>
+              </div>
+              <div className="flex justify-between items-center mt-2 pt-4 border-t border-white/5">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Powered by</span>
+                <span className="text-sm font-black text-blue-400 tracking-tighter">PDAX</span>
               </div>
             </div>
 

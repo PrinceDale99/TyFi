@@ -88,6 +88,19 @@ export const getPayoutHistory = async (farmerAddress: string, network: string = 
   }
 };
 
+export const logPayout = async (payoutData: Omit<PayoutLog, 'id' | 'timestamp'>) => {
+  try {
+    const docRef = await addDoc(collection(db, "payouts"), {
+      ...payoutData,
+      timestamp: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (e) {
+    console.error("Error logging payout: ", e);
+    return null;
+  }
+};
+
 /**
  * Registers a farm for the Subsidy Marketplace.
  */

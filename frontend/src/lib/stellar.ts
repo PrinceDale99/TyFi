@@ -272,18 +272,32 @@ export const claimPayoutOnChain = async (
     console.log(`[${config.name}] Claiming payout on chain for farm ${farmId}...`);
     
     const account = await server.getAccount(farmer);
-    let operation;
+    let tx;
     if (network === 'testnet') {
       const valToPass = BigInt(Math.floor(amount * 10000000));
-      operation = contract.call(
+      const negValToPass = BigInt(-Math.floor(amount * 10000000));
+      
+      const op1 = contract.call(
         "testnet_claim_payout",
         ...[
           farmerAddress.toScVal(),
           nativeToScVal(valToPass, { type: 'i128' })
         ]
       );
+      const op2 = contract.call(
+        "testnet_fund_tvl",
+        ...[
+          nativeToScVal(negValToPass, { type: 'i128' })
+        ]
+      );
+      
+      tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+        .addOperation(op1)
+        .addOperation(op2)
+        .setTimeout(30)
+        .build();
     } else {
-      operation = contract.call(
+      const operation = contract.call(
         "claim_payout",
         ...[
           farmerAddress.toScVal(),
@@ -292,18 +306,12 @@ export const claimPayoutOnChain = async (
           xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId))
         ]
       );
+      
+      tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+        .addOperation(operation)
+        .setTimeout(30)
+        .build();
     }
-
-    const tx = new TransactionBuilder(
-      account,
-      {
-        fee: BASE_FEE,
-        networkPassphrase: config.passphrase,
-      }
-    )
-    .addOperation(operation)
-    .setTimeout(30)
-    .build();
 
     const preparedTx = await server.prepareTransaction(tx) as Transaction;
 

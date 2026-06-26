@@ -9,7 +9,7 @@ import { initiateFiatSweep } from './pdax';
 
 oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
   try {
-    const { lat, lon, severity, targetAddress } = req.body;
+    const { lat, lon, severity, targetAddress, paymentPrefs } = req.body;
     await logEvent('INFO', 'Weather trigger received', { lat, lon, severity });
 
     // Mock the Stellar TX for the hackathon / test flow
@@ -24,8 +24,8 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
     
     let pdaxTxId = "PENDING";
     try {
-      await logEvent('INFO', 'Initiating PDAX Fiat Sweep', { amountPHP });
-      pdaxTxId = await initiateFiatSweep(amountPHP);
+      await logEvent('INFO', 'Initiating PDAX Fiat Sweep', { amountPHP, paymentPrefs });
+      pdaxTxId = await initiateFiatSweep(amountPHP, paymentPrefs);
       await logEvent('INFO', 'PDAX Fiat Sweep Success', { pdaxTxId });
     } catch (pdaxError: any) {
       await logEvent('ERROR', 'PDAX Fiat Sweep Failed', { error: pdaxError.message });

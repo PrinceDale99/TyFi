@@ -100,7 +100,13 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
 
       {paymentMethod === 'fiat' && (
         <div className="glass-panel p-6 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-500 mt-6 space-y-6">
-          <h3 className="text-md font-bold text-white uppercase tracking-widest border-b border-white/10 pb-4">Fiat Routing Details</h3>
+          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <h3 className="text-md font-bold text-white uppercase tracking-widest">Fiat Routing Details</h3>
+            <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">
+              <span className="text-[10px] text-blue-200 uppercase font-bold tracking-widest">Powered by</span>
+              <span className="text-xs font-black text-blue-400 tracking-tighter">PDAX</span>
+            </div>
+          </div>
           
           <div className="space-y-5">
             <div className="form-group">
