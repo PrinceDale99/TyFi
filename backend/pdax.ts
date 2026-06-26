@@ -133,7 +133,7 @@ export const initiateFiatDeposit = async (amountPHP: number, paymentMethod: stri
         beneficiary_zip_code: "1634",
         beneficiary_government_issued_id: "ID123",
         beneficiary_phone_number: "639081234567",
-        purpose: "Insurance Premium Deposit",
+        purpose: "Investments/Savings",
         relationship_of_sender_to_beneficiary: "Business",
         currency: "PHP",
         nature_of_business: "Insurance"
