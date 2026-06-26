@@ -275,7 +275,6 @@ export const claimPayoutOnChain = async (
     let tx;
     if (network === 'testnet') {
       const valToPass = BigInt(Math.floor(amount * 10000000));
-      const negValToPass = BigInt(-Math.floor(amount * 10000000));
       
       const op1 = contract.call(
         "testnet_claim_payout",
@@ -284,16 +283,9 @@ export const claimPayoutOnChain = async (
           nativeToScVal(valToPass, { type: 'i128' })
         ]
       );
-      const op2 = contract.call(
-        "testnet_fund_tvl",
-        ...[
-          nativeToScVal(negValToPass, { type: 'i128' })
-        ]
-      );
       
       tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: config.passphrase })
         .addOperation(op1)
-        .addOperation(op2)
         .setTimeout(30)
         .build();
     } else {

@@ -354,6 +354,13 @@ impl TyphoonVault {
             return Err(Error::InsufficientLiquidity);
         }
         
+        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        total_deposited = total_deposited.checked_sub(amount).ok_or(Error::Overflow)?;
+        if total_deposited < 0 {
+            total_deposited = 0;
+        }
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+
         client.transfer(&env.current_contract_address(), &farmer, &amount);
         Ok(amount)
     }
