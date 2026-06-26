@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import { Button } from './ui/button';
 
 export const Governance = () => {
   const [votingPower, setVotingPower] = useState<number>(0);
@@ -22,12 +20,12 @@ export const Governance = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>TyFi Climate DAO Governance</CardTitle>
-        </CardHeader>
-        <CardContent>
+    <div className="space-y-6 max-w-4xl mx-auto p-4">
+      <div className="bg-white rounded-xl shadow-md border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-2xl font-bold">TyFi Climate DAO Governance</h2>
+        </div>
+        <div className="p-6">
           <p className="text-gray-600 mb-4">
             Participate in decentralized governance using your active Vault Liquidity Provide (LP) shares.
             No tokens are required. 1 LP Share = 1 Vote.
@@ -35,15 +33,15 @@ export const Governance = () => {
           <div className="bg-blue-50 p-4 rounded-md mb-6">
             <h3 className="font-semibold text-blue-800">Your Voting Power</h3>
             <p className="text-2xl font-bold text-blue-900">{votingPower} Votes</p>
-            <Button className="mt-2" variant="outline" onClick={() => setVotingPower(500)}>
+            <button className="mt-4 px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-100" onClick={() => setVotingPower(500)}>
               Simulate Load LP Shares
-            </Button>
+            </button>
           </div>
 
           <h3 className="text-lg font-semibold mb-4">Active Proposals</h3>
           <div className="space-y-4">
             {proposals.map(p => (
-              <Card key={p.id} className="p-4 border border-gray-200">
+              <div key={p.id} className="p-4 border border-gray-200 rounded-lg shadow-sm">
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-semibold">Proposal #{p.id}</h4>
@@ -55,19 +53,20 @@ export const Governance = () => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Button onClick={() => handleVote(p.id, true)} className="bg-green-600 hover:bg-green-700">
+                    <button onClick={() => handleVote(p.id, true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
                       Vote For
-                    </Button>
-                    <Button onClick={() => handleVote(p.id, false)} className="bg-red-600 hover:bg-red-700">
+                    </button>
+                    <button onClick={() => handleVote(p.id, false)} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
                       Vote Against
-                    </Button>
+                    </button>
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
+
