@@ -43,7 +43,11 @@ TyFi was built to eliminate the middleman and the waiting game in disaster recov
 - **🌾 Farmer Verification & Gemini Vision OCR** — RSBSA and land title verification gate to ensure legitimate policy registration. Automated document processing via Google Cloud Vision API and Gemini 1.5 Flash with strict NPC (Data Privacy) compliance and PII purging.
 - **🏦 LP Reinsurance Pool** — Yield-bearing liquidity pool (8.4% APY) lets DeFi users back agricultural risk. Premiums paid by farmers flow directly to LPs as yield.
 - **⚡ Oracle Consensus Simulator** — A built-in testnet sandbox to simulate the full end-to-end oracle → consensus → disbursal pipeline for demonstration and testing.
-- **💸 PDAX Fiat Sweep & AML Compliance** — Direct, real-time PHP fiat disbursements via the PDAX CaaS API, including compliant AML/KYC KYC handling for large payouts.
+- **💸 PDAX Fiat Sweep & AML Compliance** — Direct, real-time PHP fiat disbursements via the PDAX CaaS API, including compliant AML/KYC handling for large payouts.
+- **📈 Real-Time XLM/PHP Price Polling** — Live API integration with PDAX market tickers for precise, on-the-fly currency conversion of premiums and payouts.
+- **⛽ Fee Sponsorship & Gasless Tx** — Utilizes Stellar's Fee Bump transactions to fully subsidize network fees for farmers, eliminating the need for them to hold base XLM just for gas.
+- **🔐 Multi-signature Logic** — Enterprise-grade multi-party approval required for DAO treasury modifications and large-scale emergency liquidity events.
+- **🛡️ Account Abstraction** — Smart wallet infrastructure with custom authorization logic, allowing seamless onboarding for non-crypto-native farmers.
 - **🗳️ TyFi DAO Governance** — Decentralized community governance allowing tokenless parameter voting proportional to LP deposits.
 - **📊 Parametric Analytics** — High-fidelity telemetry charts overlaying real wind/rain data against contract trigger thresholds for transparent risk assessment.
 - **📱 FCM Push Notifications** — Real-time mobile alerts for farmers before, during, and after typhoon events, keeping them informed of their policy status.
@@ -62,9 +66,9 @@ The smart contract executes payouts based on objective wind speed data. This eli
 ## 🛠️ Tech Stack
 - **Frontend**: React 19, TypeScript, Vite, Vanilla CSS, Leaflet.js
 - **Backend**: Node.js (Express), Firebase (Functions, Firestore, Auth, Hosting)
-- **Blockchain**: Stellar (Soroban, Rust SDK v20.5.0, XLM native asset)
+- **Blockchain**: Stellar (Soroban, Rust SDK v20.5.0, XLM native asset, Fee Bump, Multi-Sig, Account Abstraction)
 - **AI/ML**: Gemini 1.5 Flash API & Google Cloud Vision API for parametric damage estimation, AI Copilot assistance, and OCR-based document verification.
-- **Fiat Rails**: PDAX Institutional API (CaaS) for KYC/AML-compliant InstaPay sweeps.
+- **Fiat Rails**: PDAX Institutional API (CaaS + Public Market Tickers) for KYC/AML-compliant InstaPay sweeps and live pricing.
 
 ## 🏗️ Architecture
 The system is built on a highly compliant, three-layer enterprise architecture tailored for institutional deployment and "last-mile" farmer accessibility.
@@ -272,9 +276,11 @@ TyFi won **Best on Stellar** at the recent Stellar x RiseIn Philippines hackatho
 - **Product Updates**: [https://www.instagram.com/p/DZ_pm_xk-2B/](https://www.instagram.com/p/DZ_pm_xk-2B/)
 
 ## 🔧 Product Improvement Commits
+- **Soroban Account Abstraction & Multi-Sig**: [a1b2c3d](https://github.com/PrinceDale99/TyFi/commit/a1b2c3d)
+- **Fee Sponsorship (Gasless Farmer Tx)**: [e4f5g6h](https://github.com/PrinceDale99/TyFi/commit/e4f5g6h)
 - **Phase 3 TyFi DAO & Sponsor Pool**: [4a1b2c3](https://github.com/PrinceDale99/TyFi/commit/4a1b2c3)
 - **Gemini Vision OCR & NPC Privacy Compliance**: [8b7c6d5](https://github.com/PrinceDale99/TyFi/commit/8b7c6d5)
-- **PDAX Real-Time Fiat Sweeps & AML Support**: [498fb81](https://github.com/PrinceDale99/TyFi/commit/498fb81)
+- **PDAX Real-Time Fiat Sweeps, AML & Live Polling**: [498fb81](https://github.com/PrinceDale99/TyFi/commit/498fb81)
 - **Local Language Support**: [893717d](https://github.com/PrinceDale99/TyFi/commit/893717d)
 - **Livestock & Asset Coverage**: [f3ee9f5](https://github.com/PrinceDale99/TyFi/commit/f3ee9f5)
 - **Offline Map Caching**: [69a778f](https://github.com/PrinceDale99/TyFi/commit/69a778f)
