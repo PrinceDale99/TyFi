@@ -66,6 +66,50 @@ The smart contract executes payouts based on objective wind speed data. This eli
 ## 🏗️ Architecture
 The system is built on a highly compliant, three-layer enterprise architecture tailored for institutional deployment and "last-mile" farmer accessibility.
 
+```mermaid
+graph TD
+    subgraph L3 ["Layer 3: React Frontend"]
+        FMP["Farmer Mobile Portal"]
+        IH["Institutional Hub"]
+    end
+
+    subgraph L2 ["Layer 2: Off-Chain & PDAX Integrations"]
+        BE["Node.js / Firebase Backend"]
+        AI["Gemini AI (Damage Estimation)"]
+        Oracle["PAGASA Weather Oracle"]
+        
+        subgraph PDAX ["PDAX Enterprise APIs"]
+            P_Bridge["Cross-Chain Bridge"]
+            P_Sec["Securities API (Treasury Bonds)"]
+            P_OTC["Prime OTC API (Liquidation)"]
+            P_CaaS["Crypto-as-a-Service API"]
+        end
+    end
+
+    subgraph L1 ["Layer 1: Blockchain"]
+        SC["Stellar Soroban Smart Contract"]
+    end
+    
+    subgraph Users ["External"]
+        NGO["Institutional Donors / NGOs"]
+        Farmer["Registered Farmers (GCash/Maya)"]
+    end
+
+    NGO -->|"Deposits Funds"| IH
+    IH -->|"Routes via PDAX"| P_Bridge
+    P_Bridge -->|"Settles USDC"| SC
+    
+    FMP -->|"Registers Farm"| BE
+    Oracle -->|"Live Typhoon Data"| BE
+    BE <-->|"Parametric Analysis"| AI
+    BE -->|"Triggers Payout"| SC
+    
+    SC -->|"Generates Yield"| P_Sec
+    SC -->|"Initiates Liquidation"| P_OTC
+    P_OTC -->|"Converts to PHP"| P_CaaS
+    P_CaaS -->|"Direct Fiat Disbursement"| Farmer
+```
+
 ### Layer 1: Stellar Soroban Smart Contract
 - **Parametric Vault**: Non-custodial XLM/USDC vault handling automated disbursements based on objective weather oracles.
 - **Consensus Rules**: Enforces the logic that dictactes payout ratios matching the severity of a PAGASA-declared typhoon.
