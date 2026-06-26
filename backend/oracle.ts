@@ -1,9 +1,9 @@
 import express from 'express';
-import { Keypair, TransactionBuilder, Networks, xdr, SorobanRpc, Contract, Address } from 'stellar-sdk';
+import { Keypair, TransactionBuilder, Networks, xdr, rpc, Contract, Address } from '@stellar/stellar-sdk';
 import { logEvent } from './logger';
 
 export const oracleRouter = express.Router();
-const server = new SorobanRpc.Server('https://soroban-testnet.stellar.org');
+const server = new rpc.Server('https://soroban-testnet.stellar.org');
 
 import { initiateFiatSweep } from './pdax';
 

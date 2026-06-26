@@ -1954,7 +1954,9 @@ function App() {
                         <h3 className="font-black text-white text-sm">Total Value Locked</h3>
                       </div>
                       <div className="text-2xl font-black text-white mb-1 tracking-tight">
-                        {liveYield.toLocaleString(undefined, { minimumFractionDigits: 7, maximumFractionDigits: 7 })} <span className="text-sm font-bold text-slate-400">XLM</span>
+                        {isMainnet 
+                          ? currentTvl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+                          : liveYield.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm font-bold text-slate-400">XLM</span>
                       </div>
                       <div className="text-[11px] text-slate-400 font-bold block -mt-1 mb-2">
                         ≈ {formatPhp(currentTvl)}
