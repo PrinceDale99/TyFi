@@ -5,34 +5,35 @@ import { logEvent } from './logger';
 export const oracleRouter = express.Router();
 const server = new SorobanRpc.Server('https://soroban-testnet.stellar.org');
 
+import { initiateFiatSweep } from './pdax';
+
 oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
   try {
     const { lat, lon, severity, targetAddress } = req.body;
     await logEvent('INFO', 'Weather trigger received', { lat, lon, severity });
 
-    const proofBuffer = Buffer.from(JSON.stringify({ lat, lon, severity, verified: true }));
+    // Mock the Stellar TX for the hackathon / test flow
+    let txHash = "MOCK_TX_" + Math.random().toString(36).substring(7);
     
-    const sourceKeypair = Keypair.fromSecret(process.env.STELLAR_SECRET_KEY as string);
-    const sourceAccount = await server.getAccount(sourceKeypair.publicKey());
-    
-    const contract = new Contract(process.env.CONTRACT_ID as string);
-    const amountVal = xdr.ScVal.scvU128(new xdr.Scu128({ hi: 0, lo: xdr.Uint64.fromString("50000000") }));
-    
-    const tx = new TransactionBuilder(sourceAccount, { fee: '10000', networkPassphrase: Networks.TESTNET })
-      .addOperation(contract.call("verify_and_liquidate", 
-        xdr.ScVal.scvBytes(proofBuffer),
-        xdr.ScVal.scvVec([]),
-        new Address(targetAddress).toScVal(),
-        amountVal
-      ))
-      .setTimeout(30)
-      .build();
+    // Simulate Soroban contract execution time
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-    const preparedTx = await server.prepareTransaction(tx);
-    preparedTx.sign(sourceKeypair);
+    // Calculate PHP equivalent (e.g. 50,000 XLM yield at 58.20 PHP = ~2.9m PHP)
+    // For this test, we use a smaller mock amount: 15,000 PHP
+    const amountPHP = 15000;
+    
+    let pdaxTxId = "PENDING";
+    try {
+      await logEvent('INFO', 'Initiating PDAX Fiat Sweep', { amountPHP });
+      pdaxTxId = await initiateFiatSweep(amountPHP);
+      await logEvent('INFO', 'PDAX Fiat Sweep Success', { pdaxTxId });
+    } catch (pdaxError: any) {
+      await logEvent('ERROR', 'PDAX Fiat Sweep Failed', { error: pdaxError.message });
+      // We will still return the error in the response so the frontend can see it
+      return res.status(502).json({ error: 'PDAX Sweep Failed: ' + pdaxError.message });
+    }
 
-    const sendResponse = await server.sendTransaction(preparedTx);
-    res.json({ status: 'success', txHash: sendResponse.hash });
+    res.json({ status: 'success', txHash, pdaxTxId, amountPHP });
   } catch (err: any) {
     await logEvent('ERROR', 'Oracle failure', { error: err.message });
     res.status(500).json({ error: 'Failed to trigger parametric contract' });
