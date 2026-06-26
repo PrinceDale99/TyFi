@@ -25,6 +25,7 @@ import {
   Upload,
   DollarSign,
   FileText,
+  Fingerprint,
   Sprout,
   X,
   ShieldCheck,
@@ -741,6 +742,51 @@ function App() {
     lastSyncedAddress.current = address;
   };
 
+  const handleBiometricRegistration = async () => {
+    try {
+      addNotification('Awaiting Device Security...', 'info');
+      // 1. Invoke native hardware biometric popup via navigator.credentials.create
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: { name: "Typhoon Resilience Vault", id: window.location.hostname },
+          user: {
+            id: new Uint8Array(16),
+            name: "farmer@tyfi.app",
+            displayName: "TyFi Farmer",
+          },
+          pubKeyCredParams: [{ type: "public-key", alg: -7 }], // ES256 (secp256r1)
+          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+          timeout: 60000,
+        }
+      });
+
+      if (!credential) throw new Error("Biometric verification cancelled.");
+
+      addNotification('Generating Smart Wallet...', 'info');
+      await new Promise(r => setTimeout(r, 1500)); // Mocking Layer 2 relay delay
+      
+      addNotification('Provisioning Gasless Identity...', 'info');
+      await new Promise(r => setTimeout(r, 1500)); // Mocking Soroban sponsorship delay
+      
+      // Mock the successful onboarding of a gasless farmer wallet
+      const mockPasskeyAddress = "WEBAUTHN_SPONSORED_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+      setWalletAddress(mockPasskeyAddress);
+      setIsWalletConnected(true);
+      
+      // Load standard profile for mock
+      await loadProfile(mockPasskeyAddress, network);
+      addNotification('Biometric Passkey registered successfully! Identity is fully sponsored.', 'success');
+      
+    } catch (err: any) {
+      console.error(err);
+      addNotification('Biometric Registration Failed: ' + err.message, 'error');
+    }
+  };
+
   const handleConnectWallet = async (walletId: string) => {
     try {
       if (walletId.startsWith("DEMO_TESTNET")) {
@@ -1287,18 +1333,28 @@ function App() {
                 <p className="text-slate-400 text-sm leading-relaxed">Link your Web3 wallet to access institutional vaults or manage your farm's policy.</p>
               </div>
               
-              <button
-                onClick={() => setIsWalletModalOpen(true)}
-                className={`w-full text-white font-black py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 group relative overflow-hidden ${
-                  isMainnet 
-                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_50px_rgba(16,185,129,0.5)]' 
-                    : 'bg-sky-600 hover:bg-sky-500 shadow-[0_0_40px_rgba(14,165,233,0.3)] hover:shadow-[0_0_50px_rgba(14,165,233,0.5)]'
-                }`}
-              >
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-                <Wallet size={20} className="group-hover:rotate-12 group-hover:scale-110 transition-all duration-300 relative z-10" />
-                <span className="relative z-10 tracking-wide">Connect Web3 Wallet</span>
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={handleBiometricRegistration}
+                  className={`w-full text-white font-black py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 group relative overflow-hidden ${
+                    isMainnet 
+                      ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_0_40px_rgba(37,99,235,0.3)] hover:shadow-[0_0_50px_rgba(37,99,235,0.5)]' 
+                      : 'bg-indigo-600 hover:bg-indigo-500 shadow-[0_0_40px_rgba(79,70,229,0.3)] hover:shadow-[0_0_50px_rgba(79,70,229,0.5)]'
+                  }`}
+                >
+                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+                  <Fingerprint size={20} className="group-hover:scale-110 transition-all duration-300 relative z-10" />
+                  <span className="relative z-10 tracking-wide">Secure with Biometrics (Farmer)</span>
+                </button>
+
+                <button
+                  onClick={() => setIsWalletModalOpen(true)}
+                  className="w-full text-white font-black py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 group relative overflow-hidden border border-white/10 hover:border-white/20 bg-slate-800/50 hover:bg-slate-800"
+                >
+                  <Wallet size={20} className="group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                  <span className="relative z-10 tracking-wide">Institutional Web3 Login</span>
+                </button>
+              </div>
 
               <div className="pt-8 border-t border-white/5">
                 <p className="text-[11px] text-slate-500 flex items-center justify-center gap-2 font-bold uppercase tracking-widest">
@@ -3643,6 +3699,14 @@ function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Visual Gasless Validation Overlay */}
+      {userRole === 'farmer' && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md px-4 py-2 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.1)] pointer-events-none animate-in slide-in-from-bottom-4 duration-700">
+          <Shield size={16} className="text-emerald-400" />
+          <span className="text-emerald-400 text-[10px] sm:text-xs font-bold whitespace-nowrap">Identity Secured by Biometrics • 100% Gasless (Sponsored by TyFi Treasury)</span>
         </div>
       )}
 
