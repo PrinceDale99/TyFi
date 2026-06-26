@@ -34,3 +34,7 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Secrets
+PDAX_API_DOCS.md
+PDAX_API_DOCS_FORMATTED.md

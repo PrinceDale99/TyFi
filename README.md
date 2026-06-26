@@ -64,38 +64,31 @@ The smart contract executes payouts based on objective wind speed data. This eli
 - **AI/ML**: Gemini API (via Firebase Genkit) for parametric damage estimation and AI Copilot assistance.
 
 ## 🏗️ Architecture
-The system consists of three main layers: the user interface, the off-chain infrastructure (oracles and listeners), and the on-chain insurance vault.
+The system is built on a highly compliant, three-layer enterprise architecture tailored for institutional deployment and "last-mile" farmer accessibility.
 
-```mermaid
-graph TB
-    subgraph "Frontend (React 19)"
-        UI[Dashboard & Monitor]
-        Map[PAR Typhoon Map]
-        Wallet[Freighter Wallet]
-    end
+### Layer 1: Stellar Soroban Smart Contract
+- **Parametric Vault**: Non-custodial XLM/USDC vault handling automated disbursements based on objective weather oracles.
+- **Consensus Rules**: Enforces the logic that dictactes payout ratios matching the severity of a PAGASA-declared typhoon.
 
-    subgraph "Oracle & Infra Layer"
-        Oracle[PAGASA + Open-Meteo]
-        FCM[Firebase Cloud Messaging]
-        Listener[Soroban Event Listener]
-        AI[Gemini AI Assessment]
-    end
+### Layer 2: Off-Chain Infrastructure & PDAX Enterprise Integrations
+Our backend heavily utilizes the **PDAX Institutional API** to bridge enterprise DeFi with local Philippine banking rails securely:
 
-    subgraph "Blockchain (Stellar Soroban)"
-        Vault[TRV Smart Contract]
-        Pool[Reinsurance LP Pool]
-        Payout[Parametric Payout Engine]
-    end
+*   **Multi-Chain USDC Ingestion (PDAX Cross-Chain Bridge)**:
+    Accepts USDC deposits from international NGOs and climate funds natively on Ethereum, Solana, or Polygon. The backend routes these through PDAX to automatically bridge and settle the funds directly into the Soroban smart contract as Stellar-native USDC.
+*   **Institutional Yield Generation (PDAX Securities API)**:
+    Rather than volatile DeFi AMM yields, the backend programmatically interacts with PDAX Securities to automatically purchase **Tokenized Philippine Government Treasury Bonds**. This ensures a sovereign-backed, fixed-yield generation mechanism that strictly complies with the risk mandates of institutional NGOs.
+*   **Zero-Slippage Liquidation (PDAX Prime OTC API)**:
+    When the ZK-proof weather oracle triggers a massive, province-wide payout, the backend intercepts the liquidation pipeline. To prevent market impact or slippage on block trades exceeding 1,000,000 XLM/USDC, it bypasses retail order books entirely and executes through the **PDAX Prime OTC API** for guaranteed 1:1 institutional conversion rates.
+*   **Compliant Fiat Disbursement (PDAX CaaS API)**:
+    For the "last-mile" delivery, the backend utilizes the **PDAX Crypto-as-a-Service (CaaS) API**, inheriting PDAX's VASP and EMI licenses. PDAX inherently handles all AMLC/BSP compliance checks and seamlessly routes the PHP value directly to a farmer’s GCash, Maya, or UnionBank account via InstaPay/PESONet in real time.
 
-    Oracle -->|Wind & Rain data| Vault
-    AI -->|Damage % estimate| Vault
-    UI -->|"subscribe()"| Vault
-    Wallet -->|Auth & Sign| Vault
-    Vault -->|"claim_payout()"| Payout
-    Payout -->|XLM| Wallet
-    Listener -->|Payout events| FCM
-    FCM -->|Push alerts| UI
-```
+### Layer 3: React Frontend Consumer Dashboard
+The UI visually exposes these complex enterprise operations through two tailored experiences:
+
+*   **The Institutional Hub (Left Panel)**: 
+    Functions as a "Universal Funding Gateway." NGOs select their source chain (Ethereum, Solana, Polygon) via a cross-chain modal that visually tracks the PDAX settlement into Stellar. It also features a **Treasury Bond Yield Tracker**, explicitly displaying the fixed yield rate of the tokenized Philippine Government Bonds (via PDAX Securities) to assure institutional donors of low-risk fund management.
+*   **The Farmer Mobile Portal (Right Panel)**:
+    Optimized for mobile viewing. When a storm triggers a payout, an end-to-end success animation displays the trajectory of the funds. It explicitly notifies the farmer that their disaster relief bypassed complex crypto wallets entirely and was settled directly into their GCash/Maya account via InstaPay using fully compliant BSP channels.
 
 ## 📖 Roadmap
 
