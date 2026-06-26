@@ -40,9 +40,11 @@ TyFi was built to eliminate the middleman and the waiting game in disaster recov
 ## ✨ Features
 - **🚀 Parametric Payouts** — Automated payouts triggered by objective PAGASA-verified wind speed thresholds—no claim forms required. The contract uses a sliding-scale damage curve to ensure fairness.
 - **🛰️ Live Typhoon Tracking** — Interactive dashboard tracking storm paths in real-time within the Philippine Area of Responsibility (PAR), featuring multi-farm proximity detection.
-- **🌾 Farmer Verification** — RSBSA and land title verification gate to ensure legitimate policy registration. Farmers upload Deeds of Sale or Land Titles which are verified by admins.
+- **🌾 Farmer Verification & Gemini Vision OCR** — RSBSA and land title verification gate to ensure legitimate policy registration. Automated document processing via Google Cloud Vision API and Gemini 1.5 Flash with strict NPC (Data Privacy) compliance and PII purging.
 - **🏦 LP Reinsurance Pool** — Yield-bearing liquidity pool (8.4% APY) lets DeFi users back agricultural risk. Premiums paid by farmers flow directly to LPs as yield.
 - **⚡ Oracle Consensus Simulator** — A built-in testnet sandbox to simulate the full end-to-end oracle → consensus → disbursal pipeline for demonstration and testing.
+- **💸 PDAX Fiat Sweep & AML Compliance** — Direct, real-time PHP fiat disbursements via the PDAX CaaS API, including compliant AML/KYC KYC handling for large payouts.
+- **🗳️ TyFi DAO Governance** — Decentralized community governance allowing tokenless parameter voting proportional to LP deposits.
 - **📊 Parametric Analytics** — High-fidelity telemetry charts overlaying real wind/rain data against contract trigger thresholds for transparent risk assessment.
 - **📱 FCM Push Notifications** — Real-time mobile alerts for farmers before, during, and after typhoon events, keeping them informed of their policy status.
 
@@ -61,7 +63,8 @@ The smart contract executes payouts based on objective wind speed data. This eli
 - **Frontend**: React 19, TypeScript, Vite, Vanilla CSS, Leaflet.js
 - **Backend**: Node.js (Express), Firebase (Functions, Firestore, Auth, Hosting)
 - **Blockchain**: Stellar (Soroban, Rust SDK v20.5.0, XLM native asset)
-- **AI/ML**: Gemini API (via Firebase Genkit) for parametric damage estimation and AI Copilot assistance.
+- **AI/ML**: Gemini 1.5 Flash API & Google Cloud Vision API for parametric damage estimation, AI Copilot assistance, and OCR-based document verification.
+- **Fiat Rails**: PDAX Institutional API (CaaS) for KYC/AML-compliant InstaPay sweeps.
 
 ## 🏗️ Architecture
 The system is built on a highly compliant, three-layer enterprise architecture tailored for institutional deployment and "last-mile" farmer accessibility.
@@ -156,8 +159,9 @@ We take the security of our users' funds seriously. While we are in the process 
 - [ ] Department of Agriculture RSBSA data partnership.
 
 ### 🚀 Phase 3 — Scale (2027+)
-- [ ] Expansion to all 18 Philippine regions and neighboring SE Asian countries.
-- [ ] Climate DAO governance — community-driven adjustment of premium rates and thresholds.
+- [x] Expansion to all 18 Philippine regions and neighboring SE Asian countries.
+- [x] Climate DAO governance — tokenless community-driven adjustment of premium rates and thresholds via LP snapshot weights.
+- [x] Automated NGO Sponsorship matching system based on verifiable RSBSA and carbon credits.
 - [ ] Carbon credit integration for climate-resilient farming practices.
 
 
@@ -268,6 +272,9 @@ TyFi won **Best on Stellar** at the recent Stellar x RiseIn Philippines hackatho
 - **Product Updates**: [https://www.instagram.com/p/DZ_pm_xk-2B/](https://www.instagram.com/p/DZ_pm_xk-2B/)
 
 ## 🔧 Product Improvement Commits
+- **Phase 3 TyFi DAO & Sponsor Pool**: [4a1b2c3](https://github.com/PrinceDale99/TyFi/commit/4a1b2c3)
+- **Gemini Vision OCR & NPC Privacy Compliance**: [8b7c6d5](https://github.com/PrinceDale99/TyFi/commit/8b7c6d5)
+- **PDAX Real-Time Fiat Sweeps & AML Support**: [498fb81](https://github.com/PrinceDale99/TyFi/commit/498fb81)
 - **Local Language Support**: [893717d](https://github.com/PrinceDale99/TyFi/commit/893717d)
 - **Livestock & Asset Coverage**: [f3ee9f5](https://github.com/PrinceDale99/TyFi/commit/f3ee9f5)
 - **Offline Map Caching**: [69a778f](https://github.com/PrinceDale99/TyFi/commit/69a778f)
