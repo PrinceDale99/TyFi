@@ -54,8 +54,9 @@ const MapEventsHandler = ({ onChange }: { onChange: (lat: number, lng: number) =
 
 
 interface FarmerVerificationProps {
-  onVerificationComplete: (farms: FarmData[]) => void;
   walletAddress: string;
+  isMainnet: boolean;
+  onVerificationComplete: (farmerInfo?: any) => void;
   network?: 'testnet' | 'mainnet';
   onBack?: () => void;
 }
@@ -281,6 +282,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
     // Enrich farms with payment data
     const enrichedFarms = farms.map(f => ({
       ...f,
+      ...farmerInfo,
       paymentPlan,
       govSubsidyPercent,
       ngoSubsidyPercent,
