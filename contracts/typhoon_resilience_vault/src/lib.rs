@@ -1,6 +1,6 @@
 #![no_std]
 use soroban_sdk::{
-    contract, contractimpl, contracttype, contracterror, Address, Env, Symbol, log, token, Vec
+    contract, contractimpl, contracttype, contracterror, Address, Env, Symbol, log, token, Vec, BytesN, Bytes
 };
 
 #[contracterror]
@@ -17,6 +17,14 @@ pub enum Error {
     InsufficientLiquidity = 8,
     NoConsensus = 9,
     Overflow = 10,
+    InsufficientSignatures = 11,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracttype]
+pub struct AdminMultisig {
+    pub keys: Vec<BytesN<32>>,
+    pub threshold: u32,
 }
 
 #[derive(Clone)]
@@ -24,7 +32,7 @@ pub enum Error {
 pub enum DataKey {
     PersistentPool(Address),            // Institutional persistent pool metrics
     TempTicket(Address),                // Short-lived temporary consumer allocation tickets
-    Admin,                      // Governance admin
+    AdminMultisig,                      // Institutional Governance multisig
     XlmToken,                   // Stellar native asset (XLM) contract address
     QuorumThreshold,            // Quorum threshold (u32)
     Oracle(Address),            // Oracle authorization status
@@ -64,6 +72,34 @@ pub fn bump_persistent(env: &Env, key: &DataKey) {
     env.storage().persistent().extend_ttl(key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND);
 }
 
+pub fn require_multisig_auth(env: &Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>) -> Result<(), Error> {
+    let multisig: AdminMultisig = env.storage().instance().get(&DataKey::AdminMultisig).ok_or(Error::NotInitialized)?;
+    let mut verified_count = 0;
+
+    for i in 0..signatures.len() {
+        let (pub_key, sig) = signatures.get(i).unwrap();
+        
+        let mut is_authorized = false;
+        for j in 0..multisig.keys.len() {
+            if multisig.keys.get(j).unwrap() == pub_key {
+                is_authorized = true;
+                break;
+            }
+        }
+        
+        if is_authorized {
+            env.crypto().ed25519_verify(&pub_key, &payload, &sig);
+            verified_count += 1;
+        }
+    }
+
+    if verified_count < multisig.threshold {
+        return Err(Error::InsufficientSignatures);
+    }
+
+    Ok(())
+}
+
 pub fn bump_temporary(env: &Env, key: &DataKey) {
     env.storage().temporary().extend_ttl(key, TEMP_TTL_THRESHOLD, TEMP_TTL_EXTEND);
 }
@@ -96,16 +132,19 @@ impl TyphoonVault {
     /// Initialize the contract with admin, token address, oracle parameters, and mainnet/testnet flag
     pub fn initialize(
         env: Env, 
-        admin: Address, 
+        admin_keys: Vec<BytesN<32>>,
+        admin_threshold: u32,
         xlm_token: Address, 
         quorum: u32,
         is_mainnet_mode: bool,
         single_oracle: Address
     ) -> Result<(), Error> {
-        if env.storage().instance().has(&DataKey::Admin) {
+        if env.storage().instance().has(&DataKey::AdminMultisig) {
             return Err(Error::AlreadyInitialized);
         }
-        env.storage().instance().set(&DataKey::Admin, &admin);
+        
+        let multisig = AdminMultisig { keys: admin_keys, threshold: admin_threshold };
+        env.storage().instance().set(&DataKey::AdminMultisig, &multisig);
         env.storage().instance().set(&DataKey::XlmToken, &xlm_token);
         env.storage().instance().set(&DataKey::QuorumThreshold, &quorum);
         env.storage().instance().set(&DataKey::IsMainnetMode, &is_mainnet_mode);
@@ -121,7 +160,7 @@ impl TyphoonVault {
 
     /// Check if contract is initialized
     pub fn is_initialized(env: Env) -> bool {
-        env.storage().instance().has(&DataKey::Admin)
+        env.storage().instance().has(&DataKey::AdminMultisig)
     }
 
     /// Check if running in mainnet mode
@@ -169,13 +208,8 @@ impl TyphoonVault {
     // --- Governance & Admin Functions ---
 
     /// Set the active status of a weather oracle (Testnet consensus)
-    pub fn set_oracle(env: Env, admin: Address, oracle: Address, is_active: bool) -> Result<(), Error> {
-        let saved_admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
-        saved_admin.require_auth();
-        admin.require_auth();
-        if admin != saved_admin {
-            return Err(Error::Unauthorized);
-        }
+    pub fn set_oracle(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, oracle: Address, is_active: bool) -> Result<(), Error> {
+        require_multisig_auth(&env, payload, signatures)?;
         
         env.storage().persistent().set(&DataKey::Oracle(oracle.clone()), &is_active);
         log!(&env, "Oracle status updated", oracle, is_active);
@@ -183,13 +217,8 @@ impl TyphoonVault {
     }
 
     /// Set the single authorized oracle (Mainnet mode)
-    pub fn set_single_oracle(env: Env, admin: Address, single_oracle: Address) -> Result<(), Error> {
-        let saved_admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
-        saved_admin.require_auth();
-        admin.require_auth();
-        if admin != saved_admin {
-            return Err(Error::Unauthorized);
-        }
+    pub fn set_single_oracle(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, single_oracle: Address) -> Result<(), Error> {
+        require_multisig_auth(&env, payload, signatures)?;
         
         env.storage().instance().set(&DataKey::SingleOracle, &single_oracle);
         log!(&env, "Single oracle updated for mainnet", single_oracle);
@@ -197,13 +226,8 @@ impl TyphoonVault {
     }
 
     /// Official KYC/RSBSA Verification of farmers
-    pub fn verify_farmer(env: Env, admin: Address, farmer: Address, is_verified: bool) -> Result<(), Error> {
-        let saved_admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
-        saved_admin.require_auth();
-        admin.require_auth();
-        if admin != saved_admin {
-            return Err(Error::Unauthorized);
-        }
+    pub fn verify_farmer(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, farmer: Address, is_verified: bool) -> Result<(), Error> {
+        require_multisig_auth(&env, payload, signatures)?;
         
         env.storage().persistent().set(&DataKey::Verified(farmer.clone()), &is_verified);
         log!(&env, "Farmer verification status set", farmer, is_verified);
@@ -211,13 +235,8 @@ impl TyphoonVault {
     }
 
     /// Set the consensus quorum threshold
-    pub fn set_quorum_threshold(env: Env, admin: Address, threshold: u32) -> Result<(), Error> {
-        let saved_admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
-        saved_admin.require_auth();
-        admin.require_auth();
-        if admin != saved_admin {
-            return Err(Error::Unauthorized);
-        }
+    pub fn set_quorum_threshold(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, threshold: u32) -> Result<(), Error> {
+        require_multisig_auth(&env, payload, signatures)?;
         
         env.storage().instance().set(&DataKey::QuorumThreshold, &threshold);
         Ok(())
@@ -639,3 +658,4 @@ impl TyphoonVault {
 
 #[cfg(test)]
 mod test;
+pub mod smart_wallet;

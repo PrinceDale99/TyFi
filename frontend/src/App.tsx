@@ -249,6 +249,9 @@ function App() {
   // Add Farm & Edit Profile Modals States
   const [isAddFarmModalOpen, setIsAddFarmModalOpen] = useState(false);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [isFiatDepositModalOpen, setIsFiatDepositModalOpen] = useState(false);
+  const [fiatDepositAmount, setFiatDepositAmount] = useState<string>('');
 
   const [profileForm, setProfileForm] = useState({
     farmerName: '',
@@ -625,20 +628,27 @@ function App() {
     }
   };
 
-  const handleFiatDeposit = async () => {
-    if (fundingAmount <= 0) {
+  const handleFiatDeposit = () => {
+    setFiatDepositAmount((fundingAmount * 15).toString());
+    setIsFiatDepositModalOpen(true);
+  };
+
+  const confirmFiatDeposit = async () => {
+    setIsFiatDepositModalOpen(false);
+    const amountPHP = parseFloat(fiatDepositAmount);
+    if (isNaN(amountPHP) || amountPHP <= 0) {
       addNotification('Please enter a valid amount greater than 0', 'warning');
       return;
     }
 
-    addNotification(`Initiating fiat deposit via PDAX API for PHP ${fundingAmount * 15}...`, 'info');
+    addNotification(`Initiating fiat deposit via PDAX API for PHP ${amountPHP}...`, 'info');
     
     try {
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
       const response = await fetch(`${BACKEND_URL}/api/v1/fiat-deposit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountPHP: fundingAmount * 15, paymentMethod: 'grabpay_cashin' })
+        body: JSON.stringify({ amountPHP, paymentMethod: 'grabpay_cashin' })
       });
       
       const data = await response.json();
@@ -1133,7 +1143,8 @@ function App() {
                 lon: 120.9842, 
                 severity: triggerDesc, 
                 targetAddress: pubkey,
-                paymentPrefs: prefs
+                paymentPrefs: prefs,
+                amountPHP: claimAmount * 15
               })
             });
             
@@ -1228,6 +1239,7 @@ function App() {
     setFarms(prev => prev.filter(f => f.id !== farmToDelete));
     addNotification('Farm removed successfully.', 'success');
     setFarmToDelete(null);
+    setDeleteConfirmName("");
   };
 
   if (!isWalletConnected) {
@@ -2554,7 +2566,10 @@ function App() {
 
                   {userRole === 'farmer' && (
                     <button
-                      onClick={() => setIsProfileDashboardOpen(true)}
+                      onClick={() => {
+                        setDeleteConfirmName('');
+                        setIsProfileDashboardOpen(true);
+                      }}
                       className="p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex flex-col md:flex-row items-center md:justify-between group cursor-pointer gap-3"
                     >
                       <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
@@ -2861,6 +2876,46 @@ function App() {
         </div>
       )}
 
+      {/* Fiat Deposit Modal */}
+      {isFiatDepositModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+            <div className="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <DollarSign size={24} />
+            </div>
+            <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">Fiat Deposit</h3>
+            <p className="text-xs text-slate-400 leading-relaxed mb-6">
+              Enter the exact amount in PHP you wish to deposit via PDAX. You will be redirected to their secure payment gateway.
+            </p>
+            <div className="relative mb-6">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₱</span>
+              <input
+                type="number"
+                value={fiatDepositAmount}
+                onChange={(e) => setFiatDepositAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:border-emerald-500 focus:outline-none text-lg text-center font-mono"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsFiatDepositModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmFiatDeposit}
+                disabled={!fiatDepositAmount || isNaN(parseFloat(fiatDepositAmount)) || parseFloat(fiatDepositAmount) <= 0}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Farm Confirmation Modal */}
       {farmToDelete && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -2869,19 +2924,27 @@ function App() {
               <Trash2 size={24} />
             </div>
             <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">Delete Farm?</h3>
-            <p className="text-xs text-slate-400 leading-relaxed mb-6">
-              Are you sure you want to remove this farm from your profile? This action cannot be undone and will detach the asset from your dashboard.
+            <p className="text-xs text-slate-400 leading-relaxed mb-4">
+              Type <strong className="text-white font-mono bg-slate-800 px-1 py-0.5 rounded">{farms.find(f => f.id === farmToDelete)?.farmName}</strong> to confirm deletion.
             </p>
+            <input
+              type="text"
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder="Type farm name here..."
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-rose-500 focus:outline-none mb-6 text-sm text-center"
+            />
             <div className="flex gap-3">
               <button
-                onClick={() => setFarmToDelete(null)}
+                onClick={() => { setFarmToDelete(null); setDeleteConfirmName(""); }}
                 className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteFarm}
-                className="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-rose-500/20 cursor-pointer"
+                disabled={deleteConfirmName !== farms.find(f => f.id === farmToDelete)?.farmName}
+                className="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-rose-500/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Delete
               </button>
@@ -3039,7 +3102,7 @@ function App() {
                                     {farm.cropType}
                                   </span>
                                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
-                                    {farm.farmSize} Hectares ΓÇó {farm.season}
+                                    {farm.farmSize} Hectares • {farm.season}
                                   </span>
                                 </div>
                               </div>
@@ -3155,7 +3218,7 @@ function App() {
             {/* Footer */}
             <div className="p-4 bg-slate-950 text-center border-t border-white/5">
               <p className="text-[9px] text-slate-600 font-black uppercase tracking-[0.2em]">
-                TyFi ΓÇó On-Chain Identity Proof ΓÇó {network.toUpperCase()}
+                TyFi • On-Chain Identity Proof • {network.toUpperCase()}
               </p>
             </div>
           </div>

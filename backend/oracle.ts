@@ -19,8 +19,8 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     // Calculate PHP equivalent (e.g. 50,000 XLM yield at 58.20 PHP = ~2.9m PHP)
-    // For this test, we use a smaller mock amount: 15,000 PHP
-    const amountPHP = 15000;
+    // Default fallback to 15000 if not provided in the request
+    const amountPHP = req.body.amountPHP || 15000;
     
     let pdaxTxId = "PENDING";
     try {

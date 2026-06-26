@@ -29,7 +29,7 @@ export async function initiateFiatSweep(amountPHP: number, paymentPrefs?: any): 
   // Override accountNumber with officially supported test account numbers to prevent UAT 9946 errors
   const accountNumber = bankCode === 'BASECPH' ? "0000042001461" :
                         bankCode === 'BACTBPH' ? "001700062270" :
-                        paymentPrefs?.accountNumber || "09190690982";
+                        (paymentPrefs?.accountNumber || "09190690982").replace(/\s/g, "");
 
   // Split accountName into parts for the API
   const nameParts = accountName.split(' ');
@@ -112,10 +112,10 @@ export const initiateFiatDeposit = async (amountPHP: number, paymentMethod: stri
         sender_province: "Metro Manila",
         sender_country: "Philippines",
         sender_zip_code: "1000",
-        sender_phone_number: "6391712345678",
+        sender_phone_number: "639171234567",
         sender_nationality: "Philippines",
         sender_national_identity_number: "1234567890",
-        sender_dob: "01-01-1990",
+        sender_dob: "1990-01-01",
         sender_place_of_birth: "Manila City",
         source_of_funds: "Others: Sample",
         sender_email: "juan.delacruz@demo.com",
@@ -124,14 +124,14 @@ export const initiateFiatDeposit = async (amountPHP: number, paymentMethod: stri
         beneficiary_last_name: "Vault",
         beneficiary_sex: "Male",
         beneficiary_nationality: "Philippines",
-        beneficiary_dob: "01-01-2024",
+        beneficiary_dob: "2024-01-01",
         beneficiary_address_line_one: "1 Blockchain Way",
         beneficiary_city: "Taguig",
         beneficiary_province: "Metro Manila",
         beneficiary_country: "Philippines",
         beneficiary_zip_code: "1634",
         beneficiary_government_issued_id: "ID123",
-        beneficiary_phone_number: "6390812345678",
+        beneficiary_phone_number: "639081234567",
         purpose: "Insurance Premium Deposit",
         relationship_of_sender_to_beneficiary: "Business",
         currency: "PHP",

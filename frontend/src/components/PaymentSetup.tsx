@@ -154,7 +154,16 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
                   type="text" 
                   placeholder="09XX XXX XXXX"
                   value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    if (val.length > 0 && val[0] !== '0') val = '0' + val;
+                    if (val.length > 1 && val[1] !== '9') val = '09' + val.substring(2);
+                    if (val.length > 11) val = val.substring(0, 11);
+                    let formatted = val;
+                    if (val.length > 4) formatted = val.substring(0, 4) + ' ' + val.substring(4);
+                    if (val.length > 7) formatted = val.substring(0, 4) + ' ' + val.substring(4, 7) + ' ' + val.substring(7);
+                    setAccountNumber(formatted);
+                  }}
                   className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
                 />
               </div>
