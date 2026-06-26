@@ -1,36 +1,34 @@
 import axios from 'axios';
 
-const PDAX_API_BASE = 'https://doc.general.api.pdax.ph';
+const PDAX_API_BASE = process.env.PDAX_API_BASE || 'https://api.pdax.ph';
 
 export async function initiateFiatSweep(amountPHP: number): Promise<string> {
-  try {
-    const username = process.env.PDAX_USERNAME || 'pdaxapi_temp_01';
-    const password = process.env.PDAX_PASSWORD || 'default_test_password';
+  const username = process.env.PDAX_USERNAME;
+  const password = process.env.PDAX_PASSWORD;
 
-    let token = "MOCK_TOKEN";
-    try {
-      const authResponse = await axios.post(`${PDAX_API_BASE}/auth`, { username, password });
-      token = authResponse.data.access_token;
-    } catch (authError) {
-      console.warn("PDAX Auth failed (likely invalid credentials), continuing with mock token for testing.");
-    }
+  if (!username || !password) {
+    throw new Error('PDAX API credentials (PDAX_USERNAME, PDAX_PASSWORD) are not configured in the environment.');
+  }
+
+  try {
+    // 1. Authenticate with PDAX
+    const authResponse = await axios.post(`${PDAX_API_BASE}/auth/login`, { username, password });
+    const token = authResponse.data.access_token;
     
-    let sweepResponse;
-    try {
-      sweepResponse = await axios.post(
-        `${PDAX_API_BASE}/v1/sweep`,
-        { amount: amountPHP, currency: 'PHP', target_currency: 'USDC' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      return sweepResponse.data.transaction_id;
-    } catch (sweepError) {
-      console.warn("PDAX API Sweep Failed (Expected if using mock token). Simulating success for hackathon flow.");
-      return "PDAX_" + Math.random().toString(36).substring(7).toUpperCase();
+    if (!token) {
+      throw new Error('PDAX API did not return an access token');
     }
+
+    // 2. Execute Fiat Sweep/Transfer
+    const sweepResponse = await axios.post(
+      `${PDAX_API_BASE}/v1/sweep`, // Adjust endpoint to actual PDAX payout/sweep endpoint
+      { amount: amountPHP, currency: 'PHP', target_currency: 'USDC' },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    
+    return sweepResponse.data.transaction_id || sweepResponse.data.id;
   } catch (error: any) {
-    if (error.response?.status === 401) {
-      console.error("PDAX Token Expired or Unauthorized.");
-    }
-    throw new Error('Failed to execute fiat sweep via PDAX');
+    console.error("PDAX API Error:", error.response?.data || error.message);
+    throw new Error(`PDAX Fiat Sweep Failed: ${error.response?.data?.message || error.message}`);
   }
 }
