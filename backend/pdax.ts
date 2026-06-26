@@ -3,6 +3,27 @@ import { v4 as uuidv4 } from 'uuid';
 
 const PDAX_API_BASE = process.env.PDAX_API_BASE || 'https://uat.services.sandbox.pdax.ph/api/pdax-api';
 
+export async function getXlmToPhpRate(): Promise<number> {
+  try {
+    // Attempt PDAX Public Ticker API first
+    const response = await axios.get('https://trade.pdax.ph/api/v1/market/tickers').catch(() => null);
+    if (response && response.data) {
+      const tickers = response.data;
+      const xlmTicker = tickers.find((t: any) => t.symbol === 'XLMPHP' || t.symbol === 'XLM/PHP' || t.symbol === 'XLM-PHP');
+      if (xlmTicker && xlmTicker.last) {
+         return parseFloat(xlmTicker.last);
+      }
+    }
+    
+    // Fallback to CoinGecko if PDAX public endpoint changes
+    const cgResponse = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=php');
+    return cgResponse.data.stellar.php || 15;
+  } catch (error) {
+    console.error("[PDAX] Failed to fetch live XLM rate, falling back to 15:", error);
+    return 15;
+  }
+}
+
 export async function initiateFiatSweep(amountPHP: number, paymentPrefs?: any): Promise<string> {
   const username = process.env.PDAX_USERNAME;
   const password = process.env.PDAX_PASSWORD;

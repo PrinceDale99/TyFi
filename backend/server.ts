@@ -7,7 +7,7 @@ import * as cheerio from 'cheerio';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { oracleRouter } from './oracle';
-import { initiateFiatDeposit } from './pdax';
+import { initiateFiatDeposit, getXlmToPhpRate } from './pdax';
 import { sponsorSmartWalletDeployment, wrapWithFeeBump } from './relayer';
 
 dotenv.config();
@@ -35,6 +35,16 @@ app.post('/api/v1/fiat-deposit', async (req, res) => {
 });
 
 // Layer 2: Relayer Endpoints
+// Endpoint to get XLM to PHP exchange rate
+app.get('/api/v1/xlm-rate', async (req, res) => {
+  try {
+    const rate = await getXlmToPhpRate();
+    res.json({ rate });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch rate' });
+  }
+});
+
 app.post('/api/relay/sponsor', async (req, res) => {
   const { webAuthnPubKey } = req.body;
   if (!webAuthnPubKey) return res.status(400).json({ success: false, error: 'webAuthnPubKey required' });
