@@ -150,9 +150,9 @@ We take the security of our users' funds seriously. While we are in the process 
 - [x] FCM push notification infrastructure.
 
 ### 🎯 Phase 2 — Mainnet Pilot (Q3 2026)
-- [ ] Mainnet deployment with authorized PAGASA oracle feeds.
+- [x] Mainnet deployment with authorized PAGASA oracle feeds.
 - [ ] 500–1,000 farmer pilot in Albay, Leyte, and Eastern Samar.
-- [ ] GCash / Maya bridge integration for off-ramping XLM to local currency.
+- [x] GCash / Maya bridge integration for off-ramping XLM to local currency.
 - [ ] Department of Agriculture RSBSA data partnership.
 
 ### 🚀 Phase 3 — Scale (2027+)
