@@ -1604,10 +1604,15 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 selection:bg-sky-500/30">
-      {/* Dynamic Ambient Background Light */}
+    <div className="min-h-screen bg-[#020617] text-slate-200 selection:bg-sky-500/30 relative">
+      {/* Dynamic Ambient Background Mesh */}
+      <div className="bg-mesh">
+        <div className="orb orb-1"></div>
+        <div className="orb orb-2"></div>
+        <div className="orb orb-3"></div>
+      </div>
       <div className={`absolute top-0 right-0 w-96 h-96 rounded-full filter blur-[120px] transition-colors duration-1000 -z-10 ${
-        isMainnet ? 'bg-emerald-500/5' : isTestnet ? 'bg-sky-500/5' : 'bg-indigo-500/5'
+        isMainnet ? 'bg-emerald-500/10' : isTestnet ? 'bg-sky-500/10' : 'bg-indigo-500/10'
       }`} />
 
       {/* Navigation */}
