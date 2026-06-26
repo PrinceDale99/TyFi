@@ -1,0 +1,40 @@
+﻿                      agromonitorStatus: status
+                    } : null);
+                  }}
+                  network={network}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Premium Footer */}
+      <footer className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500 relative z-10">
+        <div>
+          ┬⌐ {new Date().getFullYear()} TyFi. Underwritten Parametric Pool. All rights reserved.
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-6 font-medium">
+          <button onClick={() => setOpenPolicy('tos')} className="hover:text-white transition-colors">Terms of Service</button>
+          <button onClick={() => setOpenPolicy('privacy')} className="hover:text-white transition-colors">Privacy Policy</button>
+          <button onClick={() => setOpenPolicy('cookie')} className="hover:text-white transition-colors">Cookie Policy</button>
+          <button onClick={() => setOpenPolicy('agreement')} className={`font-black transition-colors ${isMainnet ? 'text-emerald-500 hover:text-emerald-400' : 'text-sky-500 hover:text-sky-400'}`}>Parametric Insurance Agreement</button>
+        </div>
+      </footer>
+
+      {/* Legal Modals Overlay */}
+      {openPolicy && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-lg font-black text-white uppercase tracking-wider">
+                {openPolicy === 'tos' && 'Terms of Service'}
+                {openPolicy === 'privacy' && 'Privacy Policy'}
+                {openPolicy === 'cookie' && 'Cookie Policy'}
+                {openPolicy === 'agreement' && 'Parametric Insurance Agreement'}
+              </h3>
+              <button
+                onClick={() => setOpenPolicy(null)}
+                className="px-3 py-1.5 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white transition-all text-xs font-black uppercase tracking-wider border border-white/10"
+              >

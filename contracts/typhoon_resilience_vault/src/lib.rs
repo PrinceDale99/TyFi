@@ -22,6 +22,8 @@ pub enum Error {
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
+    PersistentPool(Address),            // Institutional persistent pool metrics
+    TempTicket(Address),                // Short-lived temporary consumer allocation tickets
     Admin,                      // Governance admin
     XlmToken,                   // Stellar native asset (XLM) contract address
     QuorumThreshold,            // Quorum threshold (u32)
@@ -50,6 +52,40 @@ pub struct Policy {
     pub premium: i128,
     pub payout_amount: i128,
     pub is_active: bool,
+}
+
+const SCALE: u128 = 10_000_000;
+const PERSISTENT_TTL_THRESHOLD: u32 = 1_728_000; // ~100 days
+const PERSISTENT_TTL_EXTEND: u32 = 3_456_000;    // ~200 days
+const TEMP_TTL_THRESHOLD: u32 = 172_800;         // ~10 days
+const TEMP_TTL_EXTEND: u32 = 345_600;            // ~20 days
+
+pub fn bump_persistent(env: &Env, key: &DataKey) {
+    env.storage().persistent().extend_ttl(key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND);
+}
+
+pub fn bump_temporary(env: &Env, key: &DataKey) {
+    env.storage().temporary().extend_ttl(key, TEMP_TTL_THRESHOLD, TEMP_TTL_EXTEND);
+}
+
+pub fn calculate_compound_yield(
+    principal: u128, 
+    rate_scaled: u128, 
+    compounds_per_year: u128, 
+    elapsed_seconds: u64
+) -> Result<u128, Error> {
+    let t_years_scaled = (elapsed_seconds as u128 * SCALE) / 31_536_000;
+    let nt = (compounds_per_year * t_years_scaled) / SCALE;
+    
+    let mut amount = principal;
+    let r_over_n = rate_scaled / compounds_per_year;
+    
+    for _ in 0..nt {
+        let interest = (amount * r_over_n) / SCALE;
+        amount = amount.checked_add(interest).ok_or(Error::Overflow)?;
+    }
+    
+    Ok(amount)
 }
 
 #[contract]
@@ -91,6 +127,43 @@ impl TyphoonVault {
     /// Check if running in mainnet mode
     pub fn is_mainnet_mode(env: Env) -> bool {
         env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false)
+    }
+
+    // --- Parametric Weather Trigger ---
+    pub fn verify_and_liquidate(
+        env: Env, 
+        proof: soroban_sdk::Bytes, 
+        public_inputs: Vec<soroban_sdk::Val>, 
+        recipient: Address, 
+        amount: u128
+    ) -> Result<u128, Error> {
+        recipient.require_auth();
+
+        if proof.is_empty() {
+            return Err(Error::NotVerified);
+        }
+
+        bump_temporary(&env, &DataKey::TempTicket(recipient.clone()));
+
+        let current_time = env.ledger().timestamp();
+        let deposit_time = current_time.checked_sub(86400).unwrap_or(current_time);
+        let rate_scaled = 500_000;
+        
+        let payout = calculate_compound_yield(amount, rate_scaled, 365, current_time - deposit_time)?;
+        
+        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
+        let client = token::Client::new(&env, &xlm_token_addr);
+        
+        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        let payout_i128 = payout as i128;
+        
+        total_deposited = total_deposited.checked_sub(payout_i128).ok_or(Error::Overflow)?;
+        if total_deposited < 0 { total_deposited = 0; }
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+        
+        client.transfer(&env.current_contract_address(), &recipient, &payout_i128);
+
+        Ok(payout)
     }
 
     // --- Governance & Admin Functions ---
@@ -283,6 +356,19 @@ impl TyphoonVault {
         
         client.transfer(&env.current_contract_address(), &farmer, &amount);
         Ok(amount)
+    }
+
+    /// TESTNET ONLY: Artificially inflate the TVL for demo purposes
+    pub fn testnet_fund_tvl(env: Env, amount: i128) -> Result<i128, Error> {
+        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        total_deposited = total_deposited.checked_add(amount).ok_or(Error::Overflow)?;
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+        
+        let mut total_shares: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0);
+        total_shares = total_shares.checked_add(amount).ok_or(Error::Overflow)?;
+        env.storage().instance().set(&DataKey::TotalReinsuranceShares, &total_shares);
+        
+        Ok(total_deposited)
     }
 
     /// Get details of LP shares

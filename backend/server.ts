@@ -6,12 +6,14 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
+import { oracleRouter } from './oracle';
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/', oracleRouter);
 
 const PORT = process.env.PORT || 3001;
 
