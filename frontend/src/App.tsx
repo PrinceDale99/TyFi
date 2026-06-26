@@ -381,7 +381,8 @@ function App() {
   const [xlmRate, setXlmRate] = useState<number>(15);
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/v1/xlm-rate`)
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    fetch(`${backendUrl}/api/v1/xlm-rate`)
       .then(res => res.json())
       .then(data => {
         if (data && data.rate) setXlmRate(data.rate);
