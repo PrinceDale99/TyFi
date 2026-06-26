@@ -10,7 +10,8 @@ export const WeatherTrigger: React.FC<{ targetAddress: string, activeYieldBalanc
       await new Promise(r => setTimeout(r, 1000)); 
       
       setLoadingState("Verifying Soroban Footprints...");
-      const res = await fetch('http://localhost:3001/api/v1/weather-trigger', {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      const res = await fetch(`${BACKEND_URL}/api/v1/weather-trigger`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat: 14.5995, lon: 120.9842, severity: "TYPHOON_CATEGORY_5", targetAddress })
