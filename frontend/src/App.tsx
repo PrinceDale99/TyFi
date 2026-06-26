@@ -378,6 +378,17 @@ function App() {
   const isMainnet = network === 'mainnet';
   const isTestnet = network === 'testnet';
 
+  const [xlmRate, setXlmRate] = useState<number>(15);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/v1/xlm-rate`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.rate) setXlmRate(data.rate);
+      })
+      .catch(err => console.error('Failed to fetch XLM rate:', err));
+  }, []);
+
   const currentTvl = contractTvl;
   const currentSubsidy = contractSubsidy;
 
@@ -629,7 +640,7 @@ function App() {
   };
 
   const handleFiatDeposit = () => {
-    setFiatDepositAmount((fundingAmount * 15).toString());
+    setFiatDepositAmount((fundingAmount * xlmRate).toString());
     setIsFiatDepositModalOpen(true);
   };
 
@@ -793,7 +804,7 @@ function App() {
       
     } catch (err: any) {
       console.error(err);
-      addNotification('Biometric Registration Failed: ' + err.message, 'error');
+      addNotification('Biometric Registration Failed: ' + err.message, 'warning');
     }
   };
 
@@ -1144,7 +1155,7 @@ function App() {
                 severity: triggerDesc, 
                 targetAddress: pubkey,
                 paymentPrefs: prefs,
-                amountPHP: claimAmount * 15
+                amountPHP: claimAmount * xlmRate
               })
             });
             
@@ -1188,7 +1199,7 @@ function App() {
           logPayout({
             farmerAddress: walletAddress,
             amount: claimAmount,
-            region: farm.region || farm.name,
+            region: farm.region || farm.farmName,
             network: isMainnet ? 'mainnet' : 'testnet'
           }).catch(err => console.error("Failed to log payout:", err));
           
@@ -1198,7 +1209,7 @@ function App() {
           }
         } catch (err: any) {
           console.error("Payout trigger error:", err);
-          addNotification(`Payout Failed: ${err.message || "Could not execute smart contract or fiat bridge."}`, 'error');
+          addNotification(`Payout Failed: ${err.message || "Could not execute smart contract or fiat bridge."}`, 'warning');
         }
       };
       processClaim();
