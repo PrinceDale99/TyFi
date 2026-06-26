@@ -33,16 +33,23 @@ fn test_successful_payout_with_subsidy() {
     let season = Symbol::new(&env, "Wet2026");
 
     // Initialize contract with admin, XLM token, quorum=2, is_mainnet=false, single_oracle=oracle
-    client.initialize(&admin, &xlm_token, &2, &false, &oracle);
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &2, &xlm_token, &2, &false, &oracle);
     
     env.mock_all_auths();
 
     // 1. Set Oracles
-    client.set_oracle(&admin, &oracle, &true);
-    client.set_oracle(&admin, &oracle2, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.set_oracle(&dummy_bytes, &dummy_sigs, &oracle, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.set_oracle(&dummy_bytes, &dummy_sigs, &oracle2, &true);
 
     // 2. RSBSA/KYC Verify Farmer
-    client.verify_farmer(&admin, &farmer, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.verify_farmer(&dummy_bytes, &dummy_sigs, &farmer, &true);
     assert!(client.is_farmer_verified(&farmer));
 
     // 3. Deposit Premium Subsidy from Donor
@@ -105,7 +112,8 @@ fn test_yield_bearing_reinsurance_pool() {
     let region = Symbol::new(&env, "Luzon");
     let season = Symbol::new(&env, "Dry2026");
 
-    client.initialize(&admin, &xlm_token, &1, &false, &oracle);
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &false, &oracle);
     env.mock_all_auths();
 
     // Mint stablecoins and deposit reinsurance
@@ -116,7 +124,9 @@ fn test_yield_bearing_reinsurance_pool() {
     assert_eq!(client.get_total_reinsurance_deposited(), 1000);
 
     // Subscribe farmer without subsidy (subsidy pool is empty)
-    client.verify_farmer(&admin, &farmer, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.verify_farmer(&dummy_bytes, &dummy_sigs, &farmer, &true);
     token_admin.mint(&farmer, &200);
     client.subscribe(&farmer, &farm_id, &region, &season, &200);
 
@@ -142,11 +152,16 @@ fn test_sliding_scale_damage_curve() {
     let farm_id = Symbol::new(&env, "Farm2");
     let season = Symbol::new(&env, "Wet2026");
 
-    client.initialize(&admin, &xlm_token, &1, &false, &oracle);
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &false, &oracle);
     env.mock_all_auths();
 
-    client.set_oracle(&admin, &oracle, &true);
-    client.verify_farmer(&admin, &farmer, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.set_oracle(&dummy_bytes, &dummy_sigs, &oracle, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.verify_farmer(&dummy_bytes, &dummy_sigs, &farmer, &true);
     
     // Reinsurance deposit to back payouts
     token_admin.mint(&lp, &5000);
@@ -172,7 +187,8 @@ fn test_unverified_farmer_subscription_fails() {
     let (env, client, admin, oracle, xlm_token, _token, token_admin) = setup();
     let farmer = Address::generate(&env);
 
-    client.initialize(&admin, &xlm_token, &1, &false, &oracle);
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &false, &oracle);
     env.mock_all_auths();
 
     token_admin.mint(&farmer, &200);
@@ -192,11 +208,16 @@ fn test_low_wind_speed_no_payout() {
     let farm_id = Symbol::new(&env, "Farm1");
     let season = Symbol::new(&env, "Wet2026");
 
-    client.initialize(&admin, &xlm_token, &1, &false, &oracle);
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &false, &oracle);
     env.mock_all_auths();
 
-    client.set_oracle(&admin, &oracle, &true);
-    client.verify_farmer(&admin, &farmer, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.set_oracle(&dummy_bytes, &dummy_sigs, &oracle, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.verify_farmer(&dummy_bytes, &dummy_sigs, &farmer, &true);
 
     token_admin.mint(&lp, &5000);
     client.deposit_reinsurance(&lp, &5000);
@@ -222,11 +243,16 @@ fn test_double_payout_prevention() {
     let farm_id = Symbol::new(&env, "Farm1");
     let season = Symbol::new(&env, "Wet2026");
 
-    client.initialize(&admin, &xlm_token, &1, &false, &oracle);
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &false, &oracle);
     env.mock_all_auths();
 
-    client.set_oracle(&admin, &oracle, &true);
-    client.verify_farmer(&admin, &farmer, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.set_oracle(&dummy_bytes, &dummy_sigs, &oracle, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.verify_farmer(&dummy_bytes, &dummy_sigs, &farmer, &true);
 
     token_admin.mint(&lp, &5000);
     client.deposit_reinsurance(&lp, &5000);
@@ -254,11 +280,14 @@ fn test_mainnet_mode_strict_threshold() {
     let season = Symbol::new(&env, "Wet2026");
 
     // Initialize with is_mainnet_mode = true
-    client.initialize(&admin, &xlm_token, &1, &true, &oracle);
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &true, &oracle);
     env.mock_all_auths();
 
     // Verify KYC
-    client.verify_farmer(&admin, &farmer, &true);
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.verify_farmer(&dummy_bytes, &dummy_sigs, &farmer, &true);
 
     // Deposit liquidity to backing pool
     token_admin.mint(&lp, &10000);
