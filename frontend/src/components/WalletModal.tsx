@@ -27,109 +27,102 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm glass-panel p-8 border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="relative w-full max-w-lg bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 md:p-10 border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden animate-in zoom-in-95 duration-300">
+        
+        {/* Animated Glow Backdrops */}
+        <div className={`absolute -top-32 -right-32 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none ${isMainnet ? 'bg-emerald-500' : 'bg-sky-500'}`} />
+        <div className={`absolute -bottom-32 -left-32 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none ${isMainnet ? 'bg-emerald-500' : 'bg-sky-500'}`} />
+
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors"
+          className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-full border border-white/5 text-slate-400 hover:text-white transition-all z-10"
         >
           <X size={20} />
         </button>
 
-        <div className="flex flex-col items-center text-center gap-6">
-          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border transition-all duration-700 ${
-            isMainnet 
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-              : 'bg-sky-500/10 border-sky-500/20 text-sky-400'
-          }`}>
-            <Shield size={32} />
+        <div className="flex flex-col items-center text-center gap-8 relative z-10">
+          <div className="relative">
+            <div className={`absolute inset-0 rounded-3xl blur-xl opacity-50 animate-pulse ${
+              isMainnet ? 'bg-emerald-500' : 'bg-sky-500'
+            }`} />
+            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center border transition-all duration-700 relative bg-slate-950 ${
+              isMainnet ? 'border-emerald-500/50 text-emerald-400' : 'border-sky-500/50 text-sky-400'
+            }`}>
+              <Shield size={36} strokeWidth={1.5} />
+            </div>
           </div>
 
           <div>
-            <h3 className="text-2xl font-bold text-white mb-2">Connect Wallet</h3>
-            <p className="text-slate-400 text-sm">
-              Select your preferred Stellar wallet to interact with the Resilience Vault on <span className={isMainnet ? 'text-emerald-400 font-bold' : 'text-sky-400 font-bold'}>{isMainnet ? 'Mainnet' : 'Testnet'}</span>.
+            <h3 className="text-3xl font-black text-white mb-3 tracking-tight">Connect Wallet</h3>
+            <p className="text-slate-400 text-sm leading-relaxed max-w-sm mx-auto">
+              Select your preferred Stellar wallet to interact with the Vault on <span className={isMainnet ? 'text-emerald-400 font-bold' : 'text-sky-400 font-bold'}>{isMainnet ? 'Production Mainnet' : 'Developer Testnet'}</span>.
             </p>
           </div>
 
-          <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-left space-y-1.5 w-full">
-            <div className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
-              isMainnet ? 'text-emerald-400' : 'text-sky-400'
-            }`}>
-              <Activity size={12} />
-              Native XLM Flow
-            </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Funding premium policies directly decreases your Freighter wallet's <span className="font-bold text-white">XLM</span> balance. Approved weather claims will instantly deposit native <span className="font-bold text-white">XLM</span> directly back into your wallet.
-            </p>
-          </div>
-
-          <div className="w-full flex flex-col gap-3">
+          <div className="w-full flex flex-col gap-4 mt-2">
             <button
               onClick={() => handleConnect(FREIGHTER_ID)}
-              className={`w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group ${
-                isMainnet ? 'hover:border-emerald-500/50' : 'hover:border-sky-500/50'
+              className={`w-full flex items-center justify-between p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] transition-all group overflow-hidden relative ${
+                isMainnet ? 'hover:border-emerald-500/50 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)]' : 'hover:border-sky-500/50 hover:shadow-[0_0_30px_rgba(14,165,233,0.15)]'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#211b5a] rounded-lg flex items-center justify-center">
+              <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-gradient-to-r ${isMainnet ? 'from-emerald-500 to-transparent' : 'from-sky-500 to-transparent'}`} />
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center shadow-lg border border-white/5 group-hover:scale-110 transition-transform">
                   <img 
                     src="https://www.freighter.app/static/media/freighter-logo.71c50826.svg" 
                     alt="Freighter" 
-                    className="w-6 h-6"
+                    className="w-7 h-7"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://cryptologos.cc/logos/stellar-xlm-logo.png';
                     }}
                   />
                 </div>
                 <div className="text-left">
-                  <div className={`font-bold text-white transition-colors ${
-                    isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'
-                  }`}>Freighter Wallet</div>
-                  <div className="text-[10px] text-slate-500 font-bold uppercase">Stellar Network</div>
+                  <div className="font-black text-white text-lg tracking-wide group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-400 transition-all">Freighter</div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Recommended Extension</div>
                 </div>
               </div>
-              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+              <ChevronRight size={20} className="text-slate-600 group-hover:text-white transition-colors relative z-10" />
             </button>
 
             <button
               onClick={() => handleConnect(WALLET_CONNECT_ID)}
-              className={`w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group ${
-                isMainnet ? 'hover:border-emerald-500/50' : 'hover:border-sky-500/50'
+              className={`w-full flex items-center justify-between p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] transition-all group overflow-hidden relative ${
+                isMainnet ? 'hover:border-emerald-500/50 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)]' : 'hover:border-sky-500/50 hover:shadow-[0_0_30px_rgba(14,165,233,0.15)]'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400">
-                  <Smartphone size={20} />
+              <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-gradient-to-r ${isMainnet ? 'from-emerald-500 to-transparent' : 'from-sky-500 to-transparent'}`} />
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 shadow-lg border border-indigo-500/20 group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                  <Smartphone size={24} strokeWidth={1.5} />
                 </div>
                 <div className="text-left">
-                  <div className={`font-bold text-white transition-colors ${
-                    isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'
-                  }`}>WalletConnect (Mobile)</div>
-                  <div className="text-[10px] text-slate-500 font-bold uppercase">LOBSTR, xBull, etc.</div>
+                  <div className="font-bold text-white text-lg tracking-wide">WalletConnect</div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Mobile • LOBSTR</div>
                 </div>
               </div>
-              <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition-colors" />
+              <ChevronRight size={20} className="text-slate-600 group-hover:text-white transition-colors relative z-10" />
             </button>
 
             <button
               onClick={() => handleConnect(ALBEDO_ID)}
-              className={`w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group ${
-                isMainnet ? 'hover:border-emerald-500/50' : 'hover:border-sky-500/50'
+              className={`w-full flex items-center justify-between p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] transition-all group overflow-hidden relative ${
+                isMainnet ? 'hover:border-emerald-500/50 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)]' : 'hover:border-sky-500/50 hover:shadow-[0_0_30px_rgba(14,165,233,0.15)]'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-sky-500/20 rounded-lg flex items-center justify-center text-sky-400">
-                  <Globe size={20} />
+              <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-gradient-to-r ${isMainnet ? 'from-emerald-500 to-transparent' : 'from-sky-500 to-transparent'}`} />
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="w-12 h-12 bg-sky-500/10 rounded-xl flex items-center justify-center text-sky-400 shadow-lg border border-sky-500/20 group-hover:scale-110 group-hover:bg-sky-500 group-hover:text-white transition-all">
+                  <Globe size={24} strokeWidth={1.5} />
                 </div>
                 <div className="text-left">
-                  <div className={`font-bold text-white transition-colors ${
-                    isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'
-                  }`}>Albedo</div>
-                  <div className="text-[10px] text-slate-500 font-bold uppercase">Web Wallet</div>
+                  <div className="font-bold text-white text-lg tracking-wide">Albedo</div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Web Wallet</div>
                 </div>
               </div>
-              <ChevronRight size={18} className="text-slate-500 group-hover:text-white transition-colors" />
+              <ChevronRight size={20} className="text-slate-600 group-hover:text-white transition-colors relative z-10" />
             </button>
 
             {!isMainnet && (
@@ -138,30 +131,30 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
                   onConnect("DEMO_TESTNET_STEL...VAULT");
                   onClose();
                 }}
-                className="w-full flex items-center justify-between p-4 rounded-xl transition-all group border bg-sky-500/10 border-sky-500/20 hover:bg-sky-500/20 hover:border-sky-500/50"
+                className="w-full flex items-center justify-between p-5 rounded-2xl transition-all group border bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20 hover:border-sky-500/60 shadow-[0_0_20px_rgba(14,165,233,0.1)] relative overflow-hidden"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-sky-500/20 text-sky-400">
-                    <Activity size={20} />
+                <div className="absolute inset-0 bg-gradient-to-r from-sky-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-sky-500 text-white shadow-lg shadow-sky-500/30 group-hover:scale-110 transition-transform">
+                    <Activity size={24} strokeWidth={1.5} />
                   </div>
                   <div className="text-left">
-                    <div className="font-bold text-white transition-colors group-hover:text-sky-400">Demo Mode</div>
-                    <div className="text-[10px] font-bold uppercase text-sky-400">Explore without wallet</div>
+                    <div className="font-bold text-white text-lg tracking-wide">Demo Mode</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-sky-300 mt-0.5">Explore without wallet</div>
                   </div>
                 </div>
-                <ChevronRight size={18} className="text-sky-500/50 group-hover:text-sky-400 transition-colors" />
+                <ChevronRight size={20} className="text-sky-400/50 group-hover:text-white transition-colors relative z-10" />
               </button>
             )}
 
-
           </div>
 
-          <p className="text-[10px] text-slate-500 leading-relaxed">
-            By connecting your wallet, you agree to the protocol's 
+          <p className="text-xs text-slate-500 leading-relaxed max-w-sm mt-2">
+            By connecting, you agree to the protocol's 
             <span className={`hover:underline cursor-pointer mx-1 transition-colors ${
               isMainnet ? 'text-emerald-400' : 'text-sky-400'
             }`}>Terms of Service</span> 
-            and automated payout triggers.
+            and automated ZK triggers.
           </p>
         </div>
       </div>

@@ -9,6 +9,8 @@ import {
   serverTimestamp,
   deleteDoc,
   doc,
+  getDoc,
+  setDoc,
   type DocumentData
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -177,5 +179,41 @@ export const registerSponsor = async (walletAddress: string, sponsorInfo: any, n
   } catch (e) {
     console.error("Error registering sponsor: ", e);
     return null;
+  }
+};
+
+/**
+ * Retrieves a user's unified profile (role, farms, etc.) from Firebase.
+ */
+export const getUserProfile = async (walletAddress: string, network: string = 'testnet') => {
+  try {
+    const docRef = doc(db, "user_profiles", `${network}_${walletAddress}`);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+    return null;
+  } catch (e) {
+    console.error("Error getting user profile: ", e);
+    return null;
+  }
+};
+
+/**
+ * Saves or updates a user's unified profile in Firebase.
+ */
+export const saveUserProfile = async (walletAddress: string, profileData: any, network: string = 'testnet') => {
+  try {
+    const docRef = doc(db, "user_profiles", `${network}_${walletAddress}`);
+    await setDoc(docRef, {
+      ...profileData,
+      walletAddress,
+      network,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return true;
+  } catch (e) {
+    console.error("Error saving user profile: ", e);
+    return false;
   }
 };
