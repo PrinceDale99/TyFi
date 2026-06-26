@@ -8,6 +8,7 @@ import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { oracleRouter } from './oracle';
 import { initiateFiatDeposit } from './pdax';
+import { sponsorSmartWalletDeployment, wrapWithFeeBump } from './relayer';
 
 dotenv.config();
 
@@ -27,11 +28,36 @@ app.post('/api/v1/fiat-deposit', async (req, res) => {
     const result = await initiateFiatDeposit(amountPHP, paymentMethod);
     res.json(result);
   } catch (error: any) {
-    await logEvent('ERROR', `PDAX Fiat Deposit API failed`, { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+    await logEvent('ERROR', `PDAX Fiat Deposit API failed`, { error: errorDetails });
+    res.status(error.response?.status || 500).json({ success: false, error: errorDetails });
   }
 });
 
+// Layer 2: Relayer Endpoints
+app.post('/api/relay/sponsor', async (req, res) => {
+  const { webAuthnPubKey } = req.body;
+  if (!webAuthnPubKey) return res.status(400).json({ success: false, error: 'webAuthnPubKey required' });
+
+  try {
+    const result = await sponsorSmartWalletDeployment(webAuthnPubKey);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/relay/execute', async (req, res) => {
+  const { innerTxXdr } = req.body;
+  if (!innerTxXdr) return res.status(400).json({ success: false, error: 'innerTxXdr required' });
+
+  try {
+    const result = await wrapWithFeeBump(innerTxXdr);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 const PORT = process.env.PORT || 3001;
 
