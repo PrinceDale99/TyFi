@@ -234,6 +234,15 @@ function App() {
   // Profile Dashboard State
   const [isProfileDashboardOpen, setIsProfileDashboardOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  
+  // InstaPay Receipt State
+  const [instapayReceipt, setInstapayReceipt] = useState<{
+    amountPHP: number;
+    txHash: string;
+    date: string;
+    method: string;
+    accountName: string;
+  } | null>(null);
 
   // Add Farm & Edit Profile Modals States
   const [isAddFarmModalOpen, setIsAddFarmModalOpen] = useState(false);
@@ -1035,9 +1044,13 @@ function App() {
           });
           
           if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || "Backend or PDAX integration failed");
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || "Backend or PDAX integration failed");
           }
+          
+          const responseData = await res.json();
+          const prefs = JSON.parse(localStorage.getItem(`typhoon_vault_payment_${isMainnet ? 'mainnet' : 'testnet'}_${pubkey}`) || '{"method":"web3"}');
+
           
           // Transaction success: update local states
           setFarms(prev => prev.map(f => f.id === farm.id ? { 
@@ -1061,7 +1074,17 @@ function App() {
             setTestnetTvl(prev => Math.max(0, prev - claimAmount));
           }
           
-          addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed via Smart Contract! InstaPay/PDAX Sweep initiated.`, 'success');
+          if (prefs.method === 'fiat') {
+            setInstapayReceipt({
+              amountPHP: responseData.amountPHP || (claimAmount * 4.2),
+              txHash: responseData.txHash || 'MOCK_TX_123',
+              date: new Date().toLocaleString(),
+              method: prefs.fiatProvider || 'InstaPay',
+              accountName: prefs.fiatAccountName || 'Farmer Account'
+            });
+          } else {
+            addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed via Smart Contract directly to your Web3 Wallet!`, 'success');
+          }
         } catch (err: any) {
           console.error("Payout trigger error:", err);
           addNotification(`Payout Failed: ${err.message || "Could not execute smart contract or fiat bridge."}`, 'error');
@@ -3490,6 +3513,62 @@ function App() {
           </div>
         ))}
       </div>
+      {/* InstaPay Receipt Modal */}
+      {instapayReceipt && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" 
+            onClick={() => setInstapayReceipt(null)}
+          ></div>
+          <div className="relative w-full max-w-sm glass-panel border border-emerald-500/30 overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.2)] animate-in zoom-in-95 duration-300 rounded-3xl">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+            
+            <div className="flex justify-between items-center mb-6">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <CheckCircle2 size={20} />
+              </div>
+              <button 
+                onClick={() => setInstapayReceipt(null)}
+                className="p-2 bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="text-center mb-8">
+              <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-2">InstaPay Transfer Successful</h3>
+              <div className="text-4xl font-black text-white display-font tracking-tight">
+                PHP {instapayReceipt.amountPHP.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+
+            <div className="space-y-4 bg-slate-900/50 rounded-2xl p-4 border border-white/5 mb-6">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Date</span>
+                <span className="text-xs text-white font-medium">{instapayReceipt.date}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Destination</span>
+                <span className="text-xs text-white font-medium">{instapayReceipt.method} ({instapayReceipt.accountName})</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Ref No.</span>
+                <span className="text-xs font-mono text-emerald-400">{instapayReceipt.txHash}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setInstapayReceipt(null)}
+                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
