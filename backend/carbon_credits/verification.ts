@@ -52,7 +52,7 @@ async function simulateGeminiSatelliteAnalysis(urls: string[]): Promise<number> 
             return 0.85; // Fallback only if no key is provided
         }
 
-        const url = \`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\${apiKey}\`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
         
         // Construct the prompt for satellite/image analysis
         const payload = {
@@ -72,7 +72,7 @@ async function simulateGeminiSatelliteAnalysis(urls: string[]): Promise<number> 
         
         return isNaN(confidence) ? 0.5 : confidence;
     } catch (error: any) {
-        logger.error(\`Gemini API failed: \${error.message}\`);
+        logger.error(`Gemini API failed: ${error.message}`);
         return 0; // Fail safe
     }
 }
