@@ -60,9 +60,10 @@ import { useTranslation } from 'react-i18next';
 import CertificateList from './components/CertificateList';
 import SubsidyMarketplace from './components/SubsidyMarketplace';
 import DocsTab from './components/DocsTab';
-import WeatherTrigger from './components/WeatherTrigger';
+import { useContinuousYield } from './hooks/useContinuousYield';
+import { WeatherTrigger } from './components/WeatherTrigger';
 import SponsorVerification from './components/SponsorVerification';
-import { registerForSubsidy } from './services/firebaseService';
+import { registerForSubsidy, getUserProfile, saveUserProfile } from './services/firebaseService';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -117,6 +118,7 @@ function App() {
     return false;
   });
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+
   const [walletAddress, setWalletAddress] = useState(() => {
     return localStorage.getItem('typhoon_vault_walletAddress') || '';
   });
@@ -347,6 +349,9 @@ function App() {
 
   const currentTvl = contractTvl;
   const currentSubsidy = contractSubsidy;
+
+  // Hook for simulating real-time yield compounding (TVL + 8% APY starting 30 days ago)
+  const liveYield = useContinuousYield(currentTvl || 100000, Date.now() - 30 * 24 * 60 * 60 * 1000, 0.08);
 
   // Open Policy modal state
   const [openPolicy, setOpenPolicy] = useState<'tos' | 'privacy' | 'cookie' | 'agreement' | null>(null);
@@ -616,15 +621,84 @@ function App() {
   }, [notificationHistory, isWalletConnected, walletAddress, network]);
 
 
+  const loadProfile = async (address: string, net: string) => {
+    let consent = localStorage.getItem(`typhoon_vault_legal_consent_${net}_${address}`) === 'true';
+    let role = localStorage.getItem(`typhoon_vault_role_${net}_${address}`) as 'farmer' | 'sponsor' | null;
+
+    let parsed: any = null;
+
+    try {
+      const fb = await getUserProfile(address, net);
+      if (fb) {
+        parsed = fb;
+        localStorage.setItem(`typhoon_vault_${net}_${address}`, JSON.stringify(fb));
+        if (fb.role) {
+          role = fb.role;
+          localStorage.setItem(`typhoon_vault_role_${net}_${address}`, role);
+        }
+        if (fb.hasAgreedToLegal !== undefined) {
+          consent = fb.hasAgreedToLegal;
+          localStorage.setItem(`typhoon_vault_legal_consent_${net}_${address}`, consent ? 'true' : 'false');
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    if (!parsed) {
+      const savedData = localStorage.getItem(`typhoon_vault_${net}_${address}`);
+      if (savedData) {
+        try {
+          parsed = JSON.parse(savedData);
+        } catch (e) {}
+      }
+    }
+
+    if (parsed) {
+      setFarms(parsed.farms || []);
+      if ((parsed.farms || []).length > 0 && !role) {
+        role = 'farmer';
+        localStorage.setItem(`typhoon_vault_role_${net}_${address}`, 'farmer');
+      }
+      setIsVerified(parsed.isVerified || false);
+      if (parsed.hasAgreedToLegal !== undefined) {
+        consent = parsed.hasAgreedToLegal;
+      }
+      setClaims(parsed.claims || (net === 'mainnet' ? [] : [
+        { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' }
+      ]));
+      if (parsed.profileForm) {
+        setProfileForm(parsed.profileForm);
+      }
+    } else {
+      setFarms([]);
+      setIsVerified(false);
+      setClaims(net === 'mainnet' ? [] : [
+        { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' }
+      ]);
+    }
+    setUserRole(role);
+    setHasAgreedToLegal(consent);
+
+    lastSyncedNetwork.current = net;
+    lastSyncedAddress.current = address;
+  };
+
   const handleConnectWallet = async (walletId: string) => {
     try {
       if (walletId.startsWith("DEMO_TESTNET")) {
         // Special case for demo mode bypass
-        handleWalletConnected(walletId);
+        setWalletAddress(walletId);
+        setIsWalletConnected(true);
+        await loadProfile(walletId, network);
+        addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
         return;
       }
       const address = await connectWallet(network, walletId);
-      handleWalletConnected(address);
+      setWalletAddress(address);
+      setIsWalletConnected(true);
+      await loadProfile(address, network);
+      addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
     } catch (error: any) {
       if (error.message && error.message === 'MISSING_WC_ID') {
         setWalletError({
@@ -652,43 +726,6 @@ function App() {
     }
   };
 
-  const handleWalletConnected = (address: string) => {
-    setWalletAddress(address);
-    setIsWalletConnected(true);
-    
-    // Check both standalone key and the combined data object for consent
-    let consent = localStorage.getItem(`typhoon_vault_legal_consent_${network}_${address}`) === 'true';
-    let role = localStorage.getItem(`typhoon_vault_role_${network}_${address}`) as 'farmer' | 'sponsor' | null;
-
-    const savedData = localStorage.getItem(`typhoon_vault_${network}_${address}`);
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
-        setFarms(parsed.farms || []);
-        if ((parsed.farms || []).length > 0 && !role) {
-          role = 'farmer';
-          localStorage.setItem(`typhoon_vault_role_${network}_${address}`, 'farmer');
-        }
-        setIsVerified(parsed.isVerified || false);
-        if (parsed.hasAgreedToLegal !== undefined) {
-          consent = parsed.hasAgreedToLegal;
-        }
-        if (parsed.claims) {
-          setClaims(parsed.claims);
-        }
-        if (parsed.profileForm) {
-          setProfileForm(parsed.profileForm);
-        }
-      } catch (e) {
-        console.error("Failed to load account data", e);
-      }
-    }
-    
-    setUserRole(role);
-    setHasAgreedToLegal(consent);
-    addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
-  };
-
   // Sync state when network, wallet address, or connection status changes
   useEffect(() => {
     // SECURITY PATCH: Clear weather state when switching networks to prevent testnet/demo simulation data from being carried over to mainnet
@@ -696,44 +733,9 @@ function App() {
     setIsSimulatingWeather(false);
 
     if (isWalletConnected && walletAddress) {
-      let consent = localStorage.getItem(`typhoon_vault_legal_consent_${network}_${walletAddress}`) === 'true';
-      let role = localStorage.getItem(`typhoon_vault_role_${network}_${walletAddress}`) as 'farmer' | 'sponsor' | null;
-
-      const savedData = localStorage.getItem(`typhoon_vault_${network}_${walletAddress}`);
-      if (savedData) {
-        try {
-          const parsed = JSON.parse(savedData);
-          setFarms(parsed.farms || []);
-          if ((parsed.farms || []).length > 0 && !role) {
-            role = 'farmer';
-            localStorage.setItem(`typhoon_vault_role_${network}_${walletAddress}`, 'farmer');
-          }
-          setIsVerified(parsed.isVerified || false);
-          if (parsed.hasAgreedToLegal !== undefined) {
-            consent = parsed.hasAgreedToLegal;
-          }
-          setClaims(parsed.claims || (network === 'mainnet' ? [] : [
-            { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
-          ]));
-          if (parsed.profileForm) {
-            setProfileForm(parsed.profileForm);
-          }
-        } catch (e) {
-          console.error("Failed to load account data on sync change", e);
-        }
-      } else {
-        setFarms([]);
-        setIsVerified(false);
-        setClaims(network === 'mainnet' ? [] : [
-          { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
-        ]);
-      }
-      setUserRole(role);
-      setHasAgreedToLegal(consent);
-      
-      // Update refs AFTER loading state to mark that current state belongs to this network/address
-      lastSyncedNetwork.current = network;
-      lastSyncedAddress.current = walletAddress;
+      (async () => {
+        await loadProfile(walletAddress, network);
+      })();
     } else {
       setUserRole(null);
       setFarms([]);
@@ -742,9 +744,6 @@ function App() {
       setClaims(network === 'mainnet' ? [] : [
         { id: 'TX-9021', date: '2025-11-12', amount: 125000, status: 'Paid', trigger: 'Wind Speed > 120km/h' },
       ]);
-      
-      lastSyncedNetwork.current = network;
-      lastSyncedAddress.current = walletAddress;
     }
   }, [walletAddress, network, isWalletConnected]);
 
@@ -771,11 +770,16 @@ function App() {
         } catch (e) {}
       }
       if (shouldSave) {
-        const data = { farms, isVerified, claims, profileForm, hasAgreedToLegal };
+        const data = { farms, isVerified, claims, profileForm, hasAgreedToLegal, role: userRole };
         localStorage.setItem(`typhoon_vault_${network}_${walletAddress}`, JSON.stringify(data));
+        
+        // Sync with Firebase asynchronously (if user has accepted legal or has a role/farm)
+        if (hasAgreedToLegal || userRole || farms.length > 0) {
+          saveUserProfile(walletAddress, data, network).catch(console.error);
+        }
       }
     }
-  }, [farms, isVerified, claims, network, walletAddress, profileForm, hasAgreedToLegal]);
+  }, [farms, isVerified, claims, network, walletAddress, profileForm, hasAgreedToLegal, userRole]);
 
   // Sync profile form inputs with the first farm's details (if they exist)
   useEffect(() => {
@@ -1133,39 +1137,92 @@ function App() {
           </button>
         </div>
 
-        <div className="max-w-md w-full glass-panel text-center space-y-8 py-12 relative z-10 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-          <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center transition-all duration-700 shadow-2xl ${
-            isMainnet 
-              ? 'bg-emerald-500 shadow-emerald-500/30' 
-              : 'bg-sky-500 shadow-sky-500/30'
-          } animate-pulse`}>
-            <img src="/logo.svg" alt="TyFi Logo" className="w-14 h-14" />
-          </div>
-          <div>
-            <div className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border inline-block mb-3 ${
-              isMainnet 
-                ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' 
-                : 'text-sky-400 border-sky-500/20 bg-sky-500/5'
-            }`}>
-              {isMainnet ? '≡ƒÆÄ Production Environment Active' : '≡ƒº¬ Developer Sandbox Active'}
+        <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 bg-slate-900/60 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] relative z-10">
+          
+          {/* Left Side Branding */}
+          <div className="p-12 flex flex-col justify-between relative overflow-hidden bg-slate-950/50 hidden md:flex border-r border-white/5">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-emerald-500/10" />
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-blue-500/5 to-emerald-500/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/3" />
+            
+            <div className="relative z-10">
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-700 shadow-2xl mb-12 border ${
+                isMainnet ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/20' : 'bg-sky-500/10 border-sky-500/20 shadow-sky-500/20'
+              }`}>
+                <img src="/logo.svg" alt="TyFi Logo" className="w-10 h-10" />
+              </div>
+              
+              <h1 className="text-5xl font-black text-white tracking-tighter leading-[1.1]">
+                Parametric <br/>
+                <span className={`text-transparent bg-clip-text bg-gradient-to-r ${isMainnet ? 'from-emerald-400 to-cyan-400' : 'from-sky-400 to-indigo-400'}`}>Climate Defense</span>
+              </h1>
+              
+              <p className="text-slate-400 mt-6 text-base leading-relaxed max-w-sm">
+                Next-generation agricultural insurance powered by Soroban Smart Contracts. Instant, autonomous payouts when disaster strikes.
+              </p>
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">
-              Ty<span className={isMainnet ? 'text-emerald-500 transition-colors duration-700' : 'text-sky-500 transition-colors duration-700'}>Fi</span>
-            </h1>
-            <p className="text-slate-400 mt-4 text-sm font-medium">Parametric Agricultural Insurance Protocol</p>
+            
+            <div className="relative z-10 mt-16 grid grid-cols-2 gap-4">
+              <div className="bg-white/[0.02] rounded-2xl p-5 border border-white/5 backdrop-blur-md hover:bg-white/[0.04] transition-colors">
+                <CloudRain className={`w-6 h-6 mb-3 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} />
+                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Oracle Trigger</div>
+                <div className="text-white font-mono text-sm font-black">Zero-Knowledge</div>
+              </div>
+              <div className="bg-white/[0.02] rounded-2xl p-5 border border-white/5 backdrop-blur-md hover:bg-white/[0.04] transition-colors">
+                <Shield className={`w-6 h-6 mb-3 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} />
+                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Settlement</div>
+                <div className="text-white font-mono text-sm font-black">&lt; 3 Seconds</div>
+              </div>
+            </div>
           </div>
           
-          <button
-            onClick={() => setIsWalletModalOpen(true)}
-            className={`w-full text-white font-black py-4 rounded-2xl transition-all duration-500 flex items-center justify-center gap-3 group ${
-              isMainnet 
-                ? 'bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
-                : 'bg-sky-500 hover:bg-sky-400 shadow-[0_0_20px_rgba(14,165,233,0.2)]'
-            }`}
-          >
-            <Wallet size={20} className="group-hover:rotate-12 transition-transform" />
-            Connect Web3 Wallet
-          </button>
+          {/* Right Side Action */}
+          <div className="p-8 md:p-16 flex flex-col justify-center items-center text-center relative bg-slate-900/20">
+            <div className={`absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-b rounded-full blur-[120px] opacity-20 pointer-events-none ${isMainnet ? 'from-emerald-500' : 'from-sky-500'}`} />
+            
+            <div className="w-full max-w-sm space-y-10 relative z-10">
+              <div className="md:hidden flex justify-center mb-8">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-700 shadow-2xl border ${
+                  isMainnet ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-sky-500/10 border-sky-500/20'
+                }`}>
+                  <img src="/logo.svg" alt="TyFi Logo" className="w-10 h-10" />
+                </div>
+              </div>
+
+              <div>
+                <div className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border inline-block mb-8 shadow-2xl ${
+                  isMainnet 
+                    ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' 
+                    : 'text-sky-400 border-sky-500/30 bg-sky-500/10'
+                }`}>
+                  {isMainnet ? '🔴 Production Mainnet Active' : '🟢 Developer Sandbox Active'}
+                </div>
+                
+                <h2 className="text-3xl font-black text-white mb-3 tracking-tight">Connect Identity</h2>
+                <p className="text-slate-400 text-sm leading-relaxed">Link your Web3 wallet to access institutional vaults or manage your farm's policy.</p>
+              </div>
+              
+              <button
+                onClick={() => setIsWalletModalOpen(true)}
+                className={`w-full text-white font-black py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 group relative overflow-hidden ${
+                  isMainnet 
+                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_50px_rgba(16,185,129,0.5)]' 
+                    : 'bg-sky-600 hover:bg-sky-500 shadow-[0_0_40px_rgba(14,165,233,0.3)] hover:shadow-[0_0_50px_rgba(14,165,233,0.5)]'
+                }`}
+              >
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+                <Wallet size={20} className="group-hover:rotate-12 group-hover:scale-110 transition-all duration-300 relative z-10" />
+                <span className="relative z-10 tracking-wide">Connect Web3 Wallet</span>
+              </button>
+
+              <div className="pt-8 border-t border-white/5">
+                <p className="text-[11px] text-slate-500 flex items-center justify-center gap-2 font-bold uppercase tracking-widest">
+                  <Lock size={12} className={isMainnet ? "text-emerald-500" : "text-sky-500"} />
+                  Secured by Stellar Soroban
+                </p>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <WalletModal 
@@ -1382,35 +1439,54 @@ function App() {
       <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col items-center justify-center p-4 relative overflow-hidden">
         {/* Animated Background */}
         <div className={`absolute inset-0 bg-grid-slate-900/[0.04] bg-[bottom_1px_center] ${isMainnet ? 'bg-grid-emerald-500/[0.02]' : 'bg-grid-sky-500/[0.02]'}`} style={{ maskImage: 'linear-gradient(to bottom, transparent, black)' }} />
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full filter blur-[120px] transition-colors duration-1000 -z-10 ${
+        <div className={`absolute top-1/3 right-1/4 w-[600px] h-[600px] rounded-full filter blur-[150px] transition-colors duration-1000 -z-10 ${
           isMainnet ? 'bg-emerald-500/10' : 'bg-sky-500/10'
         }`} />
+        <div className="absolute bottom-1/3 left-1/4 w-[600px] h-[600px] rounded-full filter blur-[150px] transition-colors duration-1000 -z-10 bg-indigo-500/10" />
 
-        <div className="relative z-10 max-w-4xl w-full">
-          <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-4">Identify Your Profile</h1>
-            <p className="text-slate-400 text-lg">Select your operational capacity to access the appropriate decentralized infrastructure</p>
+        <div className="relative z-10 max-w-5xl w-full">
+          <div className="text-center mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border inline-block mb-6 shadow-2xl ${
+                  isMainnet 
+                    ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' 
+                    : 'text-sky-400 border-sky-500/30 bg-sky-500/10'
+                }`}>
+              {isMainnet ? 'Production Mainnet Active' : 'Developer Sandbox Active'}
+            </div>
+            <h1 className="text-5xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4 leading-tight">Identify Your Profile</h1>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">Select your operational capacity to access the appropriate decentralized infrastructure and tailor your platform experience.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
             {/* Farmer Role */}
             <button
               onClick={() => {
                 localStorage.setItem(`typhoon_vault_role_${network}_${walletAddress}`, 'farmer');
                 setUserRole('farmer');
               }}
-              className="text-left group relative glass-panel p-8 hover:border-sky-500/50 transition-all duration-300 overflow-hidden"
+              className="text-left group relative bg-slate-900/60 backdrop-blur-2xl rounded-[2.5rem] p-10 border border-white/10 hover:bg-slate-900/80 hover:border-sky-500/50 hover:shadow-[0_0_50px_rgba(14,165,233,0.15)] transition-all duration-500 overflow-hidden"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-sky-500/20 transition-all" />
-              <div className="w-16 h-16 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                <Sprout size={32} />
-              </div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-3">Agricultural Asset Owner</h2>
-              <p className="text-slate-400 leading-relaxed mb-6">
-                Register agricultural assets to secure parametric weather coverage. Receive autonomous payouts directly to your wallet when disaster thresholds are met, and apply for premium subsidies.
-              </p>
-              <div className="text-xs font-black text-sky-400 uppercase tracking-widest flex items-center gap-2 group-hover:translate-x-2 transition-transform">
-                Access Beneficiary Portal <ArrowUpRight size={14} />
+              <div className="absolute inset-0 bg-gradient-to-br from-sky-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute -top-32 -right-32 w-64 h-64 bg-sky-500/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-sky-500/30 transition-all duration-700" />
+              
+              <div className="relative z-10">
+                <div className="w-20 h-20 rounded-3xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center mb-8 shadow-lg shadow-sky-500/10 group-hover:scale-110 group-hover:bg-sky-500 group-hover:text-white transition-all duration-500">
+                  <Sprout size={36} strokeWidth={1.5} />
+                </div>
+                
+                <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Agricultural Asset Owner</h2>
+                <p className="text-slate-400 leading-relaxed mb-8 text-sm md:text-base">
+                  Register agricultural assets to secure parametric weather coverage. Receive autonomous payouts directly to your wallet when disaster thresholds are met, and apply for premium subsidies.
+                </p>
+                
+                <div className="pt-8 border-t border-white/10 flex items-center justify-between">
+                  <div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 group-hover:text-sky-400 transition-colors">
+                    Access Beneficiary Portal
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:bg-sky-500/20 group-hover:border-sky-500/50 group-hover:text-sky-400 transition-all group-hover:translate-x-2">
+                    <ArrowUpRight size={18} />
+                  </div>
+                </div>
               </div>
             </button>
 
@@ -1419,20 +1495,30 @@ function App() {
               onClick={() => {
                 localStorage.setItem(`typhoon_vault_role_${network}_${walletAddress}`, 'sponsor');
                 setUserRole('sponsor');
-                // setIsVerified is intentionally NOT set here anymore so they go to SponsorVerification
               }}
-              className="text-left group relative glass-panel p-8 hover:border-emerald-500/50 transition-all duration-300 overflow-hidden"
+              className="text-left group relative bg-slate-900/60 backdrop-blur-2xl rounded-[2.5rem] p-10 border border-white/10 hover:bg-slate-900/80 hover:border-emerald-500/50 hover:shadow-[0_0_50px_rgba(16,185,129,0.15)] transition-all duration-500 overflow-hidden"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/20 transition-all" />
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                <Globe size={32} />
-              </div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-3">Sponsor & Liquidity Provider</h2>
-              <p className="text-slate-400 leading-relaxed mb-6">
-                Deploy capital to subsidize insurance premiums for vulnerable farmers or provide liquidity to the core vault. Track the immutable impact of your funds and earn protocol yields.
-              </p>
-              <div className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2 group-hover:translate-x-2 transition-transform">
-                Access Institutional Portal <ArrowUpRight size={14} />
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute -top-32 -right-32 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-emerald-500/30 transition-all duration-700" />
+              
+              <div className="relative z-10">
+                <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-8 shadow-lg shadow-emerald-500/10 group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-500">
+                  <Globe size={36} strokeWidth={1.5} />
+                </div>
+                
+                <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Sponsor & Liquidity Provider</h2>
+                <p className="text-slate-400 leading-relaxed mb-8 text-sm md:text-base">
+                  Deploy capital to subsidize insurance premiums for vulnerable farmers or provide liquidity to the core vault. Track the immutable impact of your funds and earn protocol yields.
+                </p>
+                
+                <div className="pt-8 border-t border-white/10 flex items-center justify-between">
+                  <div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 group-hover:text-emerald-400 transition-colors">
+                    Access Institutional Portal
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/50 group-hover:text-emerald-400 transition-all group-hover:translate-x-2">
+                    <ArrowUpRight size={18} />
+                  </div>
+                </div>
               </div>
             </button>
           </div>
@@ -1844,8 +1930,8 @@ function App() {
                         </div>
                         <h3 className="font-black text-white text-sm">Total Value Locked</h3>
                       </div>
-                      <div className="text-2xl font-black text-white mb-1">
-                        {currentTvl.toLocaleString()} XLM
+                      <div className="text-2xl font-black text-white mb-1 tracking-tight">
+                        {liveYield.toLocaleString(undefined, { minimumFractionDigits: 7, maximumFractionDigits: 7 })} <span className="text-sm font-bold text-slate-400">XLM</span>
                       </div>
                       <div className="text-[11px] text-slate-400 font-bold block -mt-1 mb-2">
                         ≈ {formatPhp(currentTvl)}
@@ -2144,7 +2230,7 @@ function App() {
             <div className="lg:col-span-4 space-y-6">
               
               {/* Weather Disaster Testing Trigger */}
-              <WeatherTrigger />
+              <WeatherTrigger targetAddress={walletAddress} activeYieldBalance={liveYield} />
 
               <div className="glass-panel">
                 <h3 className="font-black text-white mb-6 uppercase tracking-widest text-sm">Quick Protocol Access</h3>
