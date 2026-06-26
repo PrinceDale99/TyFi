@@ -276,10 +276,9 @@ TyFi won **Best on Stellar** at the recent Stellar x RiseIn Philippines hackatho
 - **Product Updates**: [https://www.instagram.com/p/DZ_pm_xk-2B/](https://www.instagram.com/p/DZ_pm_xk-2B/)
 
 ## 🔧 Product Improvement Commits
-- **Soroban Account Abstraction & Multi-Sig**: [a1b2c3d](https://github.com/PrinceDale99/TyFi/commit/a1b2c3d)
-- **Fee Sponsorship (Gasless Farmer Tx)**: [e4f5g6h](https://github.com/PrinceDale99/TyFi/commit/e4f5g6h)
-- **Phase 3 TyFi DAO & Sponsor Pool**: [4a1b2c3](https://github.com/PrinceDale99/TyFi/commit/4a1b2c3)
-- **Gemini Vision OCR & NPC Privacy Compliance**: [8b7c6d5](https://github.com/PrinceDale99/TyFi/commit/8b7c6d5)
+- **Soroban Account Abstraction & Gasless Tx**: [21d9621](https://github.com/PrinceDale99/TyFi/commit/21d9621)
+- **Phase 3 TyFi DAO & Sponsor Pool**: [70646c6](https://github.com/PrinceDale99/TyFi/commit/70646c6)
+- **Gemini Vision OCR & NPC Privacy Compliance**: [70646c6](https://github.com/PrinceDale99/TyFi/commit/70646c6)
 - **PDAX Real-Time Fiat Sweeps, AML & Live Polling**: [498fb81](https://github.com/PrinceDale99/TyFi/commit/498fb81)
 - **Local Language Support**: [893717d](https://github.com/PrinceDale99/TyFi/commit/893717d)
 - **Livestock & Asset Coverage**: [f3ee9f5](https://github.com/PrinceDale99/TyFi/commit/f3ee9f5)
