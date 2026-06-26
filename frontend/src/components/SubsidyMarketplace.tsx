@@ -14,7 +14,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { getActiveSubsidyRequests } from '../services/firebaseService';
-import { registerPolicyOnChain } from '../lib/stellar';
+import { registerPolicyOnChain, contributeLiquidityOnChain } from '../lib/stellar';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -79,17 +79,17 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
     try {
       addNotification(`Initiating sponsorship for ${request.farmerName}...`, 'info');
       
-      // Construct the transaction: Sponsor pays, but policy is registered to Farmer
-      const success = await registerPolicyOnChain(
-        request.farmerAddress, // The beneficiary is the farmer
-        request.farmName.replace(/\s+/g, '_'),
-        request.region,
+      // Construct the transaction: Sponsor deposits the exact premium into the Vault's subsidy pool.
+      // (Soroban requires farmer.require_auth() to subscribe, so sponsors fund the pool and we mark it funded off-chain)
+      const txHash = await contributeLiquidityOnChain(
+        sponsorAddress,
         request.premiumNeeded,
-        request.season,
+        'subsidy',
+        'deposit',
         network
       );
 
-      if (success) {
+      if (txHash) {
         // Update Firestore to mark as funded
         const requestRef = doc(db, "subsidy_requests", request.id);
         await updateDoc(requestRef, {
