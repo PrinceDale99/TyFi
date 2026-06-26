@@ -87,12 +87,19 @@ export async function initiateFiatSweep(amountPHP: number, paymentPrefs?: any): 
 
 export const initiateFiatDeposit = async (amountPHP: number, paymentMethod: string = "grabpay_cashin") => {
   try {
-    const { accessToken, idToken } = await getPdaxToken();
+    const username = process.env.PDAX_USERNAME;
+    const password = process.env.PDAX_PASSWORD;
+    if (!username || !password) throw new Error('Missing PDAX credentials');
+    
+    const authResponse = await axios.post(`${PDAX_API_BASE}/pdax-institution/v1/login`, { username, password });
+    const accessToken = authResponse.data.access_token;
+    const idToken = authResponse.data.id_token;
+    if (!accessToken || !idToken) throw new Error('PDAX API did not return valid authentication tokens');
     
     console.log(`[PDAX] Initiating fiat deposit for PHP ${amountPHP} via ${paymentMethod}...`);
 
     const response = await axios.post(
-      `${PDAX_API_DOMAIN}/pdax-institution/v1/fiat/deposit`,
+      `${PDAX_API_BASE}/pdax-institution/v1/fiat/deposit`,
       {
         amount: amountPHP.toString(),
         method: paymentMethod,
