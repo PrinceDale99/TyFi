@@ -231,13 +231,5 @@ TyFi won **Best on Stellar** at the recent Stellar x RiseIn Philippines hackatho
 - **Live Weather Radar**: [8224406](https://github.com/PrinceDale99/TyFi/commit/8224406)
 - **Cooperative & Shared Accounts**: [45cb144](https://github.com/PrinceDale99/TyFi/commit/45cb144)
 
-## ☑️ Submission Checklist
-- [x] Minimum 20+ meaningful commits
-- [x] Live deployed application
-- [x] PPT/Pitch deck link
-- [x] Demo video link
-- [x] Proof of 50+ users
-- [x] Screenshots of analytics or transaction activity
-- [x] Updated README and documentation
-- [x] User feedback iteration summary
+
 
