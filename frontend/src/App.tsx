@@ -382,12 +382,19 @@ function App() {
 
   useEffect(() => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-    fetch(`${backendUrl}/api/v1/xlm-rate`)
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.rate) setXlmRate(data.rate);
-      })
-      .catch(err => console.error('Failed to fetch XLM rate:', err));
+    
+    const fetchRate = () => {
+      fetch(`${backendUrl}/api/v1/xlm-rate`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.rate) setXlmRate(data.rate);
+        })
+        .catch(err => console.error('Failed to fetch XLM rate:', err));
+    };
+
+    fetchRate();
+    const intervalId = setInterval(fetchRate, 30000); // 30 seconds
+    return () => clearInterval(intervalId);
   }, []);
 
   const currentTvl = contractTvl;
