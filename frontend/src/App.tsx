@@ -35,8 +35,24 @@ import {
   Crosshair,
   Trash2,
   BookOpen,
-  ArrowLeft
+  ArrowLeft,
+  Home,
+  Leaf,
+  FileCheck,
+  ChevronRight,
+  AlertTriangle,
+  Sun,
+  Map,
+  BarChart3,
+  Activity,
+  Share2,
+  ArrowRight,
+  Send,
+  Users,
+  ShieldAlert,
+  CreditCard
 } from 'lucide-react';
+import { PaymentSetup } from './components/PaymentSetup';
 import FarmerVerification from './components/FarmerVerification';
 import WeatherWidget from './components/WeatherWidget';
 import MarketWidget from './components/MarketWidget';
@@ -101,7 +117,7 @@ function App() {
   const [stakingMode, setStakingMode] = useState<'deposit' | 'withdraw'>('deposit');
   const [projectionPeriod, setProjectionPeriod] = useState<'1m' | '6m' | '1y'>('1y');
 
-  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace' | 'docs'>(() => {
+  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace' | 'docs' | 'payment'>(() => {
     return (localStorage.getItem('typhoon_vault_activeTab') as any) || 'monitor';
   });
   const [network, setNetwork] = useState<'testnet' | 'mainnet'>(() => {
@@ -192,13 +208,13 @@ function App() {
     return [];
   });
 
-  // ≡ƒÜ¬ Signout Confirmation State
+  // Signout Confirmation State
   const [isSignoutConfirmOpen, setIsSignoutConfirmOpen] = useState(false);
   const [farmToDelete, setFarmToDelete] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [walletError, setWalletError] = useState<{ id: string, message: string, url?: string } | null>(null);
 
-  // ΓöÇΓöÇΓöÇ Offline-First Intent Recovery ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // Offline-First Intent Recovery
   useEffect(() => {
     const handleOnline = () => {
       const pendingClaims = JSON.parse(localStorage.getItem('vault_pending_claims') || '[]');
@@ -215,11 +231,11 @@ function App() {
     return () => window.removeEventListener('online', handleOnline);
   }, []);
 
-  // ≡ƒæñ Profile Dashboard State
+  // Profile Dashboard State
   const [isProfileDashboardOpen, setIsProfileDashboardOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 
-  // Γ₧ò Add Farm & ≡ƒæñ Edit Profile Modals States
+  // Add Farm & Edit Profile Modals States
   const [isAddFarmModalOpen, setIsAddFarmModalOpen] = useState(false);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
 
@@ -297,7 +313,7 @@ function App() {
   }, [newFarmForm.cropType, newFarmForm.farmSize, profileForm.region, isAddFarmModalOpen]);
 
 
-  // ≡ƒº¬ Testnet Developer Sandbox States
+  // Testnet Developer Sandbox States
   const [isSimulatingWeather, setIsSimulatingWeather] = useState(false);
 
   useEffect(() => {
@@ -480,7 +496,7 @@ function App() {
         hourlyWindSpeed: Array.from({ length: 24 }, (_, i) => i < 12 ? 30 + i * 8 : 115 - (i - 12) * 5),
         hourlyPrecipitation: Array.from({ length: 24 }, () => 5 + Math.random() * 10),
       };
-      addNotification('≡ƒÆ¿ Moderate Typhoon trigger (30% payout) simulated! Contract parametric claim enabled.', 'warning');
+      addNotification('Moderate Typhoon trigger (30% payout) simulated! Contract parametric claim enabled.', 'warning');
     } else if (scenario === 'rain_trigger') {
       simulated = {
         temperature: 25.5,
@@ -508,7 +524,7 @@ function App() {
         hourlyWindSpeed: Array.from({ length: 24 }, () => 20 + Math.random() * 10),
         hourlyPrecipitation: Array.from({ length: 24 }, (_, i) => i < 12 ? 10 + i * 3 : 30 - (i - 12) * 2),
       };
-      addNotification('≡ƒîº∩╕Å Severe Typhoon trigger (70% payout) simulated! Contract parametric claim enabled.', 'warning');
+      addNotification('Severe Typhoon trigger (70% payout) simulated! Contract parametric claim enabled.', 'warning');
     } else { // double_trigger
       simulated = {
         temperature: 23.0,
@@ -536,7 +552,7 @@ function App() {
         hourlyWindSpeed: Array.from({ length: 24 }, (_, i) => i < 12 ? 50 + i * 11 : 165 - (i - 12) * 8),
         hourlyPrecipitation: Array.from({ length: 24 }, (_, i) => i < 12 ? 15 + i * 4 : 40 - (i - 12) * 3),
       };
-      addNotification('≡ƒîÇ SUPER TYPHOON double trigger met! 90% full parametric claim enabled on Testnet.', 'warning');
+      addNotification('SUPER TYPHOON double trigger met! 90% full parametric claim enabled on Testnet.', 'warning');
     }
 
     setWeather(simulated);
@@ -1620,7 +1636,7 @@ function App() {
           </div>
 
           <div className="hidden md:flex items-center gap-6">
-            {(['monitor', 'calc', 'history', 'vault', 'marketplace', 'docs'] as const)
+            {(['monitor', 'history', 'calc', 'vault', 'marketplace', 'docs', 'payment'] as const)
               .filter(tab => {
                 if (userRole === 'sponsor') {
                   return ['history', 'vault', 'marketplace', 'docs'].includes(tab);
@@ -1767,8 +1783,8 @@ function App() {
             </div>
             
             <div className="flex flex-col gap-8">
-              {(['monitor', 'calc', 'history', 'vault', 'marketplace', 'docs'] as const).map((tab) => {
-                if (userRole === 'sponsor' && tab === 'calc') return null;
+              {(['monitor', 'calc', 'payment', 'history', 'vault', 'marketplace', 'docs'] as const).map((tab) => {
+                if (userRole === 'sponsor' && (tab === 'calc' || tab === 'payment' || tab === 'monitor')) return null;
                 return (
                   <button
                     key={tab}
@@ -1818,16 +1834,18 @@ function App() {
                   <h1 className="text-4xl font-black text-white tracking-tight">
                     {activeTab === 'monitor' ? 'Protocol Monitoring' :
                       activeTab === 'calc' ? 'Smart Calculator' :
-                        activeTab === 'history' ? 'Claim History' : 
-                          activeTab === 'marketplace' ? 'Subsidy Marketplace' : 
-                            activeTab === 'docs' ? 'System Overview' : 'Vault Infrastructure'}
+                        activeTab === 'payment' ? 'Payout Configuration' :
+                          activeTab === 'history' ? 'Claim History' : 
+                            activeTab === 'marketplace' ? 'Subsidy Marketplace' : 
+                              activeTab === 'docs' ? 'System Overview' : 'Vault Infrastructure'}
                   </h1>
                   <p className="text-slate-400 mt-1">
                     {activeTab === 'monitor' ? `Automated smart contracts for ${farms[0]?.farmName || 'your farms'}` :
                       activeTab === 'calc' ? 'Analyze damage and estimate recovery payouts' :
-                        activeTab === 'history' ? 'Transparency report of all triggered payouts' :
-                          activeTab === 'marketplace' ? 'Fund climate resilience for verified farmers' :
-                            activeTab === 'docs' ? 'How TyFi Decentralized Parametric Insurance works' :
+                        activeTab === 'payment' ? 'Configure fiat off-ramps or direct wallet payouts' :
+                          activeTab === 'history' ? 'Transparency report of all triggered payouts' :
+                            activeTab === 'marketplace' ? 'Fund climate resilience for verified farmers' :
+                              activeTab === 'docs' ? 'How TyFi Decentralized Parametric Insurance works' :
                           'Proof of liquidity and capital reserves'}
                   </p>
                 </div>
@@ -1883,7 +1901,7 @@ function App() {
                               <div className="flex items-center justify-between mb-3">
                                  <div>
                                     <h4 className="text-xs font-black text-white truncate max-w-[150px]">{farm.farmName}</h4>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest">{farm.region} ΓÇó {farm.cropType}</p>
+                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest">{farm.region} • {farm.cropType}</p>
                                  </div>
                                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-[9px] font-black text-rose-500 uppercase tracking-widest animate-pulse">
                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
@@ -1939,6 +1957,12 @@ function App() {
 
                   {/* Right Column: Live Ledger Stream */}
                   <LedgerStream network={network} />
+                </div>
+              )}
+
+              {activeTab === 'payment' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <PaymentSetup isMainnet={isMainnet} walletAddress={walletAddress} />
                 </div>
               )}
 
@@ -2306,20 +2330,37 @@ function App() {
                   </button>
 
                   {userRole === 'farmer' && (
-                    <button
-                      onClick={() => setActiveTab('calc')}
-                      className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                        activeTab === 'calc' 
-                          ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
-                          : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
-                      }`}
-                    >
-                      <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                        <Calculator size={20} />
-                        <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Calculator</span>
-                      </div>
-                      <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setActiveTab('calc')}
+                        className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
+                          activeTab === 'calc' 
+                            ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
+                            : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
+                          <Calculator size={20} />
+                          <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Calculator</span>
+                        </div>
+                        <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+
+                      <button
+                        onClick={() => setActiveTab('payment')}
+                        className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
+                          activeTab === 'payment' 
+                            ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-400 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]'
+                            : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
+                          <CreditCard size={20} />
+                          <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Payout Config</span>
+                        </div>
+                        <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    </>
                   )}
 
                   <button
@@ -2341,8 +2382,10 @@ function App() {
                     onClick={() => setActiveTab('docs')}
                     className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
                       activeTab === 'docs' 
-                        ? 'bg-purple-500/10 border-purple-500 text-purple-400' 
-                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
+                        ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]' :
+                          activeTab === 'payment'
+                            ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-400 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]'
+                            : 'bg-white/5 border border-white/10 text-slate-300'
                     }`}
                   >
                     <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">

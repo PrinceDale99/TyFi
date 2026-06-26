@@ -1,0 +1,176 @@
+import React, { useState, useEffect } from 'react';
+import { Wallet, Smartphone, Building, CheckCircle2, ChevronRight, Save } from 'lucide-react';
+
+interface PaymentSetupProps {
+  isMainnet: boolean;
+  walletAddress: string;
+}
+
+export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAddress }) => {
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'fiat'>('wallet');
+  const [fiatProvider, setFiatProvider] = useState<'gcash' | 'paymaya'>('gcash');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    // Load saved preferences if any
+    const saved = localStorage.getItem(`typhoon_vault_payment_${walletAddress}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setPaymentMethod(parsed.method || 'wallet');
+      if (parsed.method === 'fiat') {
+        setFiatProvider(parsed.provider || 'gcash');
+        setAccountNumber(parsed.accountNumber || '');
+        setAccountName(parsed.accountName || '');
+      }
+    }
+  }, [walletAddress]);
+
+  const handleSave = () => {
+    const config = {
+      method: paymentMethod,
+      provider: paymentMethod === 'fiat' ? fiatProvider : null,
+      accountNumber: paymentMethod === 'fiat' ? accountNumber : null,
+      accountName: paymentMethod === 'fiat' ? accountName : null,
+    };
+    localStorage.setItem(`typhoon_vault_payment_${walletAddress}`, JSON.stringify(config));
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 3000);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="mb-8">
+        <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Payout Configuration</h2>
+        <p className="text-sm text-slate-400">Configure how you receive your parametric payouts when a weather trigger executes.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Web3 Native Option */}
+        <button
+          onClick={() => setPaymentMethod('wallet')}
+          className={`relative p-6 rounded-2xl border text-left transition-all duration-300 ${
+            paymentMethod === 'wallet'
+              ? isMainnet ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.1)]' : 'bg-sky-500/10 border-sky-500 shadow-[0_0_30px_rgba(14,165,233,0.1)]'
+              : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10'
+          }`}
+        >
+          {paymentMethod === 'wallet' && (
+            <div className={`absolute top-4 right-4 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>
+              <CheckCircle2 size={24} />
+            </div>
+          )}
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
+            paymentMethod === 'wallet' 
+              ? isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'
+              : 'bg-white/10 text-slate-300'
+          }`}>
+            <Wallet size={24} />
+          </div>
+          <h3 className="text-lg font-bold text-white mb-2">Direct to Wallet</h3>
+          <p className="text-sm text-slate-400">Receive payouts directly in USDC or XLM to your connected Freighter wallet.</p>
+        </button>
+
+        {/* Fiat Bridge Option */}
+        <button
+          onClick={() => setPaymentMethod('fiat')}
+          className={`relative p-6 rounded-2xl border text-left transition-all duration-300 ${
+            paymentMethod === 'fiat'
+              ? isMainnet ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.1)]' : 'bg-sky-500/10 border-sky-500 shadow-[0_0_30px_rgba(14,165,233,0.1)]'
+              : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10'
+          }`}
+        >
+          {paymentMethod === 'fiat' && (
+            <div className={`absolute top-4 right-4 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>
+              <CheckCircle2 size={24} />
+            </div>
+          )}
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
+            paymentMethod === 'fiat' 
+              ? isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'
+              : 'bg-white/10 text-slate-300'
+          }`}>
+            <Building size={24} />
+          </div>
+          <h3 className="text-lg font-bold text-white mb-2">InstaPay / E-Wallet</h3>
+          <p className="text-sm text-slate-400">Auto-convert yield to PHP and route directly to GCash or PayMaya via PDAX.</p>
+        </button>
+      </div>
+
+      {paymentMethod === 'fiat' && (
+        <div className="glass-panel p-6 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-500 mt-6 space-y-6">
+          <h3 className="text-md font-bold text-white uppercase tracking-widest border-b border-white/10 pb-4">Fiat Routing Details</h3>
+          
+          <div className="space-y-5">
+            <div className="form-group">
+              <label className="text-xs mb-2 block text-slate-300 font-bold uppercase tracking-wider">Provider</label>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setFiatProvider('gcash')}
+                  className={`flex-1 py-3 px-4 rounded-xl border font-bold text-sm transition-colors flex items-center justify-center gap-2 ${
+                    fiatProvider === 'gcash'
+                      ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                      : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                  }`}
+                >
+                  <Smartphone size={16} />
+                  GCash
+                </button>
+                <button
+                  onClick={() => setFiatProvider('paymaya')}
+                  className={`flex-1 py-3 px-4 rounded-xl border font-bold text-sm transition-colors flex items-center justify-center gap-2 ${
+                    fiatProvider === 'paymaya'
+                      ? 'bg-green-600/20 border-green-500 text-green-400'
+                      : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                  }`}
+                >
+                  <Smartphone size={16} />
+                  PayMaya
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="form-group">
+                <label className="text-xs mb-2 block text-slate-300 font-bold uppercase tracking-wider">Account Name</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Juan Dela Cruz"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+                />
+              </div>
+              <div className="form-group">
+                <label className="text-xs mb-2 block text-slate-300 font-bold uppercase tracking-wider">Mobile Number</label>
+                <input 
+                  type="text" 
+                  placeholder="09XX XXX XXXX"
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end pt-4">
+        <button
+          onClick={handleSave}
+          disabled={paymentMethod === 'fiat' && (!accountName || !accountNumber)}
+          className={`px-8 py-3.5 rounded-xl font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+            isSaved 
+              ? 'bg-green-500 text-white' 
+              : isMainnet ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950' : 'bg-sky-500 hover:bg-sky-400 text-slate-950'
+          }`}
+        >
+          {isSaved ? <CheckCircle2 size={18} /> : <Save size={18} />}
+          {isSaved ? 'Configuration Saved' : 'Save Payout Configuration'}
+        </button>
+      </div>
+    </div>
+  );
+};
