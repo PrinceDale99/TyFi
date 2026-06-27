@@ -361,6 +361,7 @@ function App() {
   const [contractTvl, setContractTvl] = useState<number>(0);
   const [contractSubsidy, setContractSubsidy] = useState<number>(0);
   const [userLpBalance, setUserLpBalance] = useState<number>(0);
+  const [processingPayment, setProcessingPayment] = useState<'web3' | 'fiat' | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -645,6 +646,7 @@ function App() {
       return;
     }
 
+    setProcessingPayment('web3');
     const { type, amountXlm, stakingMode, sponsorRequest } = paymentIntent;
     const actionText = type === 'lp' ? 'liquidity contribution' : type === 'subsidy' ? 'subsidy deposit' : 'sponsorship';
 
@@ -672,26 +674,30 @@ function App() {
       console.log(`[${network.toUpperCase()}] Transaction confirmed on ledger. Tx Hash: ${txHash}`);
     } catch (e: any) {
       addNotification(`Operation failed: ${e.message || 'Cancelled'}`, 'warning');
+    } finally {
+      setProcessingPayment(null);
     }
   };
 
   const executeFiatPayment = async () => {
     if (!paymentIntent) return;
-    const { amountPhp } = paymentIntent;
+    // Calculate live PHP amount using real-time XLM rate
+    const liveAmountPhp = paymentIntent.amountXlm * xlmRate;
 
-    if (isNaN(amountPhp) || amountPhp <= 0) {
+    if (isNaN(liveAmountPhp) || liveAmountPhp <= 0) {
       addNotification('Please enter a valid amount greater than 0', 'warning');
       return;
     }
 
-    addNotification(`Initiating fiat deposit via PDAX API for PHP ${amountPhp}...`, 'info');
+    setProcessingPayment('fiat');
+    addNotification(`Initiating fiat deposit via PDAX API for PHP ${liveAmountPhp}...`, 'info');
     
     try {
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
       const response = await fetch(`${BACKEND_URL}/api/v1/fiat-deposit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountPHP: amountPhp, paymentMethod: 'grabpay_cashin' })
+        body: JSON.stringify({ amountPHP: liveAmountPhp, paymentMethod: 'grabpay_cashin' })
       });
       
       const data = await response.json();
@@ -713,6 +719,8 @@ function App() {
     } catch (e: any) {
       addNotification(`Failed to initiate fiat deposit: ${e.message}`, 'warning');
       console.error(e);
+    } finally {
+      setProcessingPayment(null);
     }
   };
 
@@ -2985,7 +2993,7 @@ function App() {
               <span className="text-sm font-bold text-slate-400">Total Amount:</span>
               <div className="text-right">
                 <div className="text-lg font-black text-white font-mono">{paymentIntent.amountXlm.toLocaleString(undefined, { maximumFractionDigits: 4 })} XLM</div>
-                <div className="text-xs font-bold text-emerald-400 font-mono">≈ ₱{paymentIntent.amountPhp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="text-xs font-bold text-emerald-400 font-mono">≈ ₱{(paymentIntent.amountXlm * xlmRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               </div>
             </div>
 
@@ -2993,31 +3001,37 @@ function App() {
               {/* Web3 Wallet Option */}
               <button 
                 onClick={executeWeb3Payment}
-                className="w-full bg-white/5 border border-white/10 hover:border-sky-500/50 hover:bg-sky-500/10 rounded-2xl p-4 transition-all group text-left flex items-center gap-4"
+                disabled={processingPayment !== null}
+                className={`w-full bg-white/5 border border-white/10 rounded-2xl p-4 transition-all group text-left flex items-center gap-4 ${processingPayment !== null ? 'opacity-50 cursor-not-allowed' : 'hover:border-sky-500/50 hover:bg-sky-500/10'}`}
               >
-                <div className="w-12 h-12 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Wallet size={24} />
+                <div className={`w-12 h-12 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center transition-transform ${processingPayment === null ? 'group-hover:scale-110' : ''}`}>
+                  {processingPayment === 'web3' ? <Loader2 size={24} className="animate-spin" /> : <Wallet size={24} />}
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-white font-black text-sm uppercase tracking-wide">Direct Web3 Wallet</h4>
+                  <h4 className="text-white font-black text-sm uppercase tracking-wide">
+                    {processingPayment === 'web3' ? 'Processing...' : 'Direct Web3 Wallet'}
+                  </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">Pay natively with Freighter, WalletConnect, or LOBSTR.</p>
                 </div>
-                <ArrowRight size={18} className="text-slate-500 group-hover:text-sky-400 group-hover:translate-x-1 transition-all" />
+                {!processingPayment && <ArrowRight size={18} className="text-slate-500 group-hover:text-sky-400 group-hover:translate-x-1 transition-all" />}
               </button>
 
               {/* Fiat e-Wallet Option */}
               <button 
                 onClick={executeFiatPayment}
-                className="w-full bg-white/5 border border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 rounded-2xl p-4 transition-all group text-left flex items-center gap-4"
+                disabled={processingPayment !== null}
+                className={`w-full bg-white/5 border border-white/10 rounded-2xl p-4 transition-all group text-left flex items-center gap-4 ${processingPayment !== null ? 'opacity-50 cursor-not-allowed' : 'hover:border-emerald-500/50 hover:bg-emerald-500/10'}`}
               >
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <DollarSign size={24} />
+                <div className={`w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center transition-transform ${processingPayment === null ? 'group-hover:scale-110' : ''}`}>
+                  {processingPayment === 'fiat' ? <Loader2 size={24} className="animate-spin" /> : <DollarSign size={24} />}
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-white font-black text-sm uppercase tracking-wide">Fiat e-Wallet (PDAX)</h4>
+                  <h4 className="text-white font-black text-sm uppercase tracking-wide">
+                    {processingPayment === 'fiat' ? 'Processing...' : 'Fiat e-Wallet (PDAX)'}
+                  </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">Pay using GCash, Maya, or InstaPay. Seamless auto-bridge.</p>
                 </div>
-                <ArrowRight size={18} className="text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+                {!processingPayment && <ArrowRight size={18} className="text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />}
               </button>
             </div>
           </div>
