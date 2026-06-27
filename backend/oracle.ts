@@ -52,7 +52,7 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
         mockZkProof = Buffer.from(proof.proof).toString('hex');
         await logEvent('INFO', 'Real ZK Proof Generated Successfully', { proofLength: proof.proof.length });
       } else {
-        await logEvent('WARN', 'Compiled circuit not found, falling back to mock proof. Please compile circuit first.');
+        await logEvent('WARNING', 'Compiled circuit not found, falling back to mock proof. Please compile circuit first.');
         await new Promise(resolve => setTimeout(resolve, 1200));
         mockZkProof = Buffer.from("NOIR_ZK_PROOF_" + Math.random().toString(36)).toString('hex');
       }
