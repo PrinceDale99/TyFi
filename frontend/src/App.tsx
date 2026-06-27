@@ -8,6 +8,7 @@ import {
   Bell,
   Menu,
   Search,
+  Check,
   CheckCircle2,
   AlertCircle,
   Clock,
@@ -254,6 +255,7 @@ function App() {
   const [fiatDepositAmount, setFiatDepositAmount] = useState<string>('');
   const [pendingCheckouts, setPendingCheckouts] = useState<any[]>([]);
   const [isPendingCheckoutsModalOpen, setIsPendingCheckoutsModalOpen] = useState(false);
+  const [activeCheckoutIndex, setActiveCheckoutIndex] = useState(0);
 
   const [profileForm, setProfileForm] = useState({
     farmerName: '',
@@ -701,6 +703,7 @@ function App() {
         } else {
           addNotification(`Deposit split into ${checkouts.length} payments due to limits.`, 'info');
           setPendingCheckouts(checkouts);
+          setActiveCheckoutIndex(0);
           setIsPendingCheckoutsModalOpen(true);
         }
         setPaymentIntent(null);
@@ -3880,52 +3883,93 @@ function App() {
 
       {/* PDAX Split Deposit Modal */}
       {isPendingCheckoutsModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative">
+        <div className="fixed inset-0 bg-[#0C1236]/80 backdrop-blur-xl z-50 flex items-center justify-center p-4">
+          <div className="bg-[#121840]/90 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative backdrop-blur-md">
             <button
               onClick={() => setIsPendingCheckoutsModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-colors"
             >
               <X size={20} />
             </button>
 
             <div className="p-6">
               <div className="flex items-center gap-3 mb-6">
-                <div className="bg-blue-100 p-3 rounded-full text-blue-600">
+                <div className="bg-sky-500/20 p-3 rounded-full text-sky-400 border border-sky-500/30">
                   <AlertCircle size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">Split Payment Required</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Due to a PHP 50,000 per-transaction limit with this provider, your deposit has been divided into multiple payments.
+                  <h3 className="text-xl font-bold text-white">Split Payment Required</h3>
+                  <p className="text-sm text-slate-400 mt-1">
+                    To comply with provider limits, your deposit has been split into {pendingCheckouts.length} payments.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {pendingCheckouts.map((checkout, index) => (
-                  <div key={checkout.identifier} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-xl bg-gray-50/50">
-                    <div>
-                      <p className="font-semibold text-gray-900">Payment {index + 1} of {pendingCheckouts.length}</p>
-                      <p className="text-sm text-gray-500">Amount: ₱{checkout.amount.toLocaleString()}</p>
+              {pendingCheckouts.length > 0 && activeCheckoutIndex < pendingCheckouts.length ? (
+                <div className="space-y-4">
+                  <div className="p-5 border border-sky-500/30 rounded-xl bg-sky-500/10 shadow-[0_0_15px_rgba(14,165,233,0.15)] relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
+                      <div 
+                        className="h-full bg-gradient-to-r from-sky-400 to-indigo-400 transition-all duration-500"
+                        style={{ width: `${((activeCheckoutIndex + 1) / pendingCheckouts.length) * 100}%` }}
+                      ></div>
                     </div>
-                    <button
-                      onClick={() => window.open(checkout.checkoutUrl, '_blank')}
-                      className="mt-3 sm:mt-0 px-4 py-2 bg-[#0C1236] text-white rounded-lg hover:bg-blue-900 transition-colors font-medium text-sm flex items-center justify-center gap-2"
-                    >
-                      Pay Now <ArrowUpRight size={16} />
-                    </button>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
+                      <div>
+                        <p className="font-bold text-sky-300">Payment {activeCheckoutIndex + 1} of {pendingCheckouts.length}</p>
+                        <p className="text-2xl font-black text-white mt-1">
+                          ₱{pendingCheckouts[activeCheckoutIndex]?.amount.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">Please complete this payment to proceed.</p>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => window.open(pendingCheckouts[activeCheckoutIndex]?.checkoutUrl, '_blank')}
+                          className="px-5 py-3 bg-gradient-to-r from-sky-500 to-indigo-500 text-white rounded-xl hover:shadow-[0_0_20px_rgba(14,165,233,0.4)] transition-all font-bold text-sm flex items-center justify-center gap-2 w-full sm:w-auto"
+                        >
+                          Pay Now <ArrowUpRight size={16} />
+                        </button>
+                        
+                        {/* Simulation button for demo purposes */}
+                        <button
+                          onClick={() => {
+                            addNotification(`Payment ${activeCheckoutIndex + 1} confirmed successfully!`, 'success');
+                            if (activeCheckoutIndex < pendingCheckouts.length - 1) {
+                              setActiveCheckoutIndex(prev => prev + 1);
+                            } else {
+                              setIsPendingCheckoutsModalOpen(false);
+                              addNotification('All split payments completed. Your vault balance will be updated shortly.', 'success');
+                            }
+                          }}
+                          className="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-xl hover:bg-emerald-500/30 border border-emerald-500/30 transition-all font-medium text-xs flex items-center justify-center gap-2"
+                        >
+                          <Check size={14} /> Simulate Success
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="p-8 text-center border border-emerald-500/30 rounded-xl bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                  <div className="mx-auto w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 border border-emerald-500/30">
+                    <Check size={24} className="text-emerald-400" />
+                  </div>
+                  <h4 className="text-lg font-bold text-white mb-2">All Payments Complete!</h4>
+                  <p className="text-slate-400 text-sm">Your deposits are being processed into the smart contract.</p>
+                  <button
+                    onClick={() => setIsPendingCheckoutsModalOpen(false)}
+                    className="mt-6 px-6 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-xl font-medium transition-colors border border-emerald-500/30"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
 
-              <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
-                <button
-                  onClick={() => setIsPendingCheckoutsModalOpen(false)}
-                  className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors"
-                >
-                  Close
-                </button>
+              <div className="mt-6 pt-4 border-t border-white/10 flex flex-col items-center">
+                <p className="text-xs text-slate-500 mb-4 text-center">
+                  Payments are processed via our secure EMI partners. Do not close this window until all payments are completed.
+                </p>
               </div>
             </div>
           </div>
