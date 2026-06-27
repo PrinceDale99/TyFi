@@ -7,7 +7,7 @@ import * as cheerio from 'cheerio';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { oracleRouter } from './oracle';
-import { initiateFiatDeposit, getXlmToPhpRate } from './pdax';
+import { initiateFiatDeposit, getXlmRates } from './pdax';
 import { sponsorSmartWalletDeployment, wrapWithFeeBump } from './relayer';
 
 dotenv.config();
@@ -38,8 +38,8 @@ app.post('/api/v1/fiat-deposit', async (req, res) => {
 // Endpoint to get XLM to PHP exchange rate
 app.get('/api/v1/xlm-rate', async (req, res) => {
   try {
-    const rate = await getXlmToPhpRate();
-    res.json({ rate });
+    const rates = await getXlmRates();
+    res.json({ rate: rates.php, usd: rates.usd });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch rate' });
   }
