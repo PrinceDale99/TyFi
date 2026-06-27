@@ -129,58 +129,81 @@ export const initiateFiatDeposit = async (amountPHP: number, paymentMethod: stri
     
     console.log(`[PDAX] Initiating fiat deposit for PHP ${amountPHP} via ${paymentMethod}...`);
 
-    const response = await axios.post(
-      `${PDAX_API_BASE}/pdax-institution/v1/fiat/deposit`,
-      {
-        amount: amountPHP.toString(),
-        method: paymentMethod,
-        identifier: uuidv4(),
-        sender_first_name: "Juan",
-        sender_middle_name: "Dela",
-        sender_last_name: "Cruz",
-        sender_country_origin: "Philippines",
-        sender_address_line_one: "123 Mabuhay Street",
-        sender_city: "Manila City",
-        sender_province: "Metro Manila",
-        sender_country: "Philippines",
-        sender_zip_code: "1000",
-        sender_phone_number: "639171234567",
-        sender_nationality: "Philippines",
-        sender_national_identity_number: "1234567890",
-        sender_dob: "01-01-1990",
-        sender_place_of_birth: "Manila City",
-        source_of_funds: "Others: Sample",
-        sender_email: "juan.delacruz@demo.com",
-        beneficiary_first_name: "Typhoon",
-        beneficiary_middle_name: "Resilience",
-        beneficiary_last_name: "Vault",
-        beneficiary_sex: "Male",
-        beneficiary_nationality: "Philippines",
-        beneficiary_dob: "01-01-2024",
-        beneficiary_address_line_one: "1 Blockchain Way",
-        beneficiary_city: "Taguig",
-        beneficiary_province: "Metro Manila",
-        beneficiary_country: "Philippines",
-        beneficiary_zip_code: "1634",
-        beneficiary_government_issued_id: "ID123",
-        beneficiary_phone_number: "639081234567",
-        purpose: "Investments/Savings",
-        relationship_of_sender_to_beneficiary: "Business",
-        currency: "PHP",
-        nature_of_business: "Insurance"
-      },
-      { 
-        headers: { 
-          'access_token': accessToken,
-          'id_token': idToken
-        } 
+    const MAX_LIMIT = 50000;
+    const chunks: number[] = [];
+    let remaining = amountPHP;
+    while(remaining > 0) {
+      if(remaining > MAX_LIMIT) {
+        chunks.push(MAX_LIMIT);
+        remaining -= MAX_LIMIT;
+      } else {
+        chunks.push(remaining);
+        remaining = 0;
       }
-    );
+    }
+
+    const checkouts = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const chunkAmount = chunks[i];
+      console.log(`[PDAX] Processing chunk ${i + 1}/${chunks.length} for PHP ${chunkAmount}...`);
+      const response = await axios.post(
+        `${PDAX_API_BASE}/pdax-institution/v1/fiat/deposit`,
+        {
+          amount: chunkAmount.toString(),
+          method: paymentMethod,
+          identifier: uuidv4(),
+          sender_first_name: "Juan",
+          sender_middle_name: "Dela",
+          sender_last_name: "Cruz",
+          sender_country_origin: "Philippines",
+          sender_address_line_one: "123 Mabuhay Street",
+          sender_city: "Manila City",
+          sender_province: "Metro Manila",
+          sender_country: "Philippines",
+          sender_zip_code: "1000",
+          sender_phone_number: "639171234567",
+          sender_nationality: "Philippines",
+          sender_national_identity_number: "1234567890",
+          sender_dob: "01-01-1990",
+          sender_place_of_birth: "Manila City",
+          source_of_funds: "Others: Sample",
+          sender_email: "juan.delacruz@demo.com",
+          beneficiary_first_name: "Typhoon",
+          beneficiary_middle_name: "Resilience",
+          beneficiary_last_name: "Vault",
+          beneficiary_sex: "Male",
+          beneficiary_nationality: "Philippines",
+          beneficiary_dob: "01-01-2024",
+          beneficiary_address_line_one: "1 Blockchain Way",
+          beneficiary_city: "Taguig",
+          beneficiary_province: "Metro Manila",
+          beneficiary_country: "Philippines",
+          beneficiary_zip_code: "1634",
+          beneficiary_government_issued_id: "ID123",
+          beneficiary_phone_number: "639081234567",
+          purpose: "Investments/Savings",
+          relationship_of_sender_to_beneficiary: "Business",
+          currency: "PHP",
+          nature_of_business: "Insurance"
+        },
+        { 
+          headers: { 
+            'access_token': accessToken,
+            'id_token': idToken
+          } 
+        }
+      );
+      checkouts.push({
+        amount: chunkAmount,
+        identifier: response.data.identifier || response.data.data?.identifier,
+        checkoutUrl: response.data.payment_checkout_url || response.data.data?.payment_checkout_url
+      });
+    }
     
-    console.log(`[PDAX] Fiat deposit initiated successfully. Checkout URL: ${response.data.payment_checkout_url}`);
+    console.log(`[PDAX] Fiat deposit split into ${chunks.length} checkouts successfully.`);
     return {
       success: true,
-      data: response.data
+      data: { checkouts }
     };
   } catch (error: any) {
     console.error(`[PDAX] Fiat deposit failed:`, error.response?.data || error.message);
