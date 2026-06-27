@@ -48,19 +48,51 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network = 't
     fetchCertificates();
   }, [address, network]);
 
-  const handleGenerateDemoCert = () => {
-    const demoCert: Certificate = {
-      id: `CERT-DEMO-${Math.floor(Math.random() * 10000)}`,
-      farmId: 'FARM-DEMO',
-      region: 'Demo Region',
-      season: 'Demo Season',
-      premium: 100,
-      payoutAmount: 1000,
-      txHash: '0x' + Math.random().toString(16).slice(2, 10),
-      downloadUrl: '/demo-certificate.pdf',
-      timestamp: { _seconds: Math.floor(Date.now() / 1000) }
-    };
-    setCertificates(prev => [demoCert, ...prev]);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateDemoCert = async () => {
+    setIsGenerating(true);
+    try {
+      const txHash = '0x' + Math.random().toString(16).slice(2, 10);
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      
+      const response = await fetch(`${BACKEND_URL}/api/generate-certificate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: address || 'DEMO_ADDRESS_123',
+          farmId: `FARM-DEMO-${Math.floor(Math.random() * 1000)}`,
+          region: 'Albay, Bicol Region',
+          season: 'Wet Season 2026',
+          premium: 1500,
+          txHash,
+          network
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate certificate');
+      }
+
+      const result = await response.json();
+      
+      const demoCert: Certificate = {
+        id: `CERT-DEMO-${Math.floor(Math.random() * 10000)}`,
+        farmId: 'FARM-DEMO',
+        region: 'Albay, Bicol Region',
+        season: 'Wet Season 2026',
+        premium: 1500,
+        payoutAmount: 15000,
+        txHash,
+        downloadUrl: result.url || '/demo-certificate.pdf',
+        timestamp: { _seconds: Math.floor(Date.now() / 1000) }
+      };
+      setCertificates(prev => [demoCert, ...prev]);
+    } catch (err) {
+      console.error('Error generating demo cert:', err);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   if (isLoading) {
@@ -89,9 +121,10 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network = 't
         {network === 'testnet' && (
           <button 
             onClick={handleGenerateDemoCert}
-            className="mt-4 px-4 py-2 rounded-xl bg-sky-500/20 text-sky-400 text-xs font-bold uppercase tracking-wider hover:bg-sky-500/30 transition-all border border-sky-500/30"
+            disabled={isGenerating}
+            className="mt-4 px-4 py-2 rounded-xl bg-sky-500/20 text-sky-400 text-xs font-bold uppercase tracking-wider hover:bg-sky-500/30 transition-all border border-sky-500/30 disabled:opacity-50"
           >
-            Generate Demo Certificate
+            {isGenerating ? 'Generating...' : 'Generate Demo Certificate'}
           </button>
         )}
       </div>
@@ -108,10 +141,11 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network = 't
         {network === 'testnet' && (
           <button 
             onClick={handleGenerateDemoCert}
-            className="px-3 py-1 rounded-lg bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-wider hover:bg-sky-500/20 transition-all border border-sky-500/20 flex items-center gap-1"
+            disabled={isGenerating}
+            className="px-3 py-1 rounded-lg bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-wider hover:bg-sky-500/20 transition-all border border-sky-500/20 flex items-center gap-1 disabled:opacity-50"
           >
-            <FileText size={12} />
-            Add Demo Cert
+            {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+            {isGenerating ? 'GENERATING...' : 'Add Demo Cert'}
           </button>
         )}
       </div>

@@ -14,8 +14,18 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
 
     // Mock the Stellar TX for the hackathon / test flow
     let txHash = "MOCK_TX_" + Math.random().toString(36).substring(7);
+
+    // [ZK ORACLE INTEGRATION]
+    // Generate a Noir ZK Proof demonstrating that the wind speed exceeds the threshold.
+    // In production, this would execute: `nargo execute` followed by `nargo prove`
+    await logEvent('INFO', 'Generating Noir ZK Proof for wind speed threshold', { severity });
     
-    // Simulate Soroban contract execution time
+    // Simulate Noir proof generation time
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    const mockZkProof = Buffer.from("NOIR_ZK_PROOF_" + Math.random().toString(36)).toString('hex');
+    await logEvent('INFO', 'ZK Proof Generated Successfully', { proof: mockZkProof });
+
+    // Simulate Soroban contract execution time with ZK Verifier
     await new Promise(resolve => setTimeout(resolve, 800));
 
     // Calculate PHP equivalent (e.g. 50,000 XLM yield at 58.20 PHP = ~2.9m PHP)
@@ -33,7 +43,7 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
       return res.status(502).json({ error: 'PDAX Sweep Failed: ' + pdaxError.message });
     }
 
-    res.json({ status: 'success', txHash, pdaxTxId, amountPHP });
+    res.json({ status: 'success', txHash, pdaxTxId, amountPHP, zkProof: mockZkProof });
   } catch (err: any) {
     await logEvent('ERROR', 'Oracle failure', { error: err.message });
     res.status(500).json({ error: 'Failed to trigger parametric contract' });

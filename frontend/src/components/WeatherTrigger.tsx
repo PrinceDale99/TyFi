@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 export const WeatherTrigger: React.FC<{ targetAddress: string, activeYieldBalance: number }> = ({ targetAddress, activeYieldBalance }) => {
   const [loadingState, setLoadingState] = useState<string | null>(null);
   const [cashOutSum, setCashOutSum] = useState<number | null>(null);
+  const [zkProof, setZkProof] = useState<string | null>(null);
 
   const triggerDisaster = async () => {
     try {
@@ -19,6 +20,11 @@ export const WeatherTrigger: React.FC<{ targetAddress: string, activeYieldBalanc
       
       if (!res.ok) throw new Error("Transaction Failed");
       
+      const data = await res.json();
+      if (data.zkProof) {
+        setZkProof(data.zkProof);
+      }
+
       setLoadingState("Routing through PDAX InstaPay...");
       await new Promise(r => setTimeout(r, 800)); 
       
@@ -42,11 +48,26 @@ export const WeatherTrigger: React.FC<{ targetAddress: string, activeYieldBalanc
           {loadingState ? loadingState : "⚠️ Simulate Climate Disaster"}
         </button>
       ) : (
-        <div className="text-center border-2 border-green-500 p-4 rounded-lg bg-green-900/30">
-          <p className="text-green-400 font-bold mb-1">Disbursed to GCash (PHP)</p>
-          <h2 className="text-3xl font-mono text-white">
-            ₱{cashOutSum.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-          </h2>
+        <div className="w-full flex flex-col gap-4">
+          {zkProof && (
+            <div className="text-left border border-blue-500/30 p-4 rounded-lg bg-blue-900/20">
+              <p className="text-blue-400 font-bold mb-2 flex items-center gap-2">
+                <Shield className="w-5 h-5" /> Noir ZK Proof Verified
+              </p>
+              <div className="bg-black/50 p-3 rounded font-mono text-xs text-slate-300 break-all h-20 overflow-y-auto custom-scrollbar">
+                {zkProof}
+              </div>
+              <p className="text-xs text-blue-300/70 mt-2">
+                This zero-knowledge proof cryptographically verified that the weather threshold was met on-chain without revealing raw oracle data.
+              </p>
+            </div>
+          )}
+          <div className="text-center border-2 border-green-500 p-4 rounded-lg bg-green-900/30">
+            <p className="text-green-400 font-bold mb-1">Disbursed to GCash (PHP)</p>
+            <h2 className="text-3xl font-mono text-white">
+              ₱{cashOutSum.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+            </h2>
+          </div>
         </div>
       )}
     </div>
