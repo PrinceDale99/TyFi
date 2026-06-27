@@ -34,6 +34,37 @@ app.post('/api/v1/fiat-deposit', async (req, res) => {
   }
 });
 
+app.post('/api/v1/fiat-webhook', async (req, res) => {
+  const { event, data } = req.body;
+  // Example payload: { event: 'PAYMENT_SUCCESS', data: { checkoutId: '...', amount: 50000 } }
+
+  try {
+    await logEvent('INFO', `Received PDAX webhook`, { event, data });
+    
+    // 1. Verify Webhook Signature (Commented for MVP Sandbox)
+    // const signature = req.headers['x-pdax-signature'];
+    // if (!verifySignature(signature, req.body, process.env.PDAX_WEBHOOK_SECRET)) throw new Error('Invalid Signature');
+    
+    // 2. Update Database to trigger Frontend Real-time listener
+    if (event === 'PAYMENT_SUCCESS' && data?.checkoutId) {
+       if (db) {
+         // Update the specific checkout transaction in Firestore
+         // This update triggers the `onSnapshot` listener in the frontend, auto-progressing the modal
+         await db.collection('transactions').doc(data.checkoutId).set({ 
+           status: 'PAID', 
+           updatedAt: admin.firestore.FieldValue.serverTimestamp() 
+         }, { merge: true });
+       }
+       await logEvent('INFO', `Payment marked as PAID in database`, { checkoutId: data.checkoutId });
+    }
+    
+    res.status(200).json({ received: true });
+  } catch (error: any) {
+    await logEvent('ERROR', `Webhook processing failed`, { error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // Layer 2: Relayer Endpoints
 // Endpoint to get XLM to PHP exchange rate
 app.get('/api/v1/xlm-rate', async (req, res) => {
