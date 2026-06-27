@@ -71,7 +71,7 @@ The smart contract executes payouts based on objective wind speed data. This eli
 - **Fiat Rails**: PDAX Institutional API (CaaS + Public Market Tickers) for KYC/AML-compliant InstaPay sweeps and live pricing.
 
 ## 🏗️ Architecture
-The system is built on a highly compliant, three-layer enterprise architecture tailored for institutional deployment and "last-mile" farmer accessibility.
+The system is built on a highly compliant, three-layer enterprise architecture tailored for institutional deployment and "last-mile" farmer accessibility, powered by **Zero-Knowledge Proofs**.
 
 ```mermaid
 graph TD
@@ -85,6 +85,11 @@ graph TD
         AI["Gemini AI (Damage Estimation)"]
         Oracle["PAGASA Weather Oracle"]
         
+        subgraph ZK ["NoirJS ZK Prover"]
+            NC["Noir Circuit (WASM)"]
+            BB["Barretenberg Backend"]
+        end
+        
         subgraph PDAX ["PDAX Enterprise APIs"]
             P_Bridge["Cross-Chain Bridge"]
             P_Sec["Securities API (Treasury Bonds)"]
@@ -93,8 +98,9 @@ graph TD
         end
     end
 
-    subgraph L1 ["Layer 1: Blockchain"]
-        SC["Stellar Soroban Smart Contract"]
+    subgraph L1 ["Layer 1: Blockchain (Stellar)"]
+        SC["Soroban Smart Contract"]
+        ZKV["BN254 Host ZK Verifier"]
     end
     
     subgraph Users ["External"]
@@ -109,7 +115,11 @@ graph TD
     FMP -->|"Registers Farm"| BE
     Oracle -->|"Live Typhoon Data"| BE
     BE <-->|"Parametric Analysis"| AI
-    BE -->|"Triggers Payout"| SC
+    
+    BE -->|"Raw Weather Data (Hidden)"| NC
+    NC -->|"Generates Plonk Proof"| BB
+    BB -->|"Submits ZK Proof"| ZKV
+    ZKV -->|"Verifies Proof"| SC
     
     SC -->|"Generates Yield"| P_Sec
     SC -->|"Initiates Liquidation"| P_OTC
@@ -119,27 +129,33 @@ graph TD
 
 ### Layer 1: Stellar Soroban Smart Contract
 - **Parametric Vault**: Non-custodial XLM/USDC vault handling automated disbursements based on objective weather oracles.
-- **Consensus Rules**: Enforces the logic that dictactes payout ratios matching the severity of a PAGASA-declared typhoon.
+- **ZK Verifier**: Utilizes Stellar Protocol 26 BN254 host functions to cryptographically verify Plonk proofs, ensuring payouts only occur when weather thresholds are mathematically proven to be met.
 
-### Layer 2: Off-Chain Infrastructure & PDAX Enterprise Integrations
-Our backend heavily utilizes the **PDAX Institutional API** to bridge enterprise DeFi with local Philippine banking rails securely:
+### Layer 2: Off-Chain Infrastructure, ZK Proving & PDAX
+Our backend bridges enterprise DeFi, zero-knowledge cryptography, and Philippine banking rails:
 
+*   **Zero-Knowledge Oracle (NoirJS)**:
+    Raw weather data from PAGASA is processed securely off-chain. The Node.js backend uses Noir's WASM compiler and Barretenberg backend to dynamically generate a cryptographic proof that the wind speed exceeded the threshold, without ever revealing the exact raw data on-chain.
 *   **Multi-Chain USDC Ingestion (PDAX Cross-Chain Bridge)**:
-    Accepts USDC deposits from international NGOs and climate funds natively on Ethereum, Solana, or Polygon. The backend routes these through PDAX to automatically bridge and settle the funds directly into the Soroban smart contract as Stellar-native USDC.
+    Accepts USDC deposits natively on Ethereum, Solana, or Polygon. The backend routes these through PDAX to settle directly into the Soroban contract.
 *   **Institutional Yield Generation (PDAX Securities API)**:
-    Rather than volatile DeFi AMM yields, the backend programmatically interacts with PDAX Securities to automatically purchase **Tokenized Philippine Government Treasury Bonds**. This ensures a sovereign-backed, fixed-yield generation mechanism that strictly complies with the risk mandates of institutional NGOs.
+    Automatically purchases Tokenized Philippine Government Treasury Bonds for fixed-yield generation.
 *   **Zero-Slippage Liquidation (PDAX Prime OTC API)**:
-    When the ZK-proof weather oracle triggers a massive, province-wide payout, the backend intercepts the liquidation pipeline. To prevent market impact or slippage on block trades exceeding 1,000,000 XLM/USDC, it bypasses retail order books entirely and executes through the **PDAX Prime OTC API** for guaranteed 1:1 institutional conversion rates.
+    Bypasses retail order books and executes through the PDAX Prime OTC API for guaranteed 1:1 institutional conversion rates during massive, province-wide ZK-triggered payouts.
 *   **Compliant Fiat Disbursement (PDAX CaaS API)**:
-    For the "last-mile" delivery, the backend utilizes the **PDAX Crypto-as-a-Service (CaaS) API**, inheriting PDAX's VASP and EMI licenses. PDAX inherently handles all AMLC/BSP compliance checks and seamlessly routes the PHP value directly to a farmer’s GCash, Maya, or UnionBank account via InstaPay/PESONet in real time.
+    Utilizes the PDAX Crypto-as-a-Service (CaaS) API to route the PHP value directly to a farmer’s GCash, Maya, or UnionBank account via InstaPay in real time.
 
 ### Layer 3: React Frontend Consumer Dashboard
-The UI visually exposes these complex enterprise operations through two tailored experiences:
+*   **The Institutional Hub**: Functions as a "Universal Funding Gateway" with a Treasury Bond Yield Tracker and a **ZK Proof Inspector**, allowing users to visually inspect the actual cryptographic hex generated by Barretenberg.
+*   **The Farmer Mobile Portal**: Optimized for mobile viewing, tracking disaster relief directly into their GCash/Maya account.
 
-*   **The Institutional Hub (Left Panel)**: 
-    Functions as a "Universal Funding Gateway." NGOs select their source chain (Ethereum, Solana, Polygon) via a cross-chain modal that visually tracks the PDAX settlement into Stellar. It also features a **Treasury Bond Yield Tracker**, explicitly displaying the fixed yield rate of the tokenized Philippine Government Bonds (via PDAX Securities) to assure institutional donors of low-risk fund management.
-*   **The Farmer Mobile Portal (Right Panel)**:
-    Optimized for mobile viewing. When a storm triggers a payout, an end-to-end success animation displays the trajectory of the funds. It explicitly notifies the farmer that their disaster relief bypassed complex crypto wallets entirely and was settled directly into their GCash/Maya account via InstaPay using fully compliant BSP channels.
+## 🔐 Zero-Knowledge Proof Integration (Noir + Soroban)
+
+To ensure oracle privacy and prevent on-chain manipulation or data scraping, TyFi utilizes **Noir** to generate Zero-Knowledge proofs for all weather data triggers.
+
+1. **The Circuit (`circuits/weather_oracle`)**: Written in Noir. It takes the actual wind speed as a *private input* and the payout threshold as a *public input*. It asserts `wind_speed >= payout_threshold` and uses Poseidon hashing.
+2. **Dynamic Generation (`backend/oracle.ts`)**: The backend utilizes `@noir-lang/noir_js` and `@noir-lang/backend_barretenberg` to load the compiled WASM circuit and dynamically generate a Barretenberg Plonk proof.
+3. **Native Verification (`verifier.rs`)**: The Soroban contract takes the raw proof bytes and utilizes Stellar Protocol 26's newly introduced native BN254 host functions (`env.crypto().bn254_pairing(...)`) to cryptographically verify the proof on-chain in milliseconds.
 
 ## 🔒 Security & Audit
 We take the security of our users' funds seriously. While we are in the process of scaling towards a formal third-party audit, we have implemented the following measures:

@@ -82,6 +82,7 @@ import { useContinuousYield } from './hooks/useContinuousYield';
 
 import SponsorVerification from './components/SponsorVerification';
 import { registerForSubsidy, getUserProfile, saveUserProfile, logPayout } from './services/firebaseService';
+import { GovernancePortal } from './components/GovernancePortal';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -117,7 +118,7 @@ function App() {
   const [stakingMode, setStakingMode] = useState<'deposit' | 'withdraw'>('deposit');
   const [projectionPeriod, setProjectionPeriod] = useState<'1m' | '6m' | '1y'>('1y');
 
-  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace' | 'docs' | 'payment'>(() => {
+  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace' | 'docs' | 'payment' | 'governance'>(() => {
     return (localStorage.getItem('typhoon_vault_activeTab') as any) || 'monitor';
   });
   const [network, setNetwork] = useState<'testnet' | 'mainnet'>(() => {
@@ -2617,6 +2618,21 @@ function App() {
                     <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
                       <BookOpen size={20} />
                       <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Docs</span>
+                    </div>
+                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('governance')}
+                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
+                      activeTab === 'governance' 
+                        ? 'bg-gradient-to-r from-sky-500/20 to-indigo-500/20 text-sky-400 border border-sky-500/30 shadow-[0_0_15px_rgba(56,189,248,0.15)]' 
+                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
+                      <ShieldCheck size={20} />
+                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">DAO Governance</span>
                     </div>
                     <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>

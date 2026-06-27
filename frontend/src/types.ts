@@ -86,3 +86,14 @@ export interface Claim {
   status: 'Paid' | 'Pending' | 'Rejected';
   trigger: string;
 }
+
+export interface Proposal {
+  id: number;
+  creator: string;
+  description: string;
+  actionType: string;
+  votesFor: number;
+  votesAgainst: number;
+  executed: boolean;
+  deadline: number;
+}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Shield } from 'lucide-react';
 
 export const WeatherTrigger: React.FC<{ targetAddress: string, activeYieldBalance: number }> = ({ targetAddress, activeYieldBalance }) => {
   const [loadingState, setLoadingState] = useState<string | null>(null);
@@ -52,13 +53,13 @@ export const WeatherTrigger: React.FC<{ targetAddress: string, activeYieldBalanc
           {zkProof && (
             <div className="text-left border border-blue-500/30 p-4 rounded-lg bg-blue-900/20">
               <p className="text-blue-400 font-bold mb-2 flex items-center gap-2">
-                <Shield className="w-5 h-5" /> Noir ZK Proof Verified
+                <Shield className="w-5 h-5" /> Real Noir ZK Proof Generated & Verified
               </p>
               <div className="bg-black/50 p-3 rounded font-mono text-xs text-slate-300 break-all h-20 overflow-y-auto custom-scrollbar">
                 {zkProof}
               </div>
               <p className="text-xs text-blue-300/70 mt-2">
-                This zero-knowledge proof cryptographically verified that the weather threshold was met on-chain without revealing raw oracle data.
+                This is a real cryptographic Barretenberg Plonk proof compiled dynamically by NoirJS. It mathematically proves the wind speed exceeded the threshold without revealing the data on-chain.
               </p>
             </div>
           )}
