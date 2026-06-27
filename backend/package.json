@@ -18,6 +18,9 @@
   "dependencies": {
     "@google-cloud/logging": "^11.2.1",
     "@google-cloud/vision": "^5.3.7",
+    "@noir-lang/backend_barretenberg": "^0.36.0",
+    "@noir-lang/noir_js": "^1.0.0-beta.22",
+    "@noir-lang/noir_wasm": "^1.0.0-beta.22",
     "@stellar/stellar-sdk": "^12.1.0",
     "@types/pdfkit": "^0.17.6",
     "@types/qrcode": "^1.5.6",
