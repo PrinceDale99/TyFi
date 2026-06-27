@@ -164,7 +164,7 @@ export const registerPolicyOnChain = async (
         ]
       )
     )
-    .setTimeout(30)
+    .setTimeout(300)
     .build();
 
     const preparedTx = await server.prepareTransaction(tx) as Transaction;
@@ -224,7 +224,7 @@ export const submitWeatherReportOnChain = async (
           ]
         )
       )
-      .setTimeout(30)
+      .setTimeout(300)
       .build();
 
     const preparedTx = await server.prepareTransaction(tx) as Transaction;
@@ -286,7 +286,7 @@ export const claimPayoutOnChain = async (
       
       tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: config.passphrase })
         .addOperation(op1)
-        .setTimeout(30)
+        .setTimeout(300)
         .build();
     } else {
       const operation = contract.call(
@@ -301,7 +301,7 @@ export const claimPayoutOnChain = async (
       
       tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: config.passphrase })
         .addOperation(operation)
-        .setTimeout(30)
+        .setTimeout(300)
         .build();
     }
 
@@ -350,7 +350,7 @@ export const getContractTvl = async (network: 'testnet' | 'mainnet' = 'testnet')
       }
     )
     .addOperation(contract.call("get_total_reinsurance_deposited"))
-    .setTimeout(30)
+    .setTimeout(300)
     .build();
 
     const result = await server.simulateTransaction(tx);
@@ -382,7 +382,7 @@ export const getContractSubsidy = async (network: 'testnet' | 'mainnet' = 'testn
       }
     )
     .addOperation(contract.call("get_subsidy_balance"))
-    .setTimeout(30)
+    .setTimeout(300)
     .build();
 
     const result = await server.simulateTransaction(tx);
@@ -412,17 +412,17 @@ export const getUserLpBalance = async (user: string, network: 'testnet' | 'mainn
     // 1. Get user shares
     const txShares = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
       .addOperation(contract.call("get_lp_shares", userAddr.toScVal()))
-      .setTimeout(30).build();
+      .setTimeout(300).build();
     
     // 2. Get total shares
     const txTotalShares = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
       .addOperation(contract.call("get_total_reinsurance_shares"))
-      .setTimeout(30).build();
+      .setTimeout(300).build();
 
     // 3. Get total deposited (XLM)
     const txTotalDeposited = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
       .addOperation(contract.call("get_total_reinsurance_deposited"))
-      .setTimeout(30).build();
+      .setTimeout(300).build();
 
     const [resShares, resTotalShares, resTotalDeposited] = await Promise.all([
       server.simulateTransaction(txShares),
@@ -508,10 +508,10 @@ export const contributeLiquidityOnChain = async (
       const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
       const txShares = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
         .addOperation(contract.call("get_total_reinsurance_shares"))
-        .setTimeout(30).build();
+        .setTimeout(300).build();
       const txDep = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
         .addOperation(contract.call("get_total_reinsurance_deposited"))
-        .setTimeout(30).build();
+        .setTimeout(300).build();
 
       const [resShares, resDep] = await Promise.all([
         server.simulateTransaction(txShares),
@@ -545,7 +545,7 @@ export const contributeLiquidityOnChain = async (
         ]
       )
     )
-    .setTimeout(30)
+    .setTimeout(300)
     .build();
 
     const preparedTx = await server.prepareTransaction(tx) as Transaction;
