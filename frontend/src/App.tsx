@@ -252,6 +252,8 @@ function App() {
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [isFiatDepositModalOpen, setIsFiatDepositModalOpen] = useState(false);
   const [fiatDepositAmount, setFiatDepositAmount] = useState<string>('');
+  const [pendingCheckouts, setPendingCheckouts] = useState<any[]>([]);
+  const [isPendingCheckoutsModalOpen, setIsPendingCheckoutsModalOpen] = useState(false);
 
   const [profileForm, setProfileForm] = useState({
     farmerName: '',
@@ -671,11 +673,18 @@ function App() {
       });
       
       const data = await response.json();
-      if (data.success && data.data?.payment_checkout_url) {
-        addNotification(`PDAX checkout generated. Opening secure payment gateway...`, 'success');
-        window.open(data.data.payment_checkout_url, '_blank');
+      if (data.success && data.data?.checkouts) {
+        const checkouts = data.data.checkouts;
+        if (checkouts.length === 1) {
+          addNotification(`PDAX checkout generated. Opening secure payment gateway...`, 'success');
+          window.open(checkouts[0].checkoutUrl, '_blank');
+        } else {
+          addNotification(`Deposit split into ${checkouts.length} payments due to limits.`, 'info');
+          setPendingCheckouts(checkouts);
+          setIsPendingCheckoutsModalOpen(true);
+        }
       } else {
-        throw new Error(data.error || 'Failed to generate checkout URL');
+        throw new Error(data.error || 'Failed to generate checkout URLs');
       }
     } catch (e: any) {
       console.error(e);
@@ -1728,6 +1737,7 @@ function App() {
         onVerificationComplete={handleVerificationComplete} 
         walletAddress={walletAddress} 
         network={network}
+        isMainnet={isMainnet}
         onBack={() => {
           localStorage.removeItem(`typhoon_vault_role_${network}_${walletAddress}`);
           setUserRole(null);
@@ -3789,6 +3799,60 @@ function App() {
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md px-4 py-2 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.1)] pointer-events-none animate-in slide-in-from-bottom-4 duration-700">
           <Shield size={16} className="text-emerald-400" />
           <span className="text-emerald-400 text-[10px] sm:text-xs font-bold whitespace-nowrap">Identity Secured by Biometrics • 100% Gasless (Sponsored by TyFi Treasury)</span>
+        </div>
+      )}
+
+      {/* PDAX Split Deposit Modal */}
+      {isPendingCheckoutsModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative">
+            <button
+              onClick={() => setIsPendingCheckoutsModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-blue-100 p-3 rounded-full text-blue-600">
+                  <AlertCircle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Split Payment Required</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Due to a PHP 50,000 per-transaction limit with this provider, your deposit has been divided into multiple payments.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {pendingCheckouts.map((checkout, index) => (
+                  <div key={checkout.identifier} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-xl bg-gray-50/50">
+                    <div>
+                      <p className="font-semibold text-gray-900">Payment {index + 1} of {pendingCheckouts.length}</p>
+                      <p className="text-sm text-gray-500">Amount: ₱{checkout.amount.toLocaleString()}</p>
+                    </div>
+                    <button
+                      onClick={() => window.open(checkout.checkoutUrl, '_blank')}
+                      className="mt-3 sm:mt-0 px-4 py-2 bg-[#0C1236] text-white rounded-lg hover:bg-blue-900 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                      Pay Now <ArrowUpRight size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+                <button
+                  onClick={() => setIsPendingCheckoutsModalOpen(false)}
+                  className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
