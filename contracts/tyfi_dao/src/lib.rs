@@ -80,7 +80,7 @@ impl TyfiDaoContract {
         let vault_id: Address = env.storage().instance().get(&DataKey::VaultId).unwrap();
         
         // Fetch voter's LP shares from the Vault as their voting weight
-        let mut weight: i128 = env.invoke_contract(
+        let weight: i128 = env.invoke_contract(
             &vault_id,
             &Symbol::new(&env, "get_lp_shares"),
             (voter.clone(),).into_val(&env),

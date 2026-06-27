@@ -21,7 +21,7 @@ fn setup() -> (Env, TyphoonVaultClient<'static>, Address, Address, Address, toke
 
 #[test]
 fn test_successful_payout_with_subsidy() {
-    let (env, client, admin, oracle, xlm_token, token, token_admin) = setup();
+    let (env, client, _admin, oracle, xlm_token, token, token_admin) = setup();
     let farmer = Address::generate(&env);
     let donor = Address::generate(&env);
     let lp = Address::generate(&env);
@@ -105,7 +105,7 @@ fn test_successful_payout_with_subsidy() {
 
 #[test]
 fn test_yield_bearing_reinsurance_pool() {
-    let (env, client, admin, oracle, xlm_token, token, token_admin) = setup();
+    let (env, client, _admin, oracle, xlm_token, token, token_admin) = setup();
     let lp = Address::generate(&env);
     let farmer = Address::generate(&env);
     let farm_id = Symbol::new(&env, "Farm1");
@@ -143,7 +143,7 @@ fn test_yield_bearing_reinsurance_pool() {
 
 #[test]
 fn test_sliding_scale_damage_curve() {
-    let (env, client, admin, oracle, xlm_token, token, token_admin) = setup();
+    let (env, client, _admin, oracle, xlm_token, token, token_admin) = setup();
     let farmer = Address::generate(&env);
     let lp = Address::generate(&env);
 
@@ -184,7 +184,7 @@ fn test_sliding_scale_damage_curve() {
 #[test]
 #[should_panic(expected = "Error(Contract, #4)")]
 fn test_unverified_farmer_subscription_fails() {
-    let (env, client, admin, oracle, xlm_token, _token, token_admin) = setup();
+    let (env, client, _admin, oracle, xlm_token, _token, token_admin) = setup();
     let farmer = Address::generate(&env);
 
     let dummy_keys = soroban_sdk::Vec::new(&env);
@@ -200,7 +200,7 @@ fn test_unverified_farmer_subscription_fails() {
 #[test]
 #[should_panic(expected = "Error(Contract, #6)")]
 fn test_low_wind_speed_no_payout() {
-    let (env, client, admin, oracle, xlm_token, _token, token_admin) = setup();
+    let (env, client, _admin, oracle, xlm_token, _token, token_admin) = setup();
     let farmer = Address::generate(&env);
     let lp = Address::generate(&env);
     let typhoon_id = Symbol::new(&env, "Egay");
@@ -235,7 +235,7 @@ fn test_low_wind_speed_no_payout() {
 #[test]
 #[should_panic(expected = "Error(Contract, #5)")]
 fn test_double_payout_prevention() {
-    let (env, client, admin, oracle, xlm_token, _token, token_admin) = setup();
+    let (env, client, _admin, oracle, xlm_token, _token, token_admin) = setup();
     let farmer = Address::generate(&env);
     let lp = Address::generate(&env);
     let typhoon_id = Symbol::new(&env, "Pepito");
@@ -271,7 +271,7 @@ fn test_double_payout_prevention() {
 
 #[test]
 fn test_mainnet_mode_strict_threshold() {
-    let (env, client, admin, oracle, xlm_token, token, token_admin) = setup();
+    let (env, client, _admin, oracle, xlm_token, token, token_admin) = setup();
     let farmer = Address::generate(&env);
     let lp = Address::generate(&env);
     let typhoon_id = Symbol::new(&env, "MainnetTyphoon");

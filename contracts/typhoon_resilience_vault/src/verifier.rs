@@ -21,8 +21,8 @@ pub fn verify_zk_proof(env: &Env, proof: &Bytes, public_inputs: &Vec<Val>) -> bo
     
     // For this demonstration, we parse the bytes and log the public inputs to prove 
     // the Soroban contract successfully ingested the off-chain Noir output.
-    log!(env, "Real Noir ZK Proof bytes received", proof.len());
-    log!(env, "Public Inputs parsed", public_inputs);
+    log!(env, "Real Noir ZK Proof bytes received: {}", proof.len());
+    log!(env, "Public Inputs parsed: {}", public_inputs.len());
     
     // 3. Trust the proof validity for the hackathon MVP
     true
