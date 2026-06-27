@@ -599,6 +599,30 @@ impl TyphoonVault {
         Ok(())
     }
 
+    /// Submit a Zero-Knowledge proof that the weather threshold was met.
+    /// This utilizes the Noir Verifier to ensure the wind speed exceeded the threshold
+    /// without revealing the actual wind speed on-chain.
+    pub fn submit_zk_weather_report(
+        env: Env,
+        oracle: Address,
+        typhoon_id: Symbol,
+        region: Symbol,
+        damage_percentage: u32,
+        zk_proof: soroban_sdk::Bytes,
+        public_inputs: Vec<soroban_sdk::Val>
+    ) -> Result<(), Error> {
+        oracle.require_auth();
+
+        // Verify the ZK proof using our verifier module
+        if !verifier::verify_zk_proof(&env, &zk_proof, &public_inputs) {
+            return Err(Error::NotVerified);
+        }
+
+        // If the proof is valid, we trust the off-chain ZK circuit that the threshold was met.
+        // We can then proceed with the normal reporting/consensus logic.
+        Self::submit_weather_report(env, oracle.clone(), typhoon_id.clone(), region.clone(), damage_percentage)
+    }
+
     /// Claim payout based on dynamic network-configured parametric curves for a specific farm and season
     pub fn claim_payout(env: Env, farmer: Address, farm_id: Symbol, season: Symbol, typhoon_id: Symbol) -> Result<i128, Error> {
         farmer.require_auth();
@@ -689,3 +713,4 @@ impl TyphoonVault {
 #[cfg(test)]
 mod test;
 pub mod smart_wallet;
+pub mod verifier;
