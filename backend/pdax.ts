@@ -3,24 +3,34 @@ import { v4 as uuidv4 } from 'uuid';
 
 const PDAX_API_BASE = process.env.PDAX_API_BASE || 'https://uat.services.sandbox.pdax.ph/api/pdax-api';
 
-export async function getXlmToPhpRate(): Promise<number> {
+export async function getXlmRates(): Promise<{ php: number, usd: number }> {
   try {
-    // Attempt PDAX Public Ticker API first
+    let php = 15;
+    let usd = 0.25;
+
+    // Attempt PDAX Public Ticker API first for PHP
     const response = await axios.get('https://trade.pdax.ph/api/v1/market/tickers').catch(() => null);
     if (response && response.data) {
       const tickers = response.data;
       const xlmTicker = tickers.find((t: any) => t.symbol === 'XLMPHP' || t.symbol === 'XLM/PHP' || t.symbol === 'XLM-PHP');
       if (xlmTicker && xlmTicker.last) {
-         return parseFloat(xlmTicker.last);
+         php = parseFloat(xlmTicker.last);
       }
     }
     
-    // Fallback to CoinGecko if PDAX public endpoint changes
-    const cgResponse = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=php');
-    return cgResponse.data.stellar.php || 15;
+    // Fetch USD from CoinGecko, and fallback for PHP if PDAX failed
+    const cgResponse = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=php,usd');
+    if (cgResponse.data && cgResponse.data.stellar) {
+       if (php === 15 && cgResponse.data.stellar.php) {
+           php = cgResponse.data.stellar.php;
+       }
+       usd = cgResponse.data.stellar.usd || 0.25;
+    }
+    
+    return { php, usd };
   } catch (error) {
-    console.error("[PDAX] Failed to fetch live XLM rate, falling back to 15:", error);
-    return 15;
+    console.error("[PDAX] Failed to fetch live XLM rates, falling back to defaults:", error);
+    return { php: 15, usd: 0.25 };
   }
 }
 

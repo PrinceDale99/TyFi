@@ -40,13 +40,15 @@ interface SubsidyMarketplaceProps {
   network?: 'testnet' | 'mainnet';
   addNotification: (text: string, type?: 'info' | 'success' | 'warning') => void;
   userFarms?: any[];
+  onSponsorAction?: (request: SubsidyRequest) => void;
 }
 
 const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({ 
   sponsorAddress, 
   network = 'testnet',
   addNotification,
-  userFarms = []
+  userFarms = [],
+  onSponsorAction
 }) => {
   const [requests, setRequests] = useState<SubsidyRequest[]>([]);
   const [sponsoredFarms, setSponsoredFarms] = useState<any[]>([]);
@@ -80,37 +82,8 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
       return;
     }
 
-    setIsProcessing(request.id);
-    try {
-      addNotification(`Initiating sponsorship for ${request.farmerName}...`, 'info');
-      
-      // Construct the transaction: Sponsor deposits the exact premium into the Vault's subsidy pool.
-      // (Soroban requires farmer.require_auth() to subscribe, so sponsors fund the pool and we mark it funded off-chain)
-      const txHash = await contributeLiquidityOnChain(
-        sponsorAddress,
-        request.premiumNeeded,
-        'subsidy',
-        'deposit',
-        network
-      );
-
-      if (txHash) {
-        // Update Firestore to mark as funded
-        const requestRef = doc(db, "subsidy_requests", request.id);
-        await updateDoc(requestRef, {
-          isFunded: true,
-          fundedBy: sponsorAddress,
-          fundedAt: new Date().toISOString()
-        });
-
-        addNotification(`Sponsorship successful! ${request.farmerName}'s farm is now protected.`, 'success');
-        setRequests(prev => prev.filter(r => r.id !== request.id));
-      }
-    } catch (error: any) {
-      console.error('Sponsorship failed:', error);
-      addNotification('Sponsorship transaction failed. Please try again.', 'warning');
-    } finally {
-      setIsProcessing(null);
+    if (onSponsorAction) {
+      onSponsorAction(request);
     }
   };
 

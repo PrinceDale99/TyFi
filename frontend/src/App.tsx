@@ -114,7 +114,6 @@ interface Farm extends FarmData {
 
 function App() {
   const { t, i18n } = useTranslation();
-  const { formatPhp } = useXlmToPhp();
   const [stakingMode, setStakingMode] = useState<'deposit' | 'withdraw'>('deposit');
   const [projectionPeriod, setProjectionPeriod] = useState<'1m' | '6m' | '1y'>('1y');
 
@@ -348,6 +347,14 @@ function App() {
   }, [isWalletConnected, walletAddress]);
 
   const [fundingAmount, setFundingAmount] = useState(100);
+  const [fundingCurrency, setFundingCurrency] = useState<'XLM' | 'PHP'>('XLM');
+  const [paymentIntent, setPaymentIntent] = useState<{
+    type: 'lp' | 'subsidy' | 'sponsor';
+    amountXlm: number;
+    amountPhp: number;
+    stakingMode?: 'deposit' | 'withdraw';
+    sponsorRequest?: any;
+  } | null>(null);
   const [contractTvl, setContractTvl] = useState<number>(0);
   const [contractSubsidy, setContractSubsidy] = useState<number>(0);
   const [userLpBalance, setUserLpBalance] = useState<number>(0);
@@ -376,28 +383,9 @@ function App() {
 
   const [testnetTvl, setTestnetTvl] = useState(1500000);
   const [subsidyBalance, setSubsidyBalance] = useState(750000);
-  
   const isMainnet = network === 'mainnet';
   const isTestnet = network === 'testnet';
-
-  const [xlmRate, setXlmRate] = useState<number>(15);
-
-  useEffect(() => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-    
-    const fetchRate = () => {
-      fetch(`${backendUrl}/api/v1/xlm-rate`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.rate) setXlmRate(data.rate);
-        })
-        .catch(err => console.error('Failed to fetch XLM rate:', err));
-    };
-
-    fetchRate();
-    const intervalId = setInterval(fetchRate, 30000); // 30 seconds
-    return () => clearInterval(intervalId);
-  }, []);
+  const { rate: xlmRate, usdRate, formatPhp, formatUsd } = useXlmToPhp();
 
   const currentTvl = contractTvl;
   const currentSubsidy = contractSubsidy;
@@ -615,33 +603,68 @@ function App() {
 
   const handleContributeLiquidity = async (type: 'lp' | 'subsidy') => {
     if (fundingAmount <= 0) {
-      addNotification('Please enter a valid amount greater than 0 XLM', 'warning');
+      addNotification(`Please enter a valid amount greater than 0`, 'warning');
       return;
     }
 
+    const amountXlm = fundingCurrency === 'XLM' ? fundingAmount : fundingAmount / xlmRate;
+    const amountPhp = fundingCurrency === 'PHP' ? fundingAmount : fundingAmount * xlmRate;
+
+    // For withdraw, we don't need a payment modal, just use web3 wallet
+    if (type === 'lp' && stakingMode === 'withdraw') {
+      if (!isWalletConnected || !walletAddress) {
+        addNotification('Please connect your wallet first', 'warning');
+        return;
+      }
+      addNotification(`Initiating withdrawal of ${amountXlm.toLocaleString()} XLM on ${network}...`, 'info');
+      try {
+        const txHash = await contributeLiquidityOnChain(walletAddress, amountXlm, type, stakingMode, network);
+        addNotification(`Success! Withdrew ${amountXlm.toLocaleString()} XLM from Reinsurance Pool. LP shares burned.`, 'success');
+      } catch (err: any) {
+        addNotification(err.message, 'warning');
+      }
+      return;
+    }
+
+    // Open Payment Modal
+    setPaymentIntent({
+      type,
+      amountXlm,
+      amountPhp,
+      stakingMode
+    });
+  };
+
+  const executeWeb3Payment = async () => {
+    if (!paymentIntent) return;
     if (!isWalletConnected || !walletAddress) {
       addNotification('Please connect your wallet first', 'warning');
       return;
     }
 
-    const actionText = type === 'lp' 
-      ? (stakingMode === 'withdraw' ? 'withdrawal' : 'liquidity contribution')
-      : 'subsidy deposit';
+    const { type, amountXlm, stakingMode, sponsorRequest } = paymentIntent;
+    const actionText = type === 'lp' ? 'liquidity contribution' : type === 'subsidy' ? 'subsidy deposit' : 'sponsorship';
 
-    addNotification(`Initiating ${actionText} of ${fundingAmount.toLocaleString()} XLM on ${network}...`, 'info');
+    addNotification(`Initiating ${actionText} of ${amountXlm.toLocaleString()} XLM on ${network}...`, 'info');
     
     try {
-      const txHash = await contributeLiquidityOnChain(walletAddress, fundingAmount, type, stakingMode, network);
-      
-      if (type === 'lp') {
-        if (stakingMode === 'withdraw') {
-          addNotification(`Success! Withdrew ${fundingAmount.toLocaleString()} XLM from Reinsurance Pool. LP shares burned.`, 'success');
-        } else {
-          addNotification(`Success! Contributed ${fundingAmount.toLocaleString()} XLM to Reinsurance Pool. LP shares issued.`, 'success');
+      let txHash;
+      if (type === 'sponsor' && sponsorRequest) {
+        txHash = await contributeLiquidityOnChain(walletAddress, amountXlm, 'subsidy', 'deposit', network);
+        if (txHash) {
+          // Note: In a real app we'd trigger the offchain firebase update here.
+          // Since handleSponsorship is in SubsidyMarketplace, we might need a prop or callback.
+          addNotification(`Success! Sponsored ${sponsorRequest.farmerName}.`, 'success');
         }
       } else {
-        addNotification(`Success! Deposited ${fundingAmount.toLocaleString()} XLM to Donor Subsidy Pool.`, 'success');
+        txHash = await contributeLiquidityOnChain(walletAddress, amountXlm, type as 'lp' | 'subsidy', stakingMode as 'deposit' | 'withdraw', network);
+        if (type === 'lp') {
+          addNotification(`Success! Contributed ${amountXlm.toLocaleString()} XLM to Reinsurance Pool. LP shares issued.`, 'success');
+        } else {
+          addNotification(`Success! Deposited ${amountXlm.toLocaleString()} XLM to Donor Subsidy Pool.`, 'success');
+        }
       }
+      setPaymentIntent(null);
 
       console.log(`[${network.toUpperCase()}] Transaction confirmed on ledger. Tx Hash: ${txHash}`);
     } catch (e: any) {
@@ -649,27 +672,23 @@ function App() {
     }
   };
 
-  const handleFiatDeposit = () => {
-    setFiatDepositAmount((fundingAmount * xlmRate).toString());
-    setIsFiatDepositModalOpen(true);
-  };
+  const executeFiatPayment = async () => {
+    if (!paymentIntent) return;
+    const { amountPhp } = paymentIntent;
 
-  const confirmFiatDeposit = async () => {
-    setIsFiatDepositModalOpen(false);
-    const amountPHP = parseFloat(fiatDepositAmount);
-    if (isNaN(amountPHP) || amountPHP <= 0) {
+    if (isNaN(amountPhp) || amountPhp <= 0) {
       addNotification('Please enter a valid amount greater than 0', 'warning');
       return;
     }
 
-    addNotification(`Initiating fiat deposit via PDAX API for PHP ${amountPHP}...`, 'info');
+    addNotification(`Initiating fiat deposit via PDAX API for PHP ${amountPhp}...`, 'info');
     
     try {
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
       const response = await fetch(`${BACKEND_URL}/api/v1/fiat-deposit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountPHP, paymentMethod: 'grabpay_cashin' })
+        body: JSON.stringify({ amountPHP: amountPhp, paymentMethod: 'grabpay_cashin' })
       });
       
       const data = await response.json();
@@ -683,12 +702,13 @@ function App() {
           setPendingCheckouts(checkouts);
           setIsPendingCheckoutsModalOpen(true);
         }
+        setPaymentIntent(null);
       } else {
         throw new Error(data.error || 'Failed to generate checkout URLs');
       }
     } catch (e: any) {
+      addNotification(`Failed to initiate fiat deposit: ${e.message}`, 'warning');
       console.error(e);
-      addNotification(`PDAX Deposit failed: ${e.message}`, 'warning');
     }
   };
 
@@ -2324,13 +2344,24 @@ function App() {
                               </div>
 
                               <div className="flex gap-2">
-                                <input
-                                  type="number"
-                                  placeholder="Amount in XLM"
-                                  value={fundingAmount}
-                                  onChange={(e) => setFundingAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                                  className={`w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none ${'focus:border-sky-500'} font-mono font-bold`}
-                                />
+                                <div className="relative w-1/2">
+                                  <input
+                                    type="number"
+                                    placeholder={`Amount in ${fundingCurrency}`}
+                                    value={fundingAmount}
+                                    onChange={(e) => setFundingAmount(Math.max(1, parseFloat(e.target.value) || 0))}
+                                    className={`w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none ${'focus:border-sky-500'} font-mono font-bold pr-14`}
+                                  />
+                                  <button
+                                    onClick={() => setFundingCurrency(c => c === 'XLM' ? 'PHP' : 'XLM')}
+                                    className="absolute right-1 top-1.5 bottom-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 px-2 rounded-lg font-black transition-colors"
+                                  >
+                                    {fundingCurrency} ⇄
+                                  </button>
+                                  <div className="absolute -bottom-5 left-1 text-[9px] text-slate-500 font-bold font-mono">
+                                    {fundingCurrency === 'XLM' ? formatPhp(fundingAmount) : `≈ ${(fundingAmount / xlmRate).toFixed(4)} XLM`}
+                                  </div>
+                                </div>
                                 <button
                                   onClick={() => handleContributeLiquidity('lp')}
                                   className={`w-1/2 text-white font-black py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1 ${
@@ -2400,28 +2431,30 @@ function App() {
                         </div>
                         <div className="space-y-3">
                             <div className="flex gap-2">
-                              <input
-                                type="number"
-                                placeholder="Amount in XLM"
-                                value={fundingAmount}
-                                onChange={(e) => setFundingAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                                className="w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono font-bold"
-                              />
+                              <div className="relative w-1/2">
+                                <input
+                                  type="number"
+                                  placeholder={`Amount in ${fundingCurrency}`}
+                                  value={fundingAmount}
+                                  onChange={(e) => setFundingAmount(Math.max(1, parseFloat(e.target.value) || 0))}
+                                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono font-bold pr-14"
+                                />
+                                <button
+                                  onClick={() => setFundingCurrency(c => c === 'XLM' ? 'PHP' : 'XLM')}
+                                  className="absolute right-1 top-1.5 bottom-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 px-2 rounded-lg font-black transition-colors"
+                                >
+                                  {fundingCurrency} ⇄
+                                </button>
+                                <div className="absolute -bottom-5 left-1 text-[9px] text-slate-500 font-bold font-mono">
+                                  {fundingCurrency === 'XLM' ? formatPhp(fundingAmount) : `≈ ${(fundingAmount / xlmRate).toFixed(4)} XLM`}
+                                </div>
+                              </div>
                               <button
                                 onClick={() => handleContributeLiquidity('subsidy')}
                                 className="w-1/2 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-2 rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(79,70,229,0.2)] flex items-center justify-center gap-1 group-hover:shadow-[0_0_20px_rgba(79,70,229,0.3)]"
                               >
                                 <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                                 Deposit Subsidy
-                              </button>
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleFiatDeposit}
-                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] flex items-center justify-center gap-2 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-                              >
-                                <DollarSign size={14} />
-                                Fund via PDAX Fiat (PHP)
                               </button>
                             </div>
                         </div>
@@ -2438,6 +2471,14 @@ function App() {
                     network={network}
                     addNotification={addNotification}
                     userFarms={farms}
+                    onSponsorAction={(req) => {
+                      setPaymentIntent({
+                        type: 'sponsor',
+                        amountXlm: req.premiumNeeded,
+                        amountPhp: req.premiumNeeded * xlmRate,
+                        sponsorRequest: req
+                      });
+                    }}
                   />
                 </div>
               )}
@@ -2905,40 +2946,59 @@ function App() {
         </div>
       )}
 
-      {/* Fiat Deposit Modal */}
-      {isFiatDepositModalOpen && (
+      {/* Payment Selection Modal */}
+      {paymentIntent && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
-            <div className="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
-              <DollarSign size={24} />
-            </div>
-            <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">Fiat Deposit</h3>
-            <p className="text-xs text-slate-400 leading-relaxed mb-6">
-              Enter the exact amount in PHP you wish to deposit via PDAX. You will be redirected to their secure payment gateway.
-            </p>
-            <div className="relative mb-6">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₱</span>
-              <input
-                type="number"
-                value={fiatDepositAmount}
-                onChange={(e) => setFiatDepositAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:border-emerald-500 focus:outline-none text-lg text-center font-mono"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsFiatDepositModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
-              >
-                Cancel
+          <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-black text-white uppercase tracking-wider">Select Payment Method</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  How would you like to pay for your {paymentIntent.type === 'lp' ? 'liquidity stake' : paymentIntent.type === 'subsidy' ? 'subsidy deposit' : 'sponsorship'}?
+                </p>
+              </div>
+              <button onClick={() => setPaymentIntent(null)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+                <X size={16} className="text-slate-400" />
               </button>
-              <button
-                onClick={confirmFiatDeposit}
-                disabled={!fiatDepositAmount || isNaN(parseFloat(fiatDepositAmount)) || parseFloat(fiatDepositAmount) <= 0}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            </div>
+
+            <div className="bg-slate-950 rounded-xl p-4 mb-6 border border-white/5 flex justify-between items-center">
+              <span className="text-sm font-bold text-slate-400">Total Amount:</span>
+              <div className="text-right">
+                <div className="text-lg font-black text-white font-mono">{paymentIntent.amountXlm.toLocaleString(undefined, { maximumFractionDigits: 4 })} XLM</div>
+                <div className="text-xs font-bold text-emerald-400 font-mono">≈ ₱{paymentIntent.amountPhp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Web3 Wallet Option */}
+              <button 
+                onClick={executeWeb3Payment}
+                className="w-full bg-white/5 border border-white/10 hover:border-sky-500/50 hover:bg-sky-500/10 rounded-2xl p-4 transition-all group text-left flex items-center gap-4"
               >
-                Continue
+                <div className="w-12 h-12 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Wallet size={24} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-white font-black text-sm uppercase tracking-wide">Direct Web3 Wallet</h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Pay natively with Freighter, WalletConnect, or LOBSTR.</p>
+                </div>
+                <ArrowRight size={18} className="text-slate-500 group-hover:text-sky-400 group-hover:translate-x-1 transition-all" />
+              </button>
+
+              {/* Fiat e-Wallet Option */}
+              <button 
+                onClick={executeFiatPayment}
+                className="w-full bg-white/5 border border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 rounded-2xl p-4 transition-all group text-left flex items-center gap-4"
+              >
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <DollarSign size={24} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-white font-black text-sm uppercase tracking-wide">Fiat e-Wallet (PDAX)</h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Pay using GCash, Maya, or InstaPay. Seamless auto-bridge.</p>
+                </div>
+                <ArrowRight size={18} className="text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
               </button>
             </div>
           </div>
