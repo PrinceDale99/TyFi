@@ -237,7 +237,7 @@ npm run dev
 ### Test Net Transaction
 - Contract / App Address: `CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH` 
 - 📸 Screenshot — Stellar Expert (Testnet)
-  ![Testnet Screenshot](public/testnet.png)
+  ![Testnet Screenshot](public/TESTNET2.png)
 - Link: [Stellar Expert Testnet](https://stellar.expert/explorer/testnet/contract/CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH)
 
 ### Main Net Transaction
