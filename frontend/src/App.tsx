@@ -2501,6 +2501,12 @@ function App() {
                 </div>
               )}
 
+              {activeTab === 'governance' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <GovernancePortal walletAddress={walletAddress} network={network} />
+                </div>
+              )}
+
               {weather && farms.length > 0 && (
                 <PayoutStatus
                   weather={weather}
