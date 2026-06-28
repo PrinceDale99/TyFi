@@ -325,7 +325,7 @@ Based directly on the feedback collected in the sheet above, we have evolved the
 
 
 
-## Testers Table
+## Tested by
 
 | Name | Wallet Address | Transaction Hash |
 |------|----------------|------------------|
