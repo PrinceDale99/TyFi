@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { CaretDown, CaretUp, Plus, Image as ImageIcon, Bank, HandCoins, Broadcast } from '@phosphor-icons/react';
+import { ChevronDown, ChevronUp, Plus, Image as ImageIcon, Building, HandCoins, Radio } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://backend-985651545620.us-central1.run.app';
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-backend.onrender.com';
 
 export const AdvancedFeatures: React.FC<{ walletAddress: string | null }> = ({ walletAddress }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -83,14 +83,14 @@ export const AdvancedFeatures: React.FC<{ walletAddress: string | null }> = ({ w
       >
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg text-indigo-400">
-            <Broadcast size={24} weight="duotone" />
+            <Radio size={24} />
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-100">Advanced Protocol Features</h2>
             <p className="text-sm text-slate-400">Test the newly integrated capabilities (Phase 3-5)</p>
           </div>
         </div>
-        {isOpen ? <CaretUp size={20} className="text-slate-400" /> : <CaretDown size={20} className="text-slate-400" />}
+        {isOpen ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
       </div>
 
       {isOpen && (
@@ -100,7 +100,7 @@ export const AdvancedFeatures: React.FC<{ walletAddress: string | null }> = ({ w
             disabled={loading}
             className="flex items-center gap-3 p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all disabled:opacity-50 text-left"
           >
-            <Bank size={24} className="text-emerald-400" />
+            <Building size={24} className="text-emerald-400" />
             <div>
               <div className="font-semibold text-slate-200">PDAX InstaPay Offramp</div>
               <div className="text-xs text-slate-400">Convert 50 XLM to GCash Fiat</div>
