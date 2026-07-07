@@ -1,0 +1,144 @@
+import axios from 'axios';
+import admin from 'firebase-admin';
+import { logEvent } from './logger';
+
+const MOVIDER_API_KEY = process.env.MOVIDER_API_KEY || '9jp1SDAst3JWQga_vzIiG6jnQwJI5E';
+const MOVIDER_API_SECRET = process.env.MOVIDER_API_SECRET || 'xTOralS6Qtlb7o63NOqS5-BaY0vA0D';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+const SYSTEM_PROMPT = `You are the TyFi Emergency SMS Assistant. You are interacting with victims of a typhoon. Your tone must be empathetic, calm, and highly efficient. 
+Your Goal: Collect exactly three pieces of information to file their claim:
+1. Their current safety status (Are they safe? Do they need immediate shelter/medical help?)
+2. Their Policy Number (or full name if they don't know it).
+3. A brief description of the property damage.
+
+Rules:
+- Ask for only ONE piece of missing information at a time. Do not overwhelm them.
+- Keep every single response strictly under 140 characters. 
+- Do not use markdown (no asterisks, bolding, etc.), emojis are okay but keep them minimal.
+- If they provide multiple pieces of information in one text, acknowledge it and move on to what's missing.
+
+Completion Protocol:
+Once you have successfully gathered all three pieces of information, do NOT ask any more questions. Simply respond with exactly this text and nothing else: [CLAIM_COMPLETE]`;
+
+// Helper to send SMS via Movider
+async function sendSms(to: string, text: string) {
+  try {
+    const response = await axios.post('https://api.movider.co/v1/sms', {
+      api_key: MOVIDER_API_KEY,
+      api_secret: MOVIDER_API_SECRET,
+      to: to,
+      text: text
+    });
+    await logEvent('INFO', 'Sent SMS via Movider', { to });
+    return response.data;
+  } catch (error: any) {
+    await logEvent('ERROR', 'Failed to send SMS via Movider', { errorMessage: error.message });
+    throw error;
+  }
+}
+
+// Call Gemini
+async function callGemini(messages: any[]) {
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is missing');
+  
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+  
+  const contents = [
+    { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+    { role: 'model', parts: [{ text: 'Understood. I will act as the TyFi Emergency SMS Assistant and follow the protocols.' }] },
+    ...messages
+  ];
+
+  const response = await axios.post(API_URL, { contents });
+  return response.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+}
+
+// Extract Claim Data using Gemini JSON mode
+async function extractClaimData(messages: any[]) {
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is missing');
+  
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+  
+  const transcript = messages.map((m: any) => `${m.role}: ${m.parts[0].text}`).join('\\n');
+  const prompt = `Here is a transcript of an SMS conversation with a typhoon victim. Extract the policy_number, safety_status, and damage_description into a JSON object. If policy number is missing, put their name. Transcript:\\n\\n${transcript}`;
+
+  const response = await axios.post(API_URL, {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: "application/json" }
+  });
+  
+  const rawText = response.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';
+  return JSON.parse(rawText);
+}
+
+export async function handleIncomingSms(req: any, res: any, db: admin.firestore.Firestore | null) {
+  // Movider sends incoming webhook usually with 'from' and 'text'
+  const fromNumber = req.body.from || req.body.msisdn || req.query.from;
+  const messageText = req.body.text || req.query.text;
+
+  if (!fromNumber || !messageText) {
+    return res.status(400).json({ error: 'Missing from or text' });
+  }
+
+  await logEvent('INFO', 'Received Incoming SMS', { from: fromNumber, text: messageText });
+
+  if (!db) {
+    await logEvent('ERROR', 'Firestore not initialized');
+    return res.status(500).json({ error: 'Database not initialized' });
+  }
+
+  res.status(200).send('OK'); // Acknowledge webhook quickly
+
+  try {
+    const sessionRef = db.collection('smsSessions').doc(fromNumber);
+    const sessionDoc = await sessionRef.get();
+    
+    let messages = [];
+    if (sessionDoc.exists) {
+      messages = sessionDoc.data()?.messages || [];
+    }
+
+    // Add user's new message
+    messages.push({ role: 'user', parts: [{ text: messageText }] });
+
+    // Get Gemini's response
+    const geminiReply = await callGemini(messages);
+
+    if (geminiReply.includes('[CLAIM_COMPLETE]')) {
+      // Claim is done, extract data
+      const claimData = await extractClaimData(messages);
+      
+      // Save claim
+      await db.collection('claims').add({
+        phoneNumber: fromNumber,
+        ...claimData,
+        source: 'SMS',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'PENDING_REVIEW'
+      });
+
+      // Send confirmation
+      const finalMsg = `Thank you. Your claim for policy ${claimData.policy_number || ''} has been filed successfully and marked urgent. We will text you updates here.`;
+      await sendSms(fromNumber, finalMsg);
+      
+      // Clear session
+      await sessionRef.delete();
+      await logEvent('INFO', 'SMS Claim Filed successfully', { from: fromNumber });
+
+    } else {
+      // Send the question back to the user
+      await sendSms(fromNumber, geminiReply);
+
+      // Save assistant reply to history
+      messages.push({ role: 'model', parts: [{ text: geminiReply }] });
+      await sessionRef.set({
+        messages,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+
+  } catch (error: any) {
+    await logEvent('ERROR', 'Error handling SMS webhook', { errorMessage: error.message });
+  }
+}

@@ -6,6 +6,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
+import { handleIncomingSms } from './smsHandler';
 
 dotenv.config();
 
@@ -291,6 +292,11 @@ app.post('/api/ai/translate', async (req, res) => {
     await logEvent('ERROR', 'Gemini Translate Error', { errorMessage: error.message });
     res.status(500).json({ error: 'Failed to translate text' });
   }
+});
+
+app.post('/api/sms/webhook', async (req, res) => {
+  // Pass db to the handler so it can interact with Firestore
+  await handleIncomingSms(req, res, db);
 });
 
 app.listen(PORT, async () => {
