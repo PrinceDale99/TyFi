@@ -51,6 +51,7 @@ pub enum DataKey {
     ConsensusReached(Symbol, Symbol),   // Whether consensus is reached: (typhoon_id, region) -> bool
     DaoAddress,                         // Address of the DAO contract
     RiskZoneMultiplier(Symbol),         // Premium multiplier per zone (region) -> u32
+    MicroLoan(Address, Symbol),         // Microloan details: (farmer, loan_id) -> MicroLoan
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -61,6 +62,16 @@ pub struct Policy {
     pub season: Symbol,
     pub premium: i128,
     pub payout_amount: i128,
+    pub is_active: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracttype]
+pub struct MicroLoan {
+    pub farmer: Address,
+    pub amount: i128,
+    pub yield_prediction: u32,
+    pub repaid: i128,
     pub is_active: bool,
 }
 
@@ -463,6 +474,88 @@ impl TyphoonVault {
     /// Get total reinsurance shares
     pub fn get_total_reinsurance_shares(env: Env) -> i128 {
         env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0)
+    }
+
+    // --- MicroLoans ---
+
+    /// Originate an uncollateralized rebuilding micro-loan
+    pub fn originate_microloan(env: Env, farmer: Address, loan_id: Symbol, amount: i128, yield_prediction: u32) -> Result<(), Error> {
+        farmer.require_auth();
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+        
+        let is_verified: bool = env.storage().persistent().get(&DataKey::Verified(farmer.clone())).unwrap_or(false);
+        if !is_verified {
+            return Err(Error::NotVerified);
+        }
+
+        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
+        let client = token::Client::new(&env, &xlm_token_addr);
+        
+        let contract_balance = client.balance(&env.current_contract_address());
+        if contract_balance < amount {
+            return Err(Error::InsufficientLiquidity);
+        }
+        
+        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        total_deposited = total_deposited.checked_sub(amount).ok_or(Error::Overflow)?;
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+        
+        let loan = MicroLoan {
+            farmer: farmer.clone(),
+            amount,
+            yield_prediction,
+            repaid: 0,
+            is_active: true,
+        };
+        
+        env.storage().persistent().set(&DataKey::MicroLoan(farmer.clone(), loan_id.clone()), &loan);
+        
+        client.transfer(&env.current_contract_address(), &farmer, &amount);
+        
+        env.events().publish(
+            (Symbol::new(&env, "originate_microloan"), farmer, loan_id),
+            (amount, yield_prediction)
+        );
+        
+        Ok(())
+    }
+
+    /// Repay a microloan
+    pub fn repay_microloan(env: Env, farmer: Address, loan_id: Symbol, amount: i128) -> Result<(), Error> {
+        farmer.require_auth();
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+        
+        let mut loan: MicroLoan = env.storage().persistent().get(&DataKey::MicroLoan(farmer.clone(), loan_id.clone())).ok_or(Error::NotInitialized)?;
+        if !loan.is_active {
+            return Err(Error::NotInitialized);
+        }
+        
+        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
+        let client = token::Client::new(&env, &xlm_token_addr);
+        
+        client.transfer(&farmer, &env.current_contract_address(), &amount);
+        
+        loan.repaid = loan.repaid.checked_add(amount).ok_or(Error::Overflow)?;
+        if loan.repaid >= loan.amount {
+            loan.is_active = false;
+        }
+        
+        env.storage().persistent().set(&DataKey::MicroLoan(farmer.clone(), loan_id.clone()), &loan);
+        
+        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        total_deposited = total_deposited.checked_add(amount).ok_or(Error::Overflow)?;
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+        
+        env.events().publish(
+            (Symbol::new(&env, "repay_microloan"), farmer, loan_id),
+            amount
+        );
+        
+        Ok(())
     }
 
     // --- Farmer Subscription and Core Operations ---
