@@ -75,6 +75,7 @@ import { estimateCropMetrics } from './services/aiService';
 import { PHILIPPINE_REGIONS } from './constants';
 import { requestNotificationPermission } from './firebase';
 import HistoryDashboard from './components/HistoryDashboard';
+import { AdvancedFeatures } from './components/AdvancedFeatures';
 import { useTranslation } from 'react-i18next';
 import CertificateList from './components/CertificateList';
 import SubsidyMarketplace from './components/SubsidyMarketplace';
@@ -2149,7 +2150,9 @@ function App() {
               )}
 
               {activeTab === 'history' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div className="space-y-6">
+                  <AdvancedFeatures walletAddress={walletAddress} />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                   {/* Left Column: Firebase History Dashboard */}
                   <div className="glass-panel">
                     <HistoryDashboard 
@@ -2160,6 +2163,7 @@ function App() {
 
                   {/* Right Column: Live Ledger Stream */}
                   <LedgerStream network={network} />
+                  </div>
                 </div>
               )}
 
