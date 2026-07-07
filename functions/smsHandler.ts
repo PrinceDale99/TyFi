@@ -112,6 +112,7 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
 
     // Get Gemini's response
     const geminiReply = await callGemini(messages);
+    await logEvent('INFO', '🤖 AI RESPONSE:', { text: geminiReply });
 
     if (geminiReply.includes('[CLAIM_COMPLETE]')) {
       // Claim is done, extract data
