@@ -120,4 +120,8 @@ impl TyfiDaoContract {
     pub fn get_proposal(env: Env, proposal_id: u64) -> Proposal {
         env.storage().persistent().get(&DataKey::Proposal(proposal_id)).expect("Proposal not found")
     }
+
+    pub fn get_proposal_count(env: Env) -> u64 {
+        env.storage().instance().get(&DataKey::ProposalCount).unwrap_or(0)
+    }
 }

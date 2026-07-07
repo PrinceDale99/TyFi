@@ -63,35 +63,85 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           }
         }
 
-        // Fetch Proposals
-        // We do a simulateTransaction to call `get_proposal` for 1..count. 
-        // For demonstration, we simulate fetching the first few proposals.
-        // Wait, since we don't have get_proposal_count exposed, we will seed real initial proposals.
-        // Ideally an indexer would provide this list instantly.
-        
-        // Mock fallback for presentation if network is slow
-        setProposals([
-          {
-            id: 1,
-            creator: 'GBX...7F9A',
-            description: 'Update the premium multiplier for High-Risk zones (Bicol) from 1.5x to 1.8x to reflect recent climate data.',
-            actionType: 'UPDATE_PREMIUM',
-            votesFor: 1250000,
-            votesAgainst: 450000,
-            executed: false,
-            deadline: Date.now() + 86400000 * 3,
-          },
-          {
-            id: 2,
-            creator: 'GCM...3B21',
-            description: 'Whitelist new Oracle Network (Chainlink CCIP) for redundancy in weather data validation.',
-            actionType: 'ADD_ORACLE',
-            votesFor: 2100000,
-            votesAgainst: 50000,
-            executed: true,
-            deadline: Date.now() - 86400000 * 2,
+        // Fetch actual Proposals from DAO contract
+        try {
+          const countResult = await server.simulateTransaction({
+            source: walletAddress || 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+            fee: "100",
+            networkPassphrase: 'Test SDF Network ; September 2015',
+            operations: [
+              {
+                type: 'invokeHostFunction',
+                func: {
+                  type: 'invokeContract',
+                  value: {
+                    contractAddress: Address.fromString(DAO_CONTRACT_ID),
+                    functionName: 'get_proposal_count',
+                    args: []
+                  }
+                }
+              }
+            ]
+          } as any);
+
+          if (countResult && rpc.Api.isSimulationSuccess(countResult) && countResult.result) {
+            const count = Number(scValToNative(countResult.result.retval));
+            const fetchedProposals: Proposal[] = [];
+
+            for (let i = 1; i <= count; i++) {
+              const propResult = await server.simulateTransaction({
+                source: walletAddress || 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+                fee: "100",
+                networkPassphrase: 'Test SDF Network ; September 2015',
+                operations: [
+                  {
+                    type: 'invokeHostFunction',
+                    func: {
+                      type: 'invokeContract',
+                      value: {
+                        contractAddress: Address.fromString(DAO_CONTRACT_ID),
+                        functionName: 'get_proposal',
+                        args: [nativeToScVal(i, { type: 'u64' })]
+                      }
+                    }
+                  }
+                ]
+              } as any);
+
+              if (propResult && rpc.Api.isSimulationSuccess(propResult) && propResult.result) {
+                const p = scValToNative(propResult.result.retval);
+                
+                // Convert soroban Symbol or String to JS string
+                const actionTypeStr = typeof p.action_type === 'string' ? p.action_type : String(p.action_type);
+                const descStr = typeof p.description === 'string' ? p.description : String(p.description);
+                
+                // Convert ledger sequence deadline to approximate JS timestamp
+                // Assume current ledger is roughly Date.now(), and each ledger is ~5 seconds
+                // Since we don't have current ledger sequence easily here without an extra call, 
+                // we just use a heuristic or display it as a relative time.
+                // For a proper implementation, we would query the latest ledger sequence.
+                const approximateDeadlineTs = Date.now() + (Number(p.deadline) * 5000) - (Date.now() % 5000); 
+
+                fetchedProposals.push({
+                  id: Number(p.id),
+                  creator: p.creator,
+                  description: descStr,
+                  actionType: actionTypeStr,
+                  votesFor: Number(p.votes_for),
+                  votesAgainst: Number(p.votes_against),
+                  executed: p.executed,
+                  deadline: approximateDeadlineTs, // Using approximate timestamp for UI compatibility
+                });
+              }
+            }
+            
+            setProposals(fetchedProposals.reverse());
+          } else {
+            setProposals([]);
           }
-        ]);
+        } catch (e) {
+          console.error("Failed to fetch proposals", e);
+        }
         
       } catch (error) {
         console.error("Error fetching data", error);
@@ -117,19 +167,66 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       return;
     }
     
-    alert(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`);
+    try {
+      alert(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`);
+      
+      const server = new rpc.Server(RPC_URL);
+      const account = await server.getAccount(walletAddress);
+      
+      let tx = new TransactionBuilder(account, {
+        fee: "10000",
+        networkPassphrase: 'Test SDF Network ; September 2015',
+      })
+      .addOperation(
+        {
+          type: 'invokeHostFunction',
+          func: {
+            type: 'invokeContract',
+            value: {
+              contractAddress: Address.fromString(DAO_CONTRACT_ID),
+              functionName: 'vote',
+              args: [
+                nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
+                nativeToScVal(id, { type: 'u64' }),
+                nativeToScVal(support, { type: 'bool' })
+              ]
+            }
+          },
+          auth: []
+        } as any
+      )
+      .setTimeout(30)
+      .build();
 
-    // Optimistic UI update
-    setProposals(prev => prev.map(p => {
-      if (p.id === id) {
-        return {
-          ...p,
-          votesFor: support ? p.votesFor + Number(votingPower || 0) * 10000000 : p.votesFor,
-          votesAgainst: !support ? p.votesAgainst + Number(votingPower || 0) * 10000000 : p.votesAgainst
-        };
+      const preparedTx = await server.prepareTransaction(tx);
+      
+      const signedTxXdr = await signTransaction(preparedTx.toXDR(), {
+        networkPassphrase: 'Test SDF Network ; September 2015'
+      });
+      
+      const signedTx = TransactionBuilder.fromXDR(signedTxXdr, 'Test SDF Network ; September 2015');
+      const sendResult = await server.sendTransaction(signedTx as any);
+      
+      if (sendResult.status === 'PENDING') {
+        alert("Vote transaction submitted! It may take a few seconds to confirm.");
+        // Optimistic UI update
+        setProposals(prev => prev.map(p => {
+          if (p.id === id) {
+            return {
+              ...p,
+              votesFor: support ? p.votesFor + Number(votingPower || 0) * 10000000 : p.votesFor,
+              votesAgainst: !support ? p.votesAgainst + Number(votingPower || 0) * 10000000 : p.votesAgainst
+            };
+          }
+          return p;
+        }));
+      } else {
+        alert("Transaction failed to submit.");
       }
-      return p;
-    }));
+    } catch (e) {
+      console.error("Voting failed", e);
+      alert("Voting failed. Check console for details.");
+    }
   };
 
   return (
@@ -285,6 +382,109 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           )}
         </div>
       </div>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <button 
+              onClick={() => setShowCreateModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <XCircle size={24} />
+            </button>
+            <h3 className="text-xl font-black text-white mb-4">Create Proposal</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label>
+                <textarea 
+                  id="proposalDesc"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 outline-none"
+                  rows={3}
+                  placeholder="Describe your proposal..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Action Type</label>
+                <input 
+                  id="proposalAction"
+                  type="text" 
+                  className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 outline-none"
+                  placeholder="e.g. UPDATE_PREMIUM"
+                />
+              </div>
+              <button 
+                onClick={async () => {
+                  if (!walletAddress) {
+                    alert("Please connect your wallet first.");
+                    return;
+                  }
+                  try {
+                    const desc = (document.getElementById('proposalDesc') as HTMLTextAreaElement).value;
+                    const action = (document.getElementById('proposalAction') as HTMLInputElement).value;
+                    
+                    if (!desc || !action) {
+                      alert("Please fill all fields");
+                      return;
+                    }
+
+                    alert(`Submitting Proposal via Smart Contract... Please check Freighter.`);
+                    const server = new rpc.Server(RPC_URL);
+                    const account = await server.getAccount(walletAddress);
+                    
+                    let tx = new TransactionBuilder(account, {
+                      fee: "10000",
+                      networkPassphrase: 'Test SDF Network ; September 2015',
+                    })
+                    .addOperation(
+                      {
+                        type: 'invokeHostFunction',
+                        func: {
+                          type: 'invokeContract',
+                          value: {
+                            contractAddress: Address.fromString(DAO_CONTRACT_ID),
+                            functionName: 'create_proposal',
+                            args: [
+                              nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
+                              nativeToScVal(desc, { type: 'string' }),
+                              nativeToScVal(action, { type: 'symbol' }),
+                              nativeToScVal(86400, { type: 'u64' }) // ~5 days duration in ledgers (assuming 5s per ledger, 86400 ledgers)
+                            ]
+                          }
+                        },
+                        auth: []
+                      } as any
+                    )
+                    .setTimeout(30)
+                    .build();
+
+                    const preparedTx = await server.prepareTransaction(tx);
+                    
+                    const signedTxXdr = await signTransaction(preparedTx.toXDR(), {
+                      networkPassphrase: 'Test SDF Network ; September 2015'
+                    });
+                    
+                    const signedTx = TransactionBuilder.fromXDR(signedTxXdr, 'Test SDF Network ; September 2015');
+                    const sendResult = await server.sendTransaction(signedTx as any);
+                    
+                    if (sendResult.status === 'PENDING') {
+                      alert("Proposal submitted! Please refresh after a few seconds.");
+                      setShowCreateModal(false);
+                    } else {
+                      alert("Failed to submit proposal.");
+                    }
+                  } catch (e) {
+                    console.error("Create proposal failed", e);
+                    alert("Failed to create proposal. Check console for details.");
+                  }
+                }}
+                className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-black uppercase tracking-wider text-sm transition-all"
+              >
+                Submit Proposal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
