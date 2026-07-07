@@ -321,11 +321,15 @@ Based directly on the feedback collected in the sheet above, we have evolved the
 - **SMS Claim Filing**: [ee85c42](https://github.com/PrinceDale99/TyFi/commit/ee85c42)
 - **Live Weather Radar**: [8224406](https://github.com/PrinceDale99/TyFi/commit/8224406)
 - **Cooperative & Shared Accounts**: [45cb144](https://github.com/PrinceDale99/TyFi/commit/45cb144)
+- **PDAX InstaPay Offramps (Direct to GCash/Maya)**: Enables real-time crypto-to-fiat conversion scaling for instant disaster relief straight to local e-wallets.
+- **Gemini Vision IPFS Oracles (Image-based Claims)**: Pinata IPFS & Gemini 1.5 Pro multimodal processing for decentralized, undeniable visual crop damage reporting via MMS.
+- **Tokenized Disaster Relief Bonds (Tradable Soroban Yield)**: Allows LPs to trade yield-bearing disaster relief Vault shares via `transfer_shares` natively on Stellar.
+- **Offline Mesh-Network Claim Filing (No-Internet Fallback)**: Built-in local SMS queues and autonomous cron flushers for maximum resilience when network/power grids fail.
+- **Instant PDAX Rebuilding Micro-Loans (AI Crop Prediction)**: Automated Gemini AI crop-yield projections that autonomously underwrite and originate uncollateralized on-chain rebuilding loans during crisis events.
 
 
 
-
-## Tested by
+## Testers
 
 | Name | Wallet Address | Transaction Hash |
 |------|----------------|------------------|
