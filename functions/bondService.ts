@@ -1,5 +1,5 @@
 import { Server } from '@stellar/stellar-sdk/rpc';
-import { Contract, TransactionBuilder, Networks } from '@stellar/stellar-sdk';
+import { Contract, TransactionBuilder, Networks, nativeToScVal } from '@stellar/stellar-sdk';
 
 const RPC_URL = process.env.SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org';
 const VAULT_CONTRACT_ID = process.env.VAULT_CONTRACT_ID || 'CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH';
@@ -24,7 +24,7 @@ export async function calculateBondYield(userAddress: string): Promise<BondPortf
     try {
         const contract = new Contract(VAULT_CONTRACT_ID);
 
-        const account = await server.loadAccount(userAddress).catch(() => null);
+        const account = await server.getAccount(userAddress).catch(() => null);
         
         // If the account doesn't exist on network, we can't build a real transaction to simulate.
         // Return 0 values safely.
@@ -42,7 +42,8 @@ export async function calculateBondYield(userAddress: string): Promise<BondPortf
             .build();
         };
 
-        const sharesTx = buildSimTx(contract.call('get_lp_shares', userAddress));
+        const addressScVal = nativeToScVal(userAddress, { type: 'address' });
+        const sharesTx = buildSimTx(contract.call('get_lp_shares', addressScVal));
         const totalSharesTx = buildSimTx(contract.call('get_total_reinsurance_shares'));
         const totalDepositsTx = buildSimTx(contract.call('get_total_reinsurance_deposited'));
 
