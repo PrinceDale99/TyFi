@@ -95,7 +95,7 @@ pub fn require_multisig_auth(env: &Env, payload: Bytes, signatures: Vec<(BytesN<
     let multisig: AdminMultisig = env.storage().instance().get(&DataKey::AdminMultisig).ok_or(Error::NotInitialized)?;
     
     let mut verified_count = 0;
-    let payload_bytes: BytesN<32> = env.crypto().sha256(&payload);
+    let payload_bytes: BytesN<32> = env.crypto().sha256(&payload).into();
     
     for i in 0..signatures.len() {
         let (pub_key, sig) = signatures.get(i).unwrap();
