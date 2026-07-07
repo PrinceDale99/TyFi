@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "ts-node server.ts",
-    "start": "ts-node server.ts",
+    "start": "ts-node --transpile-only server.ts",
     "listener": "ts-node listener.ts"
   },
   "keywords": [],
