@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Vote, CheckCircle2, XCircle, Clock, Search, 
   Filter, Plus, Shield, ShieldCheck, Users,
-  Activity, ArrowRight, Loader2, ChevronRight
+  Activity, ArrowRight, Loader2, ChevronRight, ChevronDown
 } from 'lucide-react';
 import { rpc, Address, nativeToScVal, scValToNative, TransactionBuilder } from '@stellar/stellar-sdk';
 import { signTransaction, requestAccess } from '@stellar/freighter-api';
@@ -405,12 +405,28 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Action Type</label>
-                <input 
-                  id="proposalAction"
-                  type="text" 
-                  className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 outline-none"
-                  placeholder="e.g. UPDATE_PREMIUM"
-                />
+                <div className="relative">
+                  <select 
+                    id="proposalAction"
+                    className="w-full appearance-none bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none cursor-pointer"
+                  >
+                    <option value="" disabled selected>Select an action type</option>
+                    <option value="UPDATE_PREMIUM_RATE">Update Premium Rate</option>
+                    <option value="UPDATE_PAYOUT_THRESHOLD">Update Payout Threshold</option>
+                    <option value="UPGRADE_CONTRACT_WASM">Upgrade Contract WASM</option>
+                    <option value="UPDATE_DAO_QUORUM">Update DAO Quorum Requirement</option>
+                    <option value="UPDATE_DAO_VOTING_PERIOD">Update Voting Period</option>
+                    <option value="ADD_AUTHORIZED_ORACLE">Add Authorized Oracle</option>
+                    <option value="REMOVE_AUTHORIZED_ORACLE">Remove Authorized Oracle</option>
+                    <option value="TRANSFER_TREASURY_FUNDS">Transfer Treasury Funds</option>
+                    <option value="PAUSE_PROTOCOL">Emergency Pause Protocol</option>
+                    <option value="UNPAUSE_PROTOCOL">Unpause Protocol</option>
+                    <option value="UPDATE_FEE_BUMP_SPONSOR">Update Gas Sponsor Account</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
               </div>
               <button 
                 onClick={async () => {
@@ -420,7 +436,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                   }
                   try {
                     const desc = (document.getElementById('proposalDesc') as HTMLTextAreaElement).value;
-                    const action = (document.getElementById('proposalAction') as HTMLInputElement).value;
+                    const action = (document.getElementById('proposalAction') as HTMLSelectElement).value;
                     
                     if (!desc || !action) {
                       alert("Please fill all fields");
