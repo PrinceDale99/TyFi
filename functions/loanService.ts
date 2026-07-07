@@ -27,7 +27,7 @@ export async function predictCropYieldAndLoan(
         throw new Error("GEMINI_API_KEY is not set.");
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-lite-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
     You are an AI agricultural actuary. A farmer in ${region} growing ${cropType} on ${farmSizeHectares} hectares 
