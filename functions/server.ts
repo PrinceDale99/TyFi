@@ -9,6 +9,7 @@ import { generateCertificate } from './certificateService';
 import { handleIncomingSms } from './smsHandler';
 import { processPayoutOfframp } from './pdaxService';
 import { calculateBondYield } from './bondService';
+import { flushOfflineQueue } from './offlineQueue';
 
 dotenv.config();
 
