@@ -47,7 +47,7 @@ async function uploadToIPFS(imageBuffer: Buffer, mimeType: string): Promise<stri
  * Calls Gemini Vision API to analyze farm damage
  */
 async function analyzeDamageWithGemini(base64Image: string, mimeType: string): Promise<{ score: number, estimate: number, description: string }> {
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${GEMINI_API_KEY}`;
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const prompt = `You are an expert agricultural insurance adjuster. 
 Analyze the provided image of a farm or property affected by a typhoon.
