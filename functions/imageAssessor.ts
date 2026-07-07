@@ -100,13 +100,25 @@ Do not wrap the JSON in markdown blocks, just return the raw JSON object.`;
 export async function processImageClaim(mediaUrl: string): Promise<AssessmentResult> {
     await logEvent('INFO', 'Starting Multi-Modal Image Assessment', { mediaUrl });
 
-    // 1. Download image from Twilio Media URL
-    const response = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
-    const imageBuffer = Buffer.from(response.data, 'binary');
-    const mimeType = response.headers['content-type'] || 'image/jpeg';
+    let imageBuffer: Buffer;
+    let mimeType = 'image/jpeg';
+    let base64Image = '';
 
-    // 2. Upload to IPFS in parallel with Gemini Analysis
-    const base64Image = imageBuffer.toString('base64');
+    if (mediaUrl.startsWith('data:')) {
+        const matches = mediaUrl.match(/^data:(.+);base64,(.+)$/);
+        if (matches) {
+            mimeType = matches[1];
+            base64Image = matches[2];
+            imageBuffer = Buffer.from(base64Image, 'base64');
+        } else {
+            throw new Error('Invalid data URI string');
+        }
+    } else {
+        const response = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
+        imageBuffer = Buffer.from(response.data, 'binary');
+        mimeType = response.headers['content-type'] || 'image/jpeg';
+        base64Image = imageBuffer.toString('base64');
+    }
     
     const [ipfsHash, aiAnalysis] = await Promise.all([
         uploadToIPFS(imageBuffer, mimeType).catch(e => {
