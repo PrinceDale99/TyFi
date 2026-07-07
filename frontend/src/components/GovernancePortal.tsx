@@ -4,7 +4,7 @@ import {
   Filter, Plus, Shield, ShieldCheck, Users,
   Activity, ArrowRight, Loader2, ChevronRight
 } from 'lucide-react';
-import { rpc, Address, nativeToScVal, scValToNative } from '@stellar/stellar-sdk';
+import { rpc, Address, nativeToScVal, scValToNative, TransactionBuilder } from '@stellar/stellar-sdk';
 import { signTransaction, requestAccess } from '@stellar/freighter-api';
 import type { Proposal } from '../types';
 
@@ -200,11 +200,11 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
       const preparedTx = await server.prepareTransaction(tx);
       
-      const signedTxXdr = await signTransaction(preparedTx.toXDR(), {
+      const signResult = await signTransaction(preparedTx.toXDR(), {
         networkPassphrase: 'Test SDF Network ; September 2015'
       });
       
-      const signedTx = TransactionBuilder.fromXDR(signedTxXdr, 'Test SDF Network ; September 2015');
+      const signedTx = TransactionBuilder.fromXDR(signResult.signedTxXdr, 'Test SDF Network ; September 2015');
       const sendResult = await server.sendTransaction(signedTx as any);
       
       if (sendResult.status === 'PENDING') {
@@ -459,11 +459,11 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
                     const preparedTx = await server.prepareTransaction(tx);
                     
-                    const signedTxXdr = await signTransaction(preparedTx.toXDR(), {
+                    const signResult = await signTransaction(preparedTx.toXDR(), {
                       networkPassphrase: 'Test SDF Network ; September 2015'
                     });
                     
-                    const signedTx = TransactionBuilder.fromXDR(signedTxXdr, 'Test SDF Network ; September 2015');
+                    const signedTx = TransactionBuilder.fromXDR(signResult.signedTxXdr, 'Test SDF Network ; September 2015');
                     const sendResult = await server.sendTransaction(signedTx as any);
                     
                     if (sendResult.status === 'PENDING') {
