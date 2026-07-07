@@ -377,6 +377,47 @@ app.post("/api/apply-microloan", async (req, res) => {
   }
 });
 
+app.post('/api/pdax/webhook', async (req, res) => {
+  const payload = req.body;
+  
+  if (!db) {
+    return res.status(500).json({ error: 'Firestore not initialized' });
+  }
+
+  try {
+    await logEvent('INFO', 'Received PDAX Webhook', { payload });
+
+    // PDAX webhooks typically contain event_type, status, and reference ID.
+    // e.g. { event_type: "WITHDRAWAL_STATUS_CHANGED", data: { reference_id: "...", status: "SUCCESS" } }
+    
+    // Save raw webhook event for audit trail
+    await db.collection('pdax_webhooks').add({
+      timestamp: new Date().toISOString(),
+      payload
+    });
+
+    if (payload && payload.data && payload.data.reference_id) {
+      const referenceId = payload.data.reference_id;
+      const status = payload.data.status || payload.status;
+      const eventType = payload.event_type || 'UNKNOWN';
+
+      await logEvent('INFO', `Processing PDAX Webhook for Reference ID: ${referenceId}`, { status, eventType });
+
+      // Update the offramp_transactions collection
+      await db.collection('offramp_transactions').doc(referenceId).set({
+        status: status,
+        updatedAt: new Date().toISOString(),
+        latestEvent: eventType
+      }, { merge: true });
+    }
+
+    res.status(200).send('Webhook Received');
+  } catch (error: any) {
+    await logEvent('ERROR', 'Error processing PDAX Webhook', { error: error.message });
+    res.status(500).send('Internal Server Error');
+  }
+});
+
 app.listen(PORT, async () => {
   await logEvent('INFO', `Notification telemetry server successfully launched`, { port: PORT });
 });
