@@ -8,6 +8,7 @@ import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { handleIncomingSms } from './smsHandler';
 import { processPayoutOfframp } from './pdaxService';
+import { calculateBondYield } from './bondService';
 
 dotenv.config();
 
@@ -126,10 +127,6 @@ app.post('/api/execute-offramp', async (req, res) => {
   }
 
   try {
-    // We need to find the user's payment_method and payment_account.
-    // They are stored in 'claims' collection under the user's phone number, but we only have 'address' here.
-    // Actually, we can look up the farmer in the 'farmers' collection to get their phone number or payment preferences.
-    // Assuming the user's payment method is stored in their farmer profile:
     const doc = await db.collection('farmers').doc(address).get();
     const data = doc.data();
 
@@ -148,6 +145,22 @@ app.post('/api/execute-offramp', async (req, res) => {
   } catch (error: any) {
     await logEvent('ERROR', 'Error executing PDAX off-ramp', { errorMessage: error.message, address });
     res.status(500).json({ error: 'Failed to execute off-ramp' });
+  }
+});
+
+app.get('/api/bond-portfolio', async (req, res) => {
+  const { address } = req.query;
+
+  if (!address || typeof address !== 'string') {
+    return res.status(400).json({ error: 'Missing or invalid address parameter' });
+  }
+
+  try {
+    const portfolio = await calculateBondYield(address);
+    res.json({ success: true, portfolio });
+  } catch (error: any) {
+    await logEvent('ERROR', 'Error fetching bond portfolio', { errorMessage: error.message, address });
+    res.status(500).json({ error: 'Failed to fetch bond portfolio' });
   }
 });
 
