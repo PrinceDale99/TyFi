@@ -272,19 +272,40 @@ app.get('/api/market-prices', async (req, res) => {
 
 app.get('/api/pagasa-weather', async (req, res) => {
   try {
-    let pagasaUpdate = { title: '', summary: '', date: new Date().toISOString() };
+    let pagasaUpdate = { title: '', summary: '', date: new Date().toISOString(), source: 'PAGASA' };
     try {
       const response = await axios.get('https://bagong.pagasa.dost.gov.ph/', { timeout: 3000 });
       const $ = cheerio.load(response.data);
-      pagasaUpdate.title = $('.weather-bulletin-title').first().text().trim() || 'Tropical Cyclone Advisory';
-      pagasaUpdate.summary = $('.weather-bulletin-summary').first().text().trim() || 'PAGASA: No active tropical cyclone within the Philippine Area of Responsibility.';
+      pagasaUpdate.title = $('.weather-bulletin-title').first().text().trim();
+      pagasaUpdate.summary = $('.weather-bulletin-summary').first().text().trim();
+      
+      if (!pagasaUpdate.title || !pagasaUpdate.summary) {
+        throw new Error('PAGASA Scraping failed to find elements');
+      }
     } catch (e) {
-      pagasaUpdate.title = 'Tropical Cyclone Advisory';
-      pagasaUpdate.summary = 'PAGASA: No active tropical cyclone within the Philippine Area of Responsibility.';
+      await logEvent('WARNING', 'PAGASA Scraping failed, falling back to NASA EONET API');
+      
+      // Fallback to NASA EONET API for Severe Storms
+      const NASA_API_KEY = process.env.NASA_API_KEY || 'ttZtcju8urEIdB7HfyICZiRj7UfQ3FiuzwGKpvxa';
+      const nasaResponse = await axios.get(`https://eonet.gsfc.nasa.gov/api/v3/events?category=severeStorms&status=open&api_key=${NASA_API_KEY}`, { timeout: 5000 });
+      
+      const events = nasaResponse.data.events;
+      if (events && events.length > 0) {
+        // Find storms potentially near the Philippines (approx bounding box)
+        const storm = events[0]; // For now just take the most recent active storm
+        pagasaUpdate.source = 'NASA EONET';
+        pagasaUpdate.title = `NASA Global Alert: ${storm.title}`;
+        pagasaUpdate.summary = `NASA Earth Observatory detected a severe storm event. Status: Open. Source: ${storm.sources[0]?.url || 'NASA'}`;
+      } else {
+        pagasaUpdate.source = 'NASA EONET';
+        pagasaUpdate.title = 'Global Severe Storm Advisory';
+        pagasaUpdate.summary = 'NASA EONET: No active severe storms currently tracked globally or near the Philippine Area of Responsibility.';
+      }
     }
     res.json({ success: true, data: pagasaUpdate });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to scrape PAGASA' });
+  } catch (error: any) {
+    await logEvent('ERROR', 'Weather Oracle completely failed', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch weather data from all Oracles' });
   }
 });
 
