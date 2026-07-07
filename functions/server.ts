@@ -224,7 +224,7 @@ app.post('/api/ai/analyze-weather', async (req, res) => {
     return res.status(500).json({ error: 'AI service configuration error: Missing API Key' });
   }
 
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${API_KEY}`;
 
   try {
     const response = await fetch(API_URL, {
@@ -339,7 +339,7 @@ app.post('/api/ai/translate', async (req, res) => {
     return res.status(500).json({ error: 'Missing API Key' });
   }
 
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${API_KEY}`;
 
   const prompt = `Translate the following text to ${targetLanguage}. Maintain the original meaning and formatting. Respond ONLY with the translated text, no markdown blocks, no extra comments.\n\nText:\n${text}`;
 

@@ -12,11 +12,9 @@ export const AdvancedFeatures: React.FC<{ walletAddress: string | null }> = ({ w
   const testPdaxOfframp = async () => {
     setLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/api/pdax-offramp`, {
+      const res = await axios.post(`${API_BASE}/api/execute-offramp`, {
         address: walletAddress || 'G_TEST',
-        amountXlm: 50,
-        paymentMethod: 'GCASH',
-        paymentAccount: '09123456789'
+        amount: 50
       });
       setResult(res.data);
     } catch (e: any) {
@@ -30,10 +28,10 @@ export const AdvancedFeatures: React.FC<{ walletAddress: string | null }> = ({ w
     try {
       // Mocking a base64 image payload (e.g. damaged crops)
       const base64Mock = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-      const res = await axios.post(`${API_BASE}/api/claim-mms`, {
-        phoneNumber: '+639123456789',
-        body: 'Typhoon destroyed my farm',
-        mediaUrls: [`data:image/png;base64,${base64Mock}`]
+      const res = await axios.post(`${API_BASE}/api/sms/webhook`, {
+        From: '+639123456789',
+        Body: 'Typhoon destroyed my farm',
+        MediaUrl0: `data:image/png;base64,${base64Mock}`
       });
       setResult(res.data);
     } catch (e: any) {
