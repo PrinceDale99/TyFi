@@ -1,6 +1,7 @@
 services:
   - type: web
     name: tyfi-backend
+    plan: free
     env: node
     rootDir: functions
     buildCommand: npm install
