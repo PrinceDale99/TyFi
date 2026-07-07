@@ -58,7 +58,7 @@ TyFi was built to eliminate the middleman and the waiting game in disaster recov
 - **⛽ Fee Sponsorship & Gasless Tx** — Utilizes Stellar's Fee Bump transactions to fully subsidize network fees for farmers, eliminating the need for them to hold base XLM just for gas.
 - **🔐 Multi-signature Logic** — Enterprise-grade multi-party approval required for DAO treasury modifications and large-scale emergency liquidity events.
 - **🛡️ Account Abstraction** — Smart wallet infrastructure with custom authorization logic, allowing seamless onboarding for non-crypto-native farmers.
-- **🗳️ TyFi DAO Governance** — Decentralized community governance allowing tokenless parameter voting proportional to LP deposits.
+- **🗳️ TyFi DAO Governance** — Fully on-chain decentralized community governance allowing tokenless parameter voting proportional to LP deposits using Soroban smart contracts.
 - **📊 Parametric Analytics** — High-fidelity telemetry charts overlaying real wind/rain data against contract trigger thresholds for transparent risk assessment.
 - **📱 FCM Push Notifications** — Real-time mobile alerts for farmers before, during, and after typhoon events, keeping them informed of their policy status.
 
@@ -92,10 +92,10 @@ graph TD
     end
 
     subgraph L2 ["Layer 2: Off-Chain & Oracles"]
-        BE["Node.js / Firebase Backend"]
+        BE["Node.js / Firebase Functions Backend"]
         AI["Gemini 1.5 Pro (Vision/Loan Actuary)"]
         IPFS["Pinata IPFS (Image Storage)"]
-        Oracle["PAGASA Weather Oracle"]
+        Oracle["PAGASA & NASA EONET Weather Oracles"]
         
         subgraph ZK ["NoirJS ZK Prover"]
             NC["Noir Circuit (WASM)"]
@@ -152,7 +152,7 @@ graph TD
 ### Layer 2: Off-Chain Infrastructure, ZK Proving & PDAX
 Our backend bridges enterprise DeFi, zero-knowledge cryptography, and Philippine banking rails:
 
-*   **Zero-Knowledge Oracle (NoirJS)**: Generates proofs for weather data thresholds.
+*   **Zero-Knowledge Oracle (NoirJS)**: Generates proofs for weather data thresholds seamlessly aggregating from PAGASA and NASA EONET.
 *   **Gemini Vision & IPFS Image Oracles**: MMS claims received via the **Offline SMS Mesh (Twilio)** are uploaded to Pinata IPFS and assessed for damage using Gemini 1.5 Pro.
 *   **AI Loan Actuary**: Gemini 1.5 Flash models crop yield predictions to instantly underwrite Soroban micro-loans.
 *   **Multi-Chain USDC Ingestion (PDAX Cross-Chain Bridge)**: Settles USDC natively.
@@ -240,9 +240,9 @@ npm install
 npm run dev
 ```
 
-### Backend
+### Backend (Firebase Functions)
 ```bash
-cd backend
+cd functions
 npm install
 npm run dev
 ```
