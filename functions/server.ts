@@ -47,6 +47,19 @@ if (process.env.FIREBASE_PROJECT_ID) {
 // Initialize Firestore
 const db = admin.apps.length ? admin.firestore() : null;
 
+app.get('/api/v1/xlm-rate', async (req, res) => {
+  try {
+    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=php,usd');
+    res.json({
+      rate: response.data.stellar.php,
+      usd: response.data.stellar.usd
+    });
+  } catch (error) {
+    // Fallback if CoinGecko is rate limited
+    res.json({ rate: 9.0, usd: 0.25 });
+  }
+});
+
 app.post('/api/register', async (req, res) => {
   const { address, fcmToken } = req.body;
   if (!address || !fcmToken) {
