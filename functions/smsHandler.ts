@@ -7,16 +7,20 @@ const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '+14176702344';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-const SYSTEM_PROMPT = `You are the TyFi Emergency SMS Assistant. You must be direct, extremely concise, and get straight to the point. No small talk. No asking if they are safe.
+const SYSTEM_PROMPT = `You are the TyFi Emergency SMS Assistant. You must be direct, extremely concise, and get straight to the point. No small talk.
 Your ONLY goal is to instantly collect the information required for their insurance claim:
 1. Their location (City/Region).
 2. The specific damage to their property or crops.
-3. Their TyFi wallet address.
+3. Their preferred payout method (TyFi Wallet, GCash, or Maya).
+4. Their account number/address for the chosen payout method.
 
-Immediately ask for any missing information in a single, direct sentence (e.g. "To process your claim, please reply with your City, the specific damage, and your TyFi wallet address.").
+ORACLE VERIFICATION:
+You are equipped with live PAGASA weather oracle data. If the oracle data (provided below) states there is NO active tropical cyclone or hurricane, you MUST reject the claim immediately. Tell the user "Claim Denied: The PAGASA weather oracle does not detect an active typhoon in the Philippine Area of Responsibility." and immediately output [CLAIM_REJECTED].
+
+Immediately ask for any missing information in a single, direct sentence (e.g. "To process your claim, please reply with your City, specific damage, preferred payout method (GCash/Maya/TyFi), and account number.").
 
 Completion Protocol:
-Once you have the location, damage, and wallet address, do NOT send any more messages. Reply with EXACTLY this text and nothing else: [CLAIM_COMPLETE]`;
+Once you have the location, damage, payout method, and account number, do NOT send any more messages. Reply with EXACTLY this text and nothing else: [CLAIM_COMPLETE]`;
 
 // Helper to send SMS via Twilio
 async function sendSms(to: string, text: string) {
@@ -52,9 +56,18 @@ async function callGemini(messages: any[]) {
   
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
   
+  // Fetch Oracle Data
+  let oracleData = "PAGASA Oracle Data: Unavailable.";
+  try {
+    const pagasaRes = await axios.get('http://localhost:3001/api/pagasa-weather');
+    oracleData = `PAGASA Oracle Data: ${pagasaRes.data.data.title} - ${pagasaRes.data.data.summary}`;
+  } catch (e) {
+    console.error("Oracle fetch failed", e);
+  }
+
   const contents = [
-    { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
-    { role: 'model', parts: [{ text: 'Understood. I will act as the TyFi Emergency SMS Assistant and follow the protocols.' }] },
+    { role: 'user', parts: [{ text: SYSTEM_PROMPT + "\\n\\nCURRENT ORACLE DATA:\\n" + oracleData }] },
+    { role: 'model', parts: [{ text: 'Understood. I will act as the TyFi Emergency SMS Assistant and enforce the Oracle verification.' }] },
     ...messages
   ];
 
@@ -69,7 +82,7 @@ async function extractClaimData(messages: any[]) {
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
   
   const transcript = messages.map((m: any) => `${m.role}: ${m.parts[0].text}`).join('\\n');
-  const prompt = `Here is a transcript of an SMS conversation with a typhoon victim. Extract the policy_number, safety_status, and damage_description into a JSON object. If policy number is missing, put their name. Transcript:\\n\\n${transcript}`;
+  const prompt = `Here is a transcript of an SMS conversation with a typhoon victim. Extract the user's location, damage_description, payment_method (GCash, Maya, or TyFi), and payment_account into a strict JSON object. Transcript:\\n\\n${transcript}`;
 
   const response = await axios.post(API_URL, {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -114,6 +127,13 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
     const geminiReply = await callGemini(messages);
     await logEvent('INFO', '🤖 AI RESPONSE:', { text: geminiReply });
 
+    if (geminiReply.includes('[CLAIM_REJECTED]')) {
+      await sendSms(fromNumber, geminiReply.replace('[CLAIM_REJECTED]', '').trim());
+      await sessionRef.delete();
+      await logEvent('WARNING', 'SMS Claim Rejected by Oracle', { from: fromNumber });
+      return;
+    }
+
     if (geminiReply.includes('[CLAIM_COMPLETE]')) {
       // Claim is done, extract data
       const claimData = await extractClaimData(messages);
@@ -124,11 +144,11 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
         ...claimData,
         source: 'SMS',
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        status: 'PENDING_REVIEW'
+        status: 'PENDING_PAYOUT'
       });
 
       // Send confirmation
-      const finalMsg = `Thank you. Your claim for policy ${claimData.policy_number || ''} has been filed successfully and marked urgent. We will text you updates here.`;
+      const finalMsg = `Thank you. Your claim has been verified by the weather oracle and filed successfully. Your payout will be sent to your ${claimData.payment_method || 'account'} shortly.`;
       await sendSms(fromNumber, finalMsg);
       
       // Clear session
