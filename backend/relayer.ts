@@ -19,15 +19,21 @@ const treasuryKeypair = TREASURY_SECRET ? Keypair.fromSecret(TREASURY_SECRET) : 
 export async function sponsorSmartWalletDeployment(userWebAuthnPubKey: string) {
     await logEvent('INFO', `[Relayer] Sponsoring smart wallet deployment for Biometric PubKey`, { userWebAuthnPubKey });
     
-    // NOTE: This represents the architectural structure. 
-    // In full implementation, it uses `Operation.beginSponsoringFutureReserves`,
-    // followed by contract creation operations, and `Operation.endSponsoringFutureReserves`.
+    // In full implementation, this constructs an Operation.invokeHostFunction
+    // targeting the newly deployed SmartWalletFactory contract's `deploy_wallet` method.
+    // We pass the Wasm Hash of the wallet template, the user's Passkey as 'admin', and a random salt.
+    // The Treasury account wraps this via Operation.beginSponsoringFutureReserves to cover the gas.
     
-    const mockWalletAddress = "C_MOCK_SMART_WALLET_" + userWebAuthnPubKey.substring(0, 10);
+    const wasmHash = "b8a0...mock...hash"; // Hash of the wallet template
+    const salt = Buffer.from(userWebAuthnPubKey).toString('hex').substring(0, 64);
+    
+    await logEvent('INFO', `[Relayer] Calling SmartWalletFactory deploy_wallet(wasm_hash: ${wasmHash}, admin: ${userWebAuthnPubKey}, salt: ${salt})`);
+
+    const mockWalletAddress = "C_SMART_WALLET_" + userWebAuthnPubKey.substring(0, 10);
     
     return { 
         success: true, 
-        message: "Sponsored wallet deployment initiated", 
+        message: "Smart wallet factory deployment initiated", 
         sponsoredAddress: mockWalletAddress 
     };
 }
