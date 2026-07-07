@@ -32,7 +32,7 @@ const DocsTab: React.FC = () => {
       id: 3,
       title: "Decentralized Oracle Network",
       icon: <Globe className="w-8 h-8 text-indigo-400" />,
-      description: "During a storm, Chainlink nodes constantly feed weather data (wind speed, rainfall) into the contract. If thresholds are met, the contract automatically triggers.",
+      description: "During a storm, PAGASA and NASA EONET APIs constantly feed weather data into the backend. If thresholds are met, the off-chain oracle generates a ZK Proof and the contract automatically triggers.",
       animation: "spin"
     },
     {
