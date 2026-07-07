@@ -2,6 +2,7 @@ import axios from 'axios';
 import admin from 'firebase-admin';
 import { logEvent } from './logger';
 import { processImageClaim } from './imageAssessor';
+import { enqueueSms, dequeueSms } from './offlineQueue';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
@@ -94,24 +95,30 @@ async function extractClaimData(messages: any[]) {
   return JSON.parse(rawText);
 }
 
-export async function handleIncomingSms(req: any, res: any, db: admin.firestore.Firestore | null) {
+export async function handleIncomingSms(req: any, res: any, db: admin.firestore.Firestore | null, isRetry: boolean = false) {
   // Twilio sends Form-Encoded data: 'From', 'Body', and possibly 'MediaUrl0'
   const fromNumber = req.body.From || req.query.From;
   const messageTextRaw = req.body.Body || req.query.Body;
   const mediaUrl = req.body.MediaUrl0 || req.query.MediaUrl0;
 
   if (!fromNumber) {
-    return res.status(400).json({ error: 'Missing from' });
+    if (!isRetry) res.status(400).json({ error: 'Missing from' });
+    return;
   }
 
-  await logEvent('INFO', 'Received Incoming SMS', { from: fromNumber, text: messageTextRaw, mediaUrl });
+  // 1. Enqueue in Offline Mesh if it's a new message
+  let queueId = '';
+  if (!isRetry) {
+    queueId = await enqueueSms(fromNumber, messageTextRaw, mediaUrl);
+    res.status(200).send('OK'); // Acknowledge webhook quickly to Twilio
+  }
+
+  await logEvent('INFO', 'Processing Incoming SMS', { from: fromNumber, text: messageTextRaw, mediaUrl, isRetry });
 
   if (!db) {
     await logEvent('ERROR', 'Firestore not initialized');
-    return res.status(500).json({ error: 'Database not initialized' });
+    return; // Don't dequeue, so it retries later
   }
-
-  res.status(200).send('OK'); // Acknowledge webhook quickly
 
   try {
     const sessionRef = db.collection('smsSessions').doc(fromNumber);
@@ -188,7 +195,13 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
       await sessionRef.set(sessionDataToSave, { merge: true });
     }
 
+    // 2. Dequeue successfully processed message
+    if (!isRetry && queueId) {
+        dequeueSms(queueId);
+    }
+
   } catch (error: any) {
-    await logEvent('ERROR', 'Error handling SMS webhook', { errorMessage: error.message });
+    await logEvent('ERROR', 'Error handling SMS webhook (Message kept in offline queue)', { errorMessage: error.message });
+    throw error; // Let the caller (flush mechanism) know it failed
   }
 }
