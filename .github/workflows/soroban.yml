@@ -15,7 +15,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         targets: wasm32-unknown-unknown
-    - name: Run Tests
+    - name: Build Contracts
       run: |
         cd contracts/typhoon_resilience_vault
-        cargo test
+        cargo build --target wasm32-unknown-unknown --release

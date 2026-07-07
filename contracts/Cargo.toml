@@ -21,3 +21,7 @@ debug-assertions = false
 panic = "abort"
 codegen-units = 1
 lto = true
+
+[patch.crates-io]
+soroban-env-host = { path = "rs-soroban-env/soroban-env-host" }
+

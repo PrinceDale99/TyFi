@@ -7,7 +7,8 @@ import * as cheerio from 'cheerio';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { handleIncomingSms } from './smsHandler';
-import { processPayoutOfframp } from './pdaxService';
+import { pdaxRouter } from './pdaxService';
+import { oracleRouter } from './oracle';
 import { calculateBondYield } from './bondService';
 import { flushOfflineQueue } from './offlineQueue';
 import { executeMicroloanPipeline } from './loanService';
@@ -18,6 +19,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/oracle', oracleRouter);
 
 const PORT = process.env.PORT || 3001;
 
