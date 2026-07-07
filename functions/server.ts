@@ -274,37 +274,63 @@ app.get('/api/market-prices', async (req, res) => {
 
 app.get('/api/pagasa-weather', async (req, res) => {
   try {
-    let pagasaUpdate = { title: '', summary: '', date: new Date().toISOString(), source: 'PAGASA' };
-    try {
-      const response = await axios.get('https://bagong.pagasa.dost.gov.ph/', { timeout: 3000 });
-      const $ = cheerio.load(response.data);
-      pagasaUpdate.title = $('.weather-bulletin-title').first().text().trim();
-      pagasaUpdate.summary = $('.weather-bulletin-summary').first().text().trim();
-      
-      if (!pagasaUpdate.title || !pagasaUpdate.summary) {
-        throw new Error('PAGASA Scraping failed to find elements');
+    let combinedUpdate = { title: '', summary: '', date: new Date().toISOString(), source: '' };
+    
+    // Fetch from both oracles concurrently
+    const [pagasaResult, nasaResult] = await Promise.allSettled([
+      axios.get('https://bagong.pagasa.dost.gov.ph/', { timeout: 3000 }),
+      axios.get(`https://eonet.gsfc.nasa.gov/api/v3/events?category=severeStorms&status=open&api_key=${process.env.NASA_API_KEY || 'ttZtcju8urEIdB7HfyICZiRj7UfQ3FiuzwGKpvxa'}`, { timeout: 5000 })
+    ]);
+
+    let pagasaData = null;
+    let nasaData = null;
+
+    if (pagasaResult.status === 'fulfilled') {
+      const $ = cheerio.load(pagasaResult.value.data);
+      const pTitle = $('.weather-bulletin-title').first().text().trim();
+      const pSummary = $('.weather-bulletin-summary').first().text().trim();
+      if (pTitle && pSummary) {
+        pagasaData = { title: pTitle, summary: pSummary };
       }
-    } catch (e) {
-      await logEvent('WARNING', 'PAGASA Scraping failed, falling back to NASA EONET API');
-      
-      // Fallback to NASA EONET API for Severe Storms
-      const NASA_API_KEY = process.env.NASA_API_KEY || 'ttZtcju8urEIdB7HfyICZiRj7UfQ3FiuzwGKpvxa';
-      const nasaResponse = await axios.get(`https://eonet.gsfc.nasa.gov/api/v3/events?category=severeStorms&status=open&api_key=${NASA_API_KEY}`, { timeout: 5000 });
-      
-      const events = nasaResponse.data.events;
-      if (events && events.length > 0) {
-        // Find storms potentially near the Philippines (approx bounding box)
-        const storm = events[0]; // For now just take the most recent active storm
-        pagasaUpdate.source = 'NASA EONET';
-        pagasaUpdate.title = `NASA Global Alert: ${storm.title}`;
-        pagasaUpdate.summary = `NASA Earth Observatory detected a severe storm event. Status: Open. Source: ${storm.sources[0]?.url || 'NASA'}`;
-      } else {
-        pagasaUpdate.source = 'NASA EONET';
-        pagasaUpdate.title = 'Global Severe Storm Advisory';
-        pagasaUpdate.summary = 'NASA EONET: No active severe storms currently tracked globally or near the Philippine Area of Responsibility.';
-      }
+    } else {
+      await logEvent('WARNING', 'PAGASA Scraping failed');
     }
-    res.json({ success: true, data: pagasaUpdate });
+
+    if (nasaResult.status === 'fulfilled') {
+      const events = nasaResult.value.data.events;
+      if (events && events.length > 0) {
+        const storm = events[0]; // Most recent active storm
+        nasaData = {
+          title: `NASA Global Alert: ${storm.title}`,
+          summary: `NASA Earth Observatory detected a severe storm event. Status: Open. Source: ${storm.sources[0]?.url || 'NASA'}`
+        };
+      } else {
+        nasaData = {
+          title: 'Global Severe Storm Advisory',
+          summary: 'NASA EONET: No active severe storms currently tracked globally or near the Philippine Area of Responsibility.'
+        };
+      }
+    } else {
+      await logEvent('WARNING', 'NASA EONET API failed');
+    }
+
+    if (pagasaData && nasaData) {
+      combinedUpdate.source = 'PAGASA & NASA EONET';
+      combinedUpdate.title = `${pagasaData.title} | ${nasaData.title}`;
+      combinedUpdate.summary = `[PAGASA] ${pagasaData.summary}\n\n[NASA] ${nasaData.summary}`;
+    } else if (pagasaData) {
+      combinedUpdate.source = 'PAGASA';
+      combinedUpdate.title = pagasaData.title;
+      combinedUpdate.summary = pagasaData.summary;
+    } else if (nasaData) {
+      combinedUpdate.source = 'NASA EONET';
+      combinedUpdate.title = nasaData.title;
+      combinedUpdate.summary = nasaData.summary;
+    } else {
+      throw new Error('Both PAGASA and NASA oracles failed to return data');
+    }
+
+    res.json({ success: true, data: combinedUpdate });
   } catch (error: any) {
     await logEvent('ERROR', 'Weather Oracle completely failed', { error: error.message });
     res.status(500).json({ error: 'Failed to fetch weather data from all Oracles' });
