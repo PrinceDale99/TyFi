@@ -14,8 +14,8 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
-        targets: wasm32-unknown-unknown
+        targets: wasm32v1-none
     - name: Build Contracts
       run: |
         cd contracts/typhoon_resilience_vault
-        cargo build --target wasm32-unknown-unknown --release
+        cargo build --target wasm32v1-none --release
