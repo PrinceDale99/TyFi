@@ -351,8 +351,19 @@ app.post('/api/sms/webhook', async (req, res) => {
   await handleIncomingSms(req, res, db);
 });
 
+app.post("/api/apply-microloan", async (req, res) => {
+  const { address, farmData, paymentMethod, paymentAccount } = req.body;
+  if (!address || !farmData || !paymentMethod || !paymentAccount) {
+    return res.status(400).json({ error: "Missing required fields for loan application" });
+  }
+  try {
+    const result = await executeMicroloanPipeline(address, farmData, paymentMethod, paymentAccount);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to process microloan" });
+  }
+});
+
 app.listen(PORT, async () => {
   await logEvent('INFO', `Notification telemetry server successfully launched`, { port: PORT });
 });
-a p p . p o s t ( " / a p i / a p p l y - m i c r o l o a n " ,   a s y n c   ( r e q ,   r e s )   = >   {   c o n s t   {   a d d r e s s ,   f a r m D a t a ,   p a y m e n t M e t h o d ,   p a y m e n t A c c o u n t   }   =   r e q . b o d y ;   i f   ( ! a d d r e s s   | |   ! f a r m D a t a   | |   ! p a y m e n t M e t h o d   | |   ! p a y m e n t A c c o u n t )   {   r e t u r n   r e s . s t a t u s ( 4 0 0 ) . j s o n ( {   e r r o r :   " M i s s i n g   r e q u i r e d   f i e l d s   f o r   l o a n   a p p l i c a t i o n "   } ) ;   }   t r y   {   c o n s t   r e s u l t   =   a w a i t   e x e c u t e M i c r o l o a n P i p e l i n e ( a d d r e s s ,   f a r m D a t a ,   p a y m e n t M e t h o d ,   p a y m e n t A c c o u n t ) ;   r e s . j s o n ( r e s u l t ) ;   }   c a t c h   ( e r r o r :   a n y )   {   r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   e r r o r :   " F a i l e d   t o   p r o c e s s   m i c r o l o a n "   } ) ;   }   } ) ;  
- 
