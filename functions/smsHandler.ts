@@ -56,7 +56,7 @@ async function sendSms(to: string, text: string) {
 async function callGemini(messages: any[]) {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is missing');
   
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${GEMINI_API_KEY}`;
   
   // Fetch Oracle Data
   let oracleData = "PAGASA Oracle Data: Unavailable.";
@@ -81,7 +81,7 @@ async function callGemini(messages: any[]) {
 async function extractClaimData(messages: any[]) {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is missing');
   
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${GEMINI_API_KEY}`;
   
   const transcript = messages.map((m: any) => `${m.role}: ${m.parts[0].text}`).join('\\n');
   const prompt = `Here is a transcript of an SMS conversation with a typhoon victim. Extract the user's location, damage_description, payment_method (GCash, Maya, or TyFi), and payment_account into a strict JSON object. Transcript:\\n\\n${transcript}`;
