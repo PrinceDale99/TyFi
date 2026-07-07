@@ -41,7 +41,7 @@ impl CustomAccountInterface for SmartWallet {
     #[allow(non_snake_case)]
     fn __check_auth(
         env: Env,
-        signature_payload: BytesN<32>,
+        signature_payload: soroban_sdk::crypto::Hash<32>,
         signature: BytesN<64>,
         _auth_contexts: Vec<Context>,
     ) -> Result<(), SmartWalletError> {
