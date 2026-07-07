@@ -2,8 +2,9 @@ import axios from 'axios';
 import admin from 'firebase-admin';
 import { logEvent } from './logger';
 
-const MOVIDER_API_KEY = process.env.MOVIDER_API_KEY || '9jp1SDAst3JWQga_vzIiG6jnQwJI5E';
-const MOVIDER_API_SECRET = process.env.MOVIDER_API_SECRET || 'xTOralS6Qtlb7o63NOqS5-BaY0vA0D';
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '+14176702344';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const SYSTEM_PROMPT = `You are the TyFi Emergency SMS Assistant. You are interacting with victims of a typhoon. Your tone must be empathetic, calm, and highly efficient. 
@@ -21,19 +22,30 @@ Rules:
 Completion Protocol:
 Once you have successfully gathered all three pieces of information, do NOT ask any more questions. Simply respond with exactly this text and nothing else: [CLAIM_COMPLETE]`;
 
-// Helper to send SMS via Movider
+// Helper to send SMS via Twilio
 async function sendSms(to: string, text: string) {
   try {
-    const response = await axios.post('https://api.movider.co/v1/sms', {
-      api_key: MOVIDER_API_KEY,
-      api_secret: MOVIDER_API_SECRET,
-      to: to,
-      text: text
-    });
-    await logEvent('INFO', 'Sent SMS via Movider', { to });
+    const response = await axios.post(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
+      new URLSearchParams({
+        To: to,
+        From: TWILIO_PHONE_NUMBER,
+        Body: text
+      }),
+      {
+        auth: {
+          username: TWILIO_ACCOUNT_SID,
+          password: TWILIO_AUTH_TOKEN
+        },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+    await logEvent('INFO', 'Sent SMS via Twilio', { to });
     return response.data;
   } catch (error: any) {
-    await logEvent('ERROR', 'Failed to send SMS via Movider', { errorMessage: error.message });
+    await logEvent('ERROR', 'Failed to send SMS via Twilio', { errorMessage: error.message });
     throw error;
   }
 }
@@ -73,9 +85,9 @@ async function extractClaimData(messages: any[]) {
 }
 
 export async function handleIncomingSms(req: any, res: any, db: admin.firestore.Firestore | null) {
-  // Movider sends incoming webhook usually with 'from' and 'text'
-  const fromNumber = req.body.from || req.body.msisdn || req.query.from;
-  const messageText = req.body.text || req.query.text;
+  // Twilio sends Form-Encoded data: 'From' and 'Body'
+  const fromNumber = req.body.From || req.query.From;
+  const messageText = req.body.Body || req.query.Body;
 
   if (!fromNumber || !messageText) {
     return res.status(400).json({ error: 'Missing from or text' });
