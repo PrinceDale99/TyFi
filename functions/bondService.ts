@@ -2,7 +2,7 @@ import { Server } from '@stellar/stellar-sdk/rpc';
 import { Contract } from '@stellar/stellar-sdk';
 
 const RPC_URL = process.env.SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org';
-const VAULT_CONTRACT_ID = process.env.VAULT_CONTRACT_ID || ''; // Replace with actual deployed contract ID
+const VAULT_CONTRACT_ID = process.env.VAULT_CONTRACT_ID || 'CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH';
 
 const server = new Server(RPC_URL);
 
