@@ -80,6 +80,17 @@ async function pollEvents() {
               amount: amount,
               region: 'Your Region'
             });
+
+            // Call PDAX Auto-Offramp API
+            await axios.post(`${BACKEND_URL}/api/execute-offramp`, {
+              address: farmer,
+              amount: amount
+            }).catch(err => {
+              logEvent('ERROR', 'PDAX Off-ramp trigger failed in listener', { 
+                errorMessage: err.message,
+                address: farmer
+              });
+            });
           }
 
           // Handle "subscribe" event for certificate generation
