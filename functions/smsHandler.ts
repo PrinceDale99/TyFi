@@ -1,6 +1,7 @@
 import axios from 'axios';
 import admin from 'firebase-admin';
 import { logEvent } from './logger';
+import { processImageClaim } from './imageAssessor';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
@@ -94,15 +95,16 @@ async function extractClaimData(messages: any[]) {
 }
 
 export async function handleIncomingSms(req: any, res: any, db: admin.firestore.Firestore | null) {
-  // Twilio sends Form-Encoded data: 'From' and 'Body'
+  // Twilio sends Form-Encoded data: 'From', 'Body', and possibly 'MediaUrl0'
   const fromNumber = req.body.From || req.query.From;
-  const messageText = req.body.Body || req.query.Body;
+  const messageTextRaw = req.body.Body || req.query.Body;
+  const mediaUrl = req.body.MediaUrl0 || req.query.MediaUrl0;
 
-  if (!fromNumber || !messageText) {
-    return res.status(400).json({ error: 'Missing from or text' });
+  if (!fromNumber) {
+    return res.status(400).json({ error: 'Missing from' });
   }
 
-  await logEvent('INFO', 'Received Incoming SMS', { from: fromNumber, text: messageText });
+  await logEvent('INFO', 'Received Incoming SMS', { from: fromNumber, text: messageTextRaw, mediaUrl });
 
   if (!db) {
     await logEvent('ERROR', 'Firestore not initialized');
@@ -116,8 +118,19 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
     const sessionDoc = await sessionRef.get();
     
     let messages = [];
+    let imageAnalysisData: any = null;
+
     if (sessionDoc.exists) {
       messages = sessionDoc.data()?.messages || [];
+      imageAnalysisData = sessionDoc.data()?.imageAnalysisData || null;
+    }
+
+    // Process image if sent
+    let messageText = messageTextRaw;
+    if (mediaUrl) {
+        const assessment = await processImageClaim(mediaUrl);
+        imageAnalysisData = assessment;
+        messageText += `\n[SYSTEM NOTE: User attached an image. AI Vision Analysis states -> Damage Score: ${assessment.damage_score}%, Description: ${assessment.description}]`;
     }
 
     // Add user's new message
@@ -142,7 +155,10 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
       await db.collection('claims').add({
         phoneNumber: fromNumber,
         ...claimData,
-        source: 'SMS',
+        ipfs_hash: imageAnalysisData?.ipfs_hash || null,
+        damage_score: imageAnalysisData?.damage_score || null,
+        repair_estimate_php: imageAnalysisData?.repair_estimate_php || null,
+        source: 'SMS_WITH_VISION',
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         status: 'PENDING_PAYOUT'
       });
@@ -153,7 +169,7 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
       
       // Clear session
       await sessionRef.delete();
-      await logEvent('INFO', 'SMS Claim Filed successfully', { from: fromNumber });
+      await logEvent('INFO', 'SMS Claim Filed successfully', { from: fromNumber, ipfsHash: imageAnalysisData?.ipfs_hash });
 
     } else {
       // Send the question back to the user
@@ -161,10 +177,15 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
 
       // Save assistant reply to history
       messages.push({ role: 'model', parts: [{ text: geminiReply }] });
-      await sessionRef.set({
+      const sessionDataToSave: any = {
         messages,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+      };
+      if (imageAnalysisData) {
+        sessionDataToSave.imageAnalysisData = imageAnalysisData;
+      }
+
+      await sessionRef.set(sessionDataToSave, { merge: true });
     }
 
   } catch (error: any) {
