@@ -75,14 +75,16 @@ The system is built on a highly compliant, three-layer enterprise architecture t
 
 ```mermaid
 graph TD
-    subgraph L3 ["Layer 3: React Frontend"]
+    subgraph L3 ["Layer 3: React Frontend & Offline Mesh"]
         FMP["Farmer Mobile Portal"]
         IH["Institutional Hub"]
+        SMS["Offline SMS Mesh (Twilio)"]
     end
 
-    subgraph L2 ["Layer 2: Off-Chain & PDAX Integrations"]
+    subgraph L2 ["Layer 2: Off-Chain & Oracles"]
         BE["Node.js / Firebase Backend"]
-        AI["Gemini AI (Damage Estimation)"]
+        AI["Gemini 1.5 Pro (Vision/Loan Actuary)"]
+        IPFS["Pinata IPFS (Image Storage)"]
         Oracle["PAGASA Weather Oracle"]
         
         subgraph ZK ["NoirJS ZK Prover"]
@@ -92,14 +94,14 @@ graph TD
         
         subgraph PDAX ["PDAX Enterprise APIs"]
             P_Bridge["Cross-Chain Bridge"]
-            P_Sec["Securities API (Treasury Bonds)"]
-            P_OTC["Prime OTC API (Liquidation)"]
-            P_CaaS["Crypto-as-a-Service API"]
+            P_Sec["Securities API (Bonds)"]
+            P_OTC["Prime OTC API"]
+            P_CaaS["CaaS API (InstaPay Sweep)"]
         end
     end
 
     subgraph L1 ["Layer 1: Blockchain (Stellar)"]
-        SC["Soroban Smart Contract"]
+        SC["Soroban Smart Contract (Vault, Bonds, Micro-Loans)"]
         ZKV["BN254 Host ZK Verifier"]
     end
     
@@ -113,8 +115,12 @@ graph TD
     P_Bridge -->|"Settles USDC"| SC
     
     FMP -->|"Registers Farm"| BE
+    Farmer -->|"MMS/SMS Offline Claim"| SMS
+    SMS -->|"Syncs Queue"| BE
     Oracle -->|"Live Typhoon Data"| BE
-    BE <-->|"Parametric Analysis"| AI
+    
+    BE -->|"Uploads Images"| IPFS
+    BE <-->|"Damage & Loan Prediction"| AI
     
     BE -->|"Raw Weather Data (Hidden)"| NC
     NC -->|"Generates Plonk Proof"| BB
@@ -122,28 +128,27 @@ graph TD
     ZKV -->|"Verifies Proof"| SC
     
     SC -->|"Generates Yield"| P_Sec
+    SC -->|"Underwrites Micro-Loan"| SC
     SC -->|"Initiates Liquidation"| P_OTC
     P_OTC -->|"Converts to PHP"| P_CaaS
-    P_CaaS -->|"Direct Fiat Disbursement"| Farmer
+    P_CaaS -->|"Direct Fiat Disbursement (InstaPay)"| Farmer
 ```
 
 ### Layer 1: Stellar Soroban Smart Contract
 - **Parametric Vault**: Non-custodial XLM/USDC vault handling automated disbursements based on objective weather oracles.
-- **ZK Verifier**: Utilizes Stellar Protocol 26 BN254 host functions to cryptographically verify Plonk proofs, ensuring payouts only occur when weather thresholds are mathematically proven to be met.
+- **ZK Verifier**: Utilizes Stellar Protocol 26 BN254 host functions to cryptographically verify Plonk proofs.
+- **Tokenized Bonds & Micro-Loans**: Supports transferable disaster relief bond shares and AI-underwritten uncollateralized micro-loans directly from the vault's liquidity pool.
 
 ### Layer 2: Off-Chain Infrastructure, ZK Proving & PDAX
 Our backend bridges enterprise DeFi, zero-knowledge cryptography, and Philippine banking rails:
 
-*   **Zero-Knowledge Oracle (NoirJS)**:
-    Raw weather data from PAGASA is processed securely off-chain. The Node.js backend uses Noir's WASM compiler and Barretenberg backend to dynamically generate a cryptographic proof that the wind speed exceeded the threshold, without ever revealing the exact raw data on-chain.
-*   **Multi-Chain USDC Ingestion (PDAX Cross-Chain Bridge)**:
-    Accepts USDC deposits natively on Ethereum, Solana, or Polygon. The backend routes these through PDAX to settle directly into the Soroban contract.
-*   **Institutional Yield Generation (PDAX Securities API)**:
-    Automatically purchases Tokenized Philippine Government Treasury Bonds for fixed-yield generation.
-*   **Zero-Slippage Liquidation (PDAX Prime OTC API)**:
-    Bypasses retail order books and executes through the PDAX Prime OTC API for guaranteed 1:1 institutional conversion rates during massive, province-wide ZK-triggered payouts.
-*   **Compliant Fiat Disbursement (PDAX CaaS API)**:
-    Utilizes the PDAX Crypto-as-a-Service (CaaS) API to route the PHP value directly to a farmer’s GCash, Maya, or UnionBank account via InstaPay in real time.
+*   **Zero-Knowledge Oracle (NoirJS)**: Generates proofs for weather data thresholds.
+*   **Gemini Vision & IPFS Image Oracles**: MMS claims received via the **Offline SMS Mesh (Twilio)** are uploaded to Pinata IPFS and assessed for damage using Gemini 1.5 Pro.
+*   **AI Loan Actuary**: Gemini 1.5 Flash models crop yield predictions to instantly underwrite Soroban micro-loans.
+*   **Multi-Chain USDC Ingestion (PDAX Cross-Chain Bridge)**: Settles USDC natively.
+*   **Institutional Yield Generation (PDAX Securities API)**: Purchases Treasury Bonds for fixed-yield generation.
+*   **Zero-Slippage Liquidation (PDAX Prime OTC API)**: Bypasses retail order books during massive province-wide ZK-triggered payouts.
+*   **Compliant Fiat Disbursement (PDAX CaaS API)**: Instantly routes PHP value directly to a farmer’s GCash or Maya via InstaPay.
 
 ### Layer 3: React Frontend Consumer Dashboard
 *   **The Institutional Hub**: Functions as a "Universal Funding Gateway" with a Treasury Bond Yield Tracker and a **ZK Proof Inspector**, allowing users to visually inspect the actual cryptographic hex generated by Barretenberg.
