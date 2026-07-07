@@ -76,7 +76,7 @@ The smart contract executes payouts based on objective wind speed data. This eli
 ## 🛠️ Tech Stack
 - **Frontend**: React 19, TypeScript, Vite, Vanilla CSS, Leaflet.js
 - **Backend**: Node.js (Express), Firebase (Functions, Firestore, Auth, Hosting)
-- **Blockchain**: Stellar (Soroban, Rust SDK v20.5.0, XLM native asset, Fee Bump, Multi-Sig, Account Abstraction)
+- **Blockchain**: Stellar (Soroban, Rust SDK v27.0.0-rc.1, XLM native asset, Fee Bump, Multi-Sig, Account Abstraction)
 - **AI/ML**: Gemini 1.5 Flash API & Google Cloud Vision API for parametric damage estimation, AI Copilot assistance, and OCR-based document verification.
 - **Fiat Rails**: PDAX Institutional API (CaaS + Public Market Tickers) for KYC/AML-compliant InstaPay sweeps and live pricing.
 
@@ -146,7 +146,7 @@ graph TD
 
 ### Layer 1: Stellar Soroban Smart Contract
 - **Parametric Vault**: Non-custodial XLM/USDC vault handling automated disbursements based on objective weather oracles.
-- **ZK Verifier**: Utilizes Stellar Protocol 26 BN254 host functions to cryptographically verify Plonk proofs.
+- **ZK Verifier**: Utilizes Stellar Protocol 27 BN254 host functions to cryptographically verify Plonk proofs.
 - **Tokenized Bonds & Micro-Loans**: Supports transferable disaster relief bond shares and AI-underwritten uncollateralized micro-loans directly from the vault's liquidity pool.
 
 ### Layer 2: Off-Chain Infrastructure, ZK Proving & PDAX
@@ -170,7 +170,7 @@ To ensure oracle privacy and prevent on-chain manipulation or data scraping, TyF
 
 1. **The Circuit (`circuits/weather_oracle`)**: Written in Noir. It takes the actual wind speed as a *private input* and the payout threshold as a *public input*. It asserts `wind_speed >= payout_threshold` and uses Poseidon hashing.
 2. **Dynamic Generation (`backend/oracle.ts`)**: The backend utilizes `@noir-lang/noir_js` and `@noir-lang/backend_barretenberg` to load the compiled WASM circuit and dynamically generate a Barretenberg Plonk proof.
-3. **Native Verification (`verifier.rs`)**: The Soroban contract takes the raw proof bytes and utilizes Stellar Protocol 26's newly introduced native BN254 host functions (`env.crypto().bn254_pairing(...)`) to cryptographically verify the proof on-chain in milliseconds.
+3. **Native Verification (`verifier.rs`)**: The Soroban contract takes the raw proof bytes and utilizes Stellar Protocol 27's newly introduced native BN254 host functions (`env.crypto().bn254_pairing(...)`) to cryptographically verify the proof on-chain in milliseconds.
 
 ## 🔒 Security & Audit
 We take the security of our users' funds seriously. While we are in the process of scaling towards a formal third-party audit, we have implemented the following measures and passed a strict internal static analysis and mentor security review for the Level 6 hackathon submission.
@@ -180,7 +180,7 @@ We take the security of our users' funds seriously. While we are in the process 
 **Scope**: `contracts/typhoon_resilience_vault` (Soroban Smart Contract) & `circuits/weather_oracle` (Noir ZK Circuit)  
 **Status: APPROVED**
 
-An automated static analysis and manual security review was conducted. No high or critical severity vulnerabilities were found. The contract successfully implements the newly released Protocol 26 BN254 host functions securely.
+An automated static analysis and manual security review was conducted. No high or critical severity vulnerabilities were found. The contract successfully implements the newly released Protocol 27 BN254 host functions securely.
 
 **Key Findings:**
 1. **Memory Safety and Type Casting (Low/None)**: `cargo clippy` reported 0 critical warnings. All math operations dealing with XLM/USDC precision use safe, panic-free arithmetic natively handled by Soroban's `i128` limits. No integer overflow/underflow vulnerabilities were detected.
