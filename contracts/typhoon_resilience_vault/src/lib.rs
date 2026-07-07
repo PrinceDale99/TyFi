@@ -835,3 +835,5 @@ impl TyphoonVault {
 mod test;
 pub mod smart_wallet;
 pub mod verifier;
+m o d   t e s t _ a u t h ;  
+ 
