@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: tyfi-backend
+    env: node
+    rootDir: functions
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 18
