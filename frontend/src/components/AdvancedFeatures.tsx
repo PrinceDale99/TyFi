@@ -29,7 +29,7 @@ export const AdvancedFeatures: React.FC<{ walletAddress: string | null }> = ({ w
       // Mocking a base64 image payload (e.g. damaged crops)
       const base64Mock = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
       const res = await axios.post(`${API_BASE}/api/sms/webhook`, {
-        From: '+639123456789',
+        From: '+639939702450',
         Body: 'Typhoon destroyed my farm',
         MediaUrl0: `data:image/png;base64,${base64Mock}`
       });
@@ -64,7 +64,7 @@ export const AdvancedFeatures: React.FC<{ walletAddress: string | null }> = ({ w
           damagePercentage: 85
         },
         paymentMethod: 'MAYA',
-        paymentAccount: '09198765432'
+        paymentAccount: '09939702450'
       });
       setResult(res.data);
     } catch (e: any) {
