@@ -427,6 +427,34 @@ impl TyphoonVault {
         env.storage().persistent().get(&DataKey::LpShares(lp)).unwrap_or(0)
     }
 
+    /// Transfer reinsurance bond shares to another address (Tokenized Bond Trading)
+    pub fn transfer_shares(env: Env, from: Address, to: Address, amount: i128) -> Result<(), Error> {
+        from.require_auth();
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let mut from_balance: i128 = env.storage().persistent().get(&DataKey::LpShares(from.clone())).unwrap_or(0);
+        if from_balance < amount {
+            return Err(Error::InvalidAmount);
+        }
+
+        let mut to_balance: i128 = env.storage().persistent().get(&DataKey::LpShares(to.clone())).unwrap_or(0);
+        
+        from_balance = from_balance.checked_sub(amount).ok_or(Error::Overflow)?;
+        to_balance = to_balance.checked_add(amount).ok_or(Error::Overflow)?;
+
+        env.storage().persistent().set(&DataKey::LpShares(from.clone()), &from_balance);
+        env.storage().persistent().set(&DataKey::LpShares(to.clone()), &to_balance);
+
+        env.events().publish(
+            (Symbol::new(&env, "transfer_shares"), from, to),
+            amount
+        );
+
+        Ok(())
+    }
+
     /// Get total reinsurance deposited
     pub fn get_total_reinsurance_deposited(env: Env) -> i128 {
         env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0)
