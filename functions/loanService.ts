@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generativeAI';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logEvent } from './logger';
 import { processPayoutOfframp } from './pdaxService';
 
