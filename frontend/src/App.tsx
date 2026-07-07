@@ -1802,6 +1802,22 @@ function App() {
     );
   }
 
+  if (window.location.pathname === '/debug') {
+    return (
+      <div className="min-h-screen bg-slate-950 p-8 pt-20">
+        <div className="max-w-4xl mx-auto">
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="mb-6 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-semibold"
+          >
+            ← Back to Main App
+          </button>
+          <AdvancedFeatures walletAddress={walletAddress} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 selection:bg-sky-500/30 relative">
       {/* Dynamic Ambient Background Mesh */}
@@ -2150,9 +2166,7 @@ function App() {
               )}
 
               {activeTab === 'history' && (
-                <div className="space-y-6">
-                  <AdvancedFeatures walletAddress={walletAddress} />
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                   {/* Left Column: Firebase History Dashboard */}
                   <div className="glass-panel">
                     <HistoryDashboard 
@@ -2163,7 +2177,6 @@ function App() {
 
                   {/* Right Column: Live Ledger Stream */}
                   <LedgerStream network={network} />
-                  </div>
                 </div>
               )}
 
