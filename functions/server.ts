@@ -7,6 +7,7 @@ import * as cheerio from 'cheerio';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { handleIncomingSms } from './smsHandler';
+import { processPayoutOfframp } from './pdaxService';
 
 dotenv.config();
 
@@ -112,6 +113,41 @@ app.post('/api/notify-payout', async (req, res) => {
   } catch (error: any) {
     await logEvent('ERROR', 'Error dispatching FCM message', { errorMessage: error.message, address });
     res.status(500).json({ error: 'Failed to send notification' });
+  }
+});
+
+app.post('/api/execute-offramp', async (req, res) => {
+  const { address, amount } = req.body; // amount is in crypto units
+
+  await logEvent('INFO', 'Received request to execute PDAX off-ramp', { address, amount });
+
+  if (!db) {
+    return res.status(500).json({ error: 'Firestore not initialized' });
+  }
+
+  try {
+    // We need to find the user's payment_method and payment_account.
+    // They are stored in 'claims' collection under the user's phone number, but we only have 'address' here.
+    // Actually, we can look up the farmer in the 'farmers' collection to get their phone number or payment preferences.
+    // Assuming the user's payment method is stored in their farmer profile:
+    const doc = await db.collection('farmers').doc(address).get();
+    const data = doc.data();
+
+    if (!data || !data.payment_method || data.payment_method.toLowerCase() === 'tyfi') {
+      await logEvent('INFO', 'No off-ramp needed. User prefers TyFi wallet or no method found.', { address });
+      return res.json({ success: true, offramp: false, reason: 'TyFi preferred' });
+    }
+
+    const { payment_method, payment_account } = data;
+
+    // Trigger PDAX pipeline
+    const result = await processPayoutOfframp(amount, payment_method, payment_account);
+    
+    await logEvent('INFO', 'PDAX off-ramp successful', { address, result });
+    res.json({ success: true, offramp: true, result });
+  } catch (error: any) {
+    await logEvent('ERROR', 'Error executing PDAX off-ramp', { errorMessage: error.message, address });
+    res.status(500).json({ error: 'Failed to execute off-ramp' });
   }
 });
 
