@@ -1,5 +1,5 @@
 import { Server } from '@stellar/stellar-sdk/rpc';
-import { Contract } from '@stellar/stellar-sdk';
+import { Contract, TransactionBuilder, Networks } from '@stellar/stellar-sdk';
 
 const RPC_URL = process.env.SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org';
 const VAULT_CONTRACT_ID = process.env.VAULT_CONTRACT_ID || 'CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH';
@@ -24,44 +24,34 @@ export async function calculateBondYield(userAddress: string): Promise<BondPortf
     try {
         const contract = new Contract(VAULT_CONTRACT_ID);
 
-        // Fetch user's LP shares
-        const sharesResponse = await server.simulateTransaction(
-            // @ts-ignore - Building raw invocation for read-only call
-            {
-                source: userAddress,
-                fee: "100",
-                sequence: "0",
-                operations: [
-                    contract.call('get_lp_shares', userAddress)
-                ]
-            }
-        );
+        const account = await server.loadAccount(userAddress).catch(() => null);
         
-        // Fetch total shares
-        const totalSharesResponse = await server.simulateTransaction(
-            // @ts-ignore
-            {
-                source: userAddress,
-                fee: "100",
-                sequence: "0",
-                operations: [
-                    contract.call('get_total_reinsurance_shares')
-                ]
-            }
-        );
+        // If the account doesn't exist on network, we can't build a real transaction to simulate.
+        // Return 0 values safely.
+        if (!account) {
+            return { shares: 0, currentValueXLM: 0, yieldPercentage: 0 };
+        }
 
-        // Fetch total deposited XLM/USDC in the pool
-        const totalDepositedResponse = await server.simulateTransaction(
-            // @ts-ignore
-            {
-                source: userAddress,
+        const buildSimTx = (operation: any) => {
+            return new TransactionBuilder(account, {
                 fee: "100",
-                sequence: "0",
-                operations: [
-                    contract.call('get_total_reinsurance_deposited')
-                ]
-            }
-        );
+                networkPassphrase: Networks.TESTNET
+            })
+            .addOperation(operation)
+            .setTimeout(30)
+            .build();
+        };
+
+        const sharesTx = buildSimTx(contract.call('get_lp_shares', userAddress));
+        const totalSharesTx = buildSimTx(contract.call('get_total_reinsurance_shares'));
+        const totalDepositsTx = buildSimTx(contract.call('get_total_reinsurance_deposited'));
+
+        // Fetch user's LP shares
+        const sharesResponse = await server.simulateTransaction(sharesTx);
+        // Fetch total shares
+        const totalSharesResponse = await server.simulateTransaction(totalSharesTx);
+        // Fetch total deposited XLM/USDC in the pool
+        const totalDepositedResponse = await server.simulateTransaction(totalDepositsTx);
 
         // In a real scenario, you parse the xdr.ScVal results:
         // We will mock the extraction for standard implementation shape until stellar-base xdr is fully integrated
