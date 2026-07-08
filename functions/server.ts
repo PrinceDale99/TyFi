@@ -4,6 +4,7 @@ import admin from 'firebase-admin';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import jwt from 'jsonwebtoken';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { handleIncomingSms } from './smsHandler';
@@ -411,6 +412,80 @@ app.post('/api/ai/translate', async (req, res) => {
 app.post('/api/sms/webhook', async (req, res) => {
   // Pass db to the handler so it can interact with Firestore
   await handleIncomingSms(req, res, db);
+});
+
+// ==========================================
+// AUTHENTICATION & PERSISTENCE ROUTES
+// ==========================================
+
+const JWT_SECRET = process.env.JWT_SECRET || 'tyfi_super_secret_jwt_key_for_testnet_only';
+
+// 1. Login or Create Profile using Wallet Address
+app.post('/api/auth/login', async (req, res) => {
+  const { address } = req.body;
+  if (!address) {
+    return res.status(400).json({ error: 'Wallet address required' });
+  }
+
+  await logEvent('INFO', 'User login attempt', { address });
+
+  try {
+    // Generate JWT
+    const token = jwt.sign({ address }, JWT_SECRET, { expiresIn: '7d' });
+    
+    let userProfile = { address, createdAt: new Date().toISOString() };
+
+    if (db) {
+      const userRef = db.collection('users').doc(address);
+      const doc = await userRef.get();
+      
+      if (!doc.exists) {
+        // Create new user profile if it doesn't exist
+        await userRef.set(userProfile);
+        await logEvent('INFO', 'New user profile created', { address });
+      } else {
+        userProfile = doc.data() as any;
+      }
+    }
+
+    res.json({ success: true, token, user: userProfile });
+  } catch (error: any) {
+    await logEvent('ERROR', 'Login failed', { errorMessage: error.message });
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
+// Middleware to verify JWT
+const authenticateToken = (req: any, res: any, next: any) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+// 2. Fetch authenticated user profile
+app.get('/api/users/profile', authenticateToken, async (req: any, res: any) => {
+  const { address } = req.user;
+  
+  if (!db) {
+    return res.json({ success: true, user: { address, mock: true } });
+  }
+
+  try {
+    const doc = await db.collection('users').doc(address).get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ success: true, user: doc.data() });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch user profile' });
+  }
 });
 
 app.post("/api/apply-microloan", async (req, res) => {

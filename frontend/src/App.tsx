@@ -1305,187 +1305,58 @@ function App() {
 
   if (!isWalletConnected) {
     return (
-      <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        {/* Glow effects in background */}
-        <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full filter blur-[120px] transition-all duration-1000 -z-10 ${
-          isMainnet ? 'bg-emerald-500/10' : 'bg-sky-500/10'
-        }`} />
-        <div className="absolute bottom-1/4 left-1/3 w-80 h-80 rounded-full filter blur-[100px] transition-all duration-1000 -z-10 bg-indigo-500/5" />
-
-        {/* Network Selector Pill on Landing */}
-        <div className="mb-8 z-10 flex items-center bg-white/5 p-1.5 rounded-full border border-white/5 shadow-2xl backdrop-blur-md">
-          <button
-            onClick={() => {
-              setNetwork('testnet');
-              addNotification('Configured for Stellar Testnet Sandbox', 'info');
-            }}
-            className={`text-[10px] font-black uppercase tracking-wider px-5 py-2 rounded-full transition-all duration-500 ${
-              !isMainnet
-                ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30 scale-105'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Stellar Testnet
-          </button>
-          <button
-            onClick={() => {
-              setNetwork('mainnet');
-              addNotification('Configured for Stellar Mainnet (Real Assets)', 'success');
-            }}
-            className={`text-[10px] font-black uppercase tracking-wider px-5 py-2 rounded-full transition-all duration-500 ${
-              isMainnet
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-105'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Stellar Mainnet
-          </button>
-        </div>
-
-        <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 bg-slate-900/60 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] relative z-10">
-          
-          {/* Left Side Branding */}
-          <div className="p-12 flex flex-col justify-between relative overflow-hidden bg-slate-950/50 hidden md:flex border-r border-white/5">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-emerald-500/10" />
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-blue-500/5 to-emerald-500/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/3" />
-            
-            <div className="relative z-10">
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-700 shadow-2xl mb-12 border ${
-                isMainnet ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/20' : 'bg-sky-500/10 border-sky-500/20 shadow-sky-500/20'
-              }`}>
-                <img src="/logo.svg" alt="TyFi Logo" className="w-10 h-10" />
-              </div>
-              
-              <h1 className="text-5xl font-black text-white tracking-tighter leading-[1.1]">
-                Parametric <br/>
-                <span className={`text-transparent bg-clip-text bg-gradient-to-r ${isMainnet ? 'from-emerald-400 to-cyan-400' : 'from-sky-400 to-indigo-400'}`}>Climate Defense</span>
-              </h1>
-              
-              <p className="text-slate-400 mt-6 text-base leading-relaxed max-w-sm">
-                Next-generation agricultural insurance powered by Soroban Smart Contracts. Instant, autonomous payouts when disaster strikes.
-              </p>
-            </div>
-            
-            <div className="relative z-10 mt-16 grid grid-cols-2 gap-4">
-              <div className="bg-white/[0.02] rounded-2xl p-5 border border-white/5 backdrop-blur-md hover:bg-white/[0.04] transition-colors">
-                <CloudRain className={`w-6 h-6 mb-3 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} />
-                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Oracle Trigger</div>
-                <div className="text-white font-mono text-sm font-black">Zero-Knowledge</div>
-              </div>
-              <div className="bg-white/[0.02] rounded-2xl p-5 border border-white/5 backdrop-blur-md hover:bg-white/[0.04] transition-colors">
-                <Shield className={`w-6 h-6 mb-3 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} />
-                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Settlement</div>
-                <div className="text-white font-mono text-sm font-black">&lt; 3 Seconds</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Right Side Action */}
-          <div className="p-8 md:p-16 flex flex-col justify-center items-center text-center relative bg-slate-900/20">
-            <div className={`absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-b rounded-full blur-[120px] opacity-20 pointer-events-none ${isMainnet ? 'from-emerald-500' : 'from-sky-500'}`} />
-            
-            <div className="w-full max-w-sm space-y-10 relative z-10">
-              <div className="md:hidden flex justify-center mb-8">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-700 shadow-2xl border ${
-                  isMainnet ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-sky-500/10 border-sky-500/20'
-                }`}>
-                  <img src="/logo.svg" alt="TyFi Logo" className="w-10 h-10" />
-                </div>
-              </div>
-
-              <div>
-                <div className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border inline-block mb-8 shadow-2xl ${
-                  isMainnet 
-                    ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' 
-                    : 'text-sky-400 border-sky-500/30 bg-sky-500/10'
-                }`}>
-                  {isMainnet ? '🔴 Production Mainnet Active' : '🟢 Developer Sandbox Active'}
-                </div>
-                
-                <h2 className="text-3xl font-black text-white mb-3 tracking-tight">Connect Identity</h2>
-                <p className="text-slate-400 text-sm leading-relaxed">Link your Web3 wallet to access institutional vaults or manage your farm's policy.</p>
-              </div>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={handleBiometricRegistration}
-                  className={`w-full text-white font-black py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 group relative overflow-hidden ${
-                    isMainnet 
-                      ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_0_40px_rgba(37,99,235,0.3)] hover:shadow-[0_0_50px_rgba(37,99,235,0.5)]' 
-                      : 'bg-indigo-600 hover:bg-indigo-500 shadow-[0_0_40px_rgba(79,70,229,0.3)] hover:shadow-[0_0_50px_rgba(79,70,229,0.5)]'
-                  }`}
-                >
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-                  <Fingerprint size={20} className="group-hover:scale-110 transition-all duration-300 relative z-10" />
-                  <span className="relative z-10 tracking-wide">Secure with Biometrics (Farmer)</span>
-                </button>
-
-                <button
-                  onClick={() => setIsWalletModalOpen(true)}
-                  className="w-full text-white font-black py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 group relative overflow-hidden border border-white/10 hover:border-white/20 bg-slate-800/50 hover:bg-slate-800"
-                >
-                  <Wallet size={20} className="group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                  <span className="relative z-10 tracking-wide">Institutional Web3 Login</span>
-                </button>
-              </div>
-
-              <div className="pt-8 border-t border-white/5">
-                <p className="text-[11px] text-slate-500 flex items-center justify-center gap-2 font-bold uppercase tracking-widest">
-                  <Lock size={12} className={isMainnet ? "text-emerald-500" : "text-sky-500"} />
-                  Secured by Stellar Soroban
-                </p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <WalletModal 
-          isOpen={isWalletModalOpen} 
-          onClose={() => setIsWalletModalOpen(false)}
-          onConnect={handleConnectWallet}
-          network={network}
+      <div className="min-h-screen bg-[#020617] text-slate-200">
+        <LandingPage 
+          onConnect={() => setIsWalletModalOpen(true)}
+          isLoading={isLoading && !isWalletModalOpen}
+          tvl={contractTvl}
+          subsidy={contractSubsidy}
         />
-
-        {/* Wallet Error Popup */}
+        {/* Wallet connection error modal */}
         {walletError && (
-          <div className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-500">
-                  <AlertCircle size={24} />
-                </div>
-                <button onClick={() => setWalletError(null)} className="text-slate-500 hover:text-white transition-colors">
-                  <X size={20} />
-                </button>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="glass-panel w-full max-w-md bg-[#0f172a] border border-red-500/30 p-8 rounded-2xl relative text-center">
+              <button onClick={() => setWalletError(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-400" />
               </div>
-              
-              <h3 className="text-xl font-black text-white mb-2">Connection Error</h3>
-              <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                {walletError.message}
-              </p>
-              
-              <div className="space-y-3">
-                {walletError.url && (
-                  <a 
-                    href={walletError.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-bold transition-colors flex items-center justify-center gap-2"
-                  >
-                    Install {walletError.id.charAt(0).toUpperCase() + walletError.id.slice(1)} <ArrowUpRight size={16} />
-                  </a>
-                )}
-                <button 
-                  onClick={() => setWalletError(null)}
-                  className="w-full py-3 rounded-xl border border-white/10 text-slate-300 font-bold hover:bg-white/5 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">{walletError.message}</h3>
+              <p className="text-slate-400 mb-6">You need a Stellar-compatible wallet to interact with TyFi Vault.</p>
+              {walletError.url && (
+                <a href={walletError.url} target="_blank" rel="noopener noreferrer" className="btn-primary w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2">
+                  Install Freighter <ArrowUpRight className="w-5 h-5" />
+                </a>
+              )}
             </div>
           </div>
         )}
+        <WalletModal 
+          isOpen={isWalletModalOpen} 
+          onClose={() => setIsWalletModalOpen(false)} 
+          onConnect={handleConnectWallet} 
+          network={network}
+        />
+        
+        {/* Notification Toasts (Global) */}
+        <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+          {notifications.map(notif => (
+            <div key={notif.id} className={`p-4 rounded-xl shadow-lg border backdrop-blur-md flex items-start gap-3 pointer-events-auto animate-fade-in ${
+              notif.type === 'success' ? 'bg-emerald-900/40 border-emerald-500/30 text-emerald-100' :
+              notif.type === 'warning' ? 'bg-amber-900/40 border-amber-500/30 text-amber-100' :
+              'bg-sky-900/40 border-sky-500/30 text-sky-100'
+            }`}>
+              {notif.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" /> :
+               notif.type === 'warning' ? <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" /> :
+               <Info className="w-5 h-5 shrink-0 mt-0.5 text-sky-400" />}
+              <p className="text-sm font-medium flex-1">{notif.text}</p>
+              <button onClick={() => setNotifications(prev => prev.filter(n => n.id !== notif.id))} className="text-white/50 hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
