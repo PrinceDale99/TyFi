@@ -85,6 +85,7 @@ import { useContinuousYield } from './hooks/useContinuousYield';
 import SponsorVerification from './components/SponsorVerification';
 import { registerForSubsidy, getUserProfile, saveUserProfile, logPayout } from './services/firebaseService';
 import { GovernancePortal } from './components/GovernancePortal';
+import LandingPage from './components/LandingPage';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
