@@ -123,21 +123,19 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                 const approximateDeadlineTs = Date.now() + (Number(p.deadline) * 5000) - (Date.now() % 5000); 
 
                 fetchedProposals.push({
-                  id: Number(p.id),
-                  creator: p.creator,
-                  description: descStr,
-                  actionType: actionTypeStr,
-                  votesFor: Number(p.votes_for),
-                  votesAgainst: Number(p.votes_against),
-                  executed: p.executed,
+                  id: Number(p.id || p[0]),
+                  creator: p.creator || p[1],
+                  description: descStr || p[2],
+                  actionType: actionTypeStr || p[3],
+                  votesFor: Number(p.votes_for || p[4] || 0),
+                  votesAgainst: Number(p.votes_against || p[5] || 0),
+                  executed: p.executed || p[6] || false,
                   deadline: approximateDeadlineTs, // Using approximate timestamp for UI compatibility
                 });
               }
             }
             
-            setProposals(fetchedProposals.reverse());
-          } else {
-            setProposals([]);
+            setProposals(fetchedProposals);
           }
         } catch (e) {
           console.error("Failed to fetch proposals", e);
