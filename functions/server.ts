@@ -50,6 +50,10 @@ if (process.env.FIREBASE_PROJECT_ID) {
 // Initialize Firestore
 const db = admin.apps.length ? admin.firestore() : null;
 
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.get('/api/v1/xlm-rate', async (req, res) => {
   try {
     const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=php,usd');
