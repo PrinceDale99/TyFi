@@ -1,4 +1,4 @@
-import React, { useState, MouseEvent as ReactMouseEvent } from 'react';
+import React, { useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Shield, Wind, Zap, Activity, ArrowRight, ShieldCheck, Globe, Coins, ShieldAlert, Check } from 'lucide-react';
 import { motion, useMotionTemplate, useMotionValue } from 'framer-motion';
 
