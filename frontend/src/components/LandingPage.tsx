@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Wind, Zap, Activity, ArrowRight, ShieldCheck, Globe, Coins, ShieldAlert } from 'lucide-react';
+import { Shield, Wind, Zap, Activity, ArrowRight, ShieldCheck, Globe, Coins, ShieldAlert, Check } from 'lucide-react';
 
 interface LandingPageProps {
   onConnect: () => void;
