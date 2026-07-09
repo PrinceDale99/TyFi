@@ -1,4 +1,4 @@
-export interface FarmData {
+﻿export interface FarmData {
   id: string;
   farmerName: string;
   rsbsaNumber: string;
@@ -77,6 +77,11 @@ export interface WeatherData {
     lon: number;
     severity: string;
   } | null;
+  oracleWindSpeed?: number | null;
+  oracleMaxWindSpeed?: number | null;
+  isTyphoonActive?: boolean;
+  oracleTriggerMet?: boolean;
+  oracleTimestamp?: string | null;
 }
 
 export interface Claim {
@@ -97,3 +102,4 @@ export interface Proposal {
   executed: boolean;
   deadline: number;
 }
+

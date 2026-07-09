@@ -1,6 +1,7 @@
 import express from 'express';
 import { Keypair, TransactionBuilder, Networks, xdr, rpc, Contract, Address } from '@stellar/stellar-sdk';
 import { logEvent } from './logger';
+import admin from 'firebase-admin';
 
 export const oracleRouter = express.Router();
 const server = new rpc.Server('https://soroban-testnet.stellar.org');
@@ -14,7 +15,54 @@ import { BarretenbergBackend } from '@noir-lang/backend_barretenberg';
 import fs from 'fs';
 import path from 'path';
 
-// Endpoint for the Oracle Scraper to push data
+// Helper to safely get Firestore
+function getDb(): FirebaseFirestore.Firestore | null {
+  try {
+    return admin.apps.length ? admin.firestore() : null;
+  } catch {
+    return null;
+  }
+}
+
+// ==========================================
+// GET /oracle/api/v1/latest
+// Frontend polls this to get the latest oracle data
+// ==========================================
+oracleRouter.get('/api/v1/latest', async (req, res) => {
+  const db = getDb();
+
+  if (!db) {
+    // If Firestore not available, return a "no data" response
+    return res.status(503).json({
+      error: 'Oracle data store not available',
+      data: null
+    });
+  }
+
+  try {
+    const docRef = db.collection('oracle_state').doc('latest');
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        error: 'No oracle data yet. The scraper pushes every 15 minutes.',
+        data: null
+      });
+    }
+
+    const data = doc.data();
+    await logEvent('INFO', 'Frontend fetched latest oracle state', {});
+    res.json({ success: true, data });
+  } catch (error: any) {
+    await logEvent('ERROR', 'Failed to fetch oracle state', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch oracle data' });
+  }
+});
+
+// ==========================================
+// POST /oracle/api/v1/scraper-update
+// The Oracle Scraper pushes data to this endpoint every 15 minutes
+// ==========================================
 oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
   const authHeader = req.headers.authorization;
   const expectedKey = process.env.ORACLE_API_KEY || 'development_secret_key';
@@ -25,22 +73,77 @@ oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
   }
 
   try {
-    const { averageWindSpeed, maxWindSpeed, isTyphoonActive, timestamp } = req.body;
-    await logEvent('INFO', 'Received validated scraper data', { averageWindSpeed, isTyphoonActive, timestamp });
+    const {
+      averageWindSpeed,
+      maxWindSpeed,
+      averageRainfall,
+      maxRainfall,
+      isTyphoonActive,
+      timestamp
+    } = req.body;
 
-    // If a typhoon is active, we trigger the Soroban Contract & PDAX sweep
-    if (isTyphoonActive && averageWindSpeed > 100) {
-      await logEvent('INFO', 'Wind threshold breached! Triggering Soroban payout...');
-      // Normally, we'd sign the Stellar tx here using process.env.STELLAR_SECRET_KEY
+    await logEvent('INFO', 'Received validated scraper data', {
+      averageWindSpeed,
+      maxWindSpeed,
+      isTyphoonActive,
+      timestamp
+    });
+
+    // Build state document to persist
+    const oracleState = {
+      averageWindSpeed: averageWindSpeed ?? 0,
+      maxWindSpeed: maxWindSpeed ?? 0,
+      averageRainfall: averageRainfall ?? 0,
+      maxRainfall: maxRainfall ?? 0,
+      isTyphoonActive: isTyphoonActive ?? false,
+      scraperTimestamp: timestamp ?? new Date().toISOString(),
+      receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+      // Derived trigger status
+      triggerThresholdMet: isTyphoonActive && (maxWindSpeed ?? 0) > 100
+    };
+
+    // Persist to Firestore so the frontend can poll it
+    const db = getDb();
+    if (db) {
+      await db.collection('oracle_state').doc('latest').set(oracleState, { merge: true });
+      // Also append to history
+      await db.collection('oracle_history').add(oracleState);
+      await logEvent('INFO', 'Oracle state persisted to Firestore', {});
     }
 
-    res.json({ success: true, message: 'Data ingested successfully' });
+    // If a typhoon is active above threshold → trigger Soroban Contract & PDAX sweep
+    if (isTyphoonActive && (maxWindSpeed ?? 0) > 100) {
+      await logEvent('INFO', 'Wind threshold breached! Preparing Soroban payout pipeline...');
+
+      const secretKey = process.env.TREASURY_SECRET_KEY;
+      if (secretKey) {
+        try {
+          const keypair = Keypair.fromSecret(secretKey);
+          await logEvent('INFO', 'Soroban keypair loaded. In production this signs the weather report TX.', {
+            publicKey: keypair.publicKey()
+          });
+          // submitWeatherReportOnChain() would be called here in a full on-chain integration
+        } catch (stellarErr: any) {
+          await logEvent('ERROR', 'Stellar keypair load error', { error: stellarErr.message });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Data ingested successfully',
+      triggerThresholdMet: oracleState.triggerThresholdMet
+    });
   } catch (error: any) {
     await logEvent('ERROR', 'Failed to ingest scraper data', { error: error.message });
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
+// ==========================================
+// POST /oracle/api/v1/weather-trigger
+// Manual weather trigger from frontend sandbox
+// ==========================================
 oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
   try {
     const { lat, lon, severity, targetAddress, paymentPrefs } = req.body;
@@ -62,7 +165,6 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
         const noir = new Noir(circuit);
         
         // 2. Define inputs matching main.nr
-        // For testing, we hardcode values that would normally come from the weather API
         const inputs = {
           wind_speed: 150, 
           oracle_pub_key_x: "1",
@@ -79,7 +181,7 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
         mockZkProof = Buffer.from(proof.proof).toString('hex');
         await logEvent('INFO', 'Real ZK Proof Generated Successfully', { proofLength: proof.proof.length });
       } else {
-        await logEvent('WARNING', 'Compiled circuit not found, falling back to mock proof. Please compile circuit first.');
+        await logEvent('WARNING', 'Compiled circuit not found, falling back to mock proof.');
         await new Promise(resolve => setTimeout(resolve, 1200));
         mockZkProof = Buffer.from("NOIR_ZK_PROOF_" + Math.random().toString(36)).toString('hex');
       }
@@ -91,8 +193,6 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
     // Simulate Soroban contract execution time with ZK Verifier
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Calculate PHP equivalent (e.g. 50,000 XLM yield at 58.20 PHP = ~2.9m PHP)
-    // Default fallback to 15000 if not provided in the request
     const amountPHP = req.body.amountPHP || 15000;
     
     let pdaxTxId = "PENDING";
@@ -102,7 +202,6 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
       await logEvent('INFO', 'PDAX Fiat Sweep Success', { pdaxTxId });
     } catch (pdaxError: any) {
       await logEvent('ERROR', 'PDAX Fiat Sweep Failed', { error: pdaxError.message });
-      // We will still return the error in the response so the frontend can see it
       return res.status(502).json({ error: 'PDAX Sweep Failed: ' + pdaxError.message });
     }
 
