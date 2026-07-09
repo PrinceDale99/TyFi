@@ -5,7 +5,7 @@ export const config = {
   port: process.env.PORT || 3002,
   cronSchedule: process.env.CRON_SCHEDULE || '*/15 * * * *', // Default: every 15 minutes
   renderExternalUrl: process.env.RENDER_EXTERNAL_URL, // e.g. https://tyfi-scraper.onrender.com
-  oracleApiUrl: process.env.ORACLE_API_URL || 'http://localhost:3001/api/oracle/update', // Where to push the data
+  oracleApiUrl: process.env.ORACLE_API_URL || 'http://localhost:3001/oracle/api/v1/scraper-update', // Where to push the data
   oracleApiKey: process.env.ORACLE_API_KEY || 'development_secret_key',
   // Target URLs
   targets: {
