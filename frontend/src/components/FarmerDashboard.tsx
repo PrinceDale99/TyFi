@@ -40,6 +40,54 @@ export const FarmerDashboard = ({
         </button>
       </div>
 
+      {/* Oracle Status Banner */}
+      {weather && (
+        <div className={`rounded-2xl border px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-bold uppercase tracking-widest transition-all ${
+          weather.isTyphoonActive
+            ? 'bg-rose-500/10 border-rose-500/30 text-rose-300 animate-pulse'
+            : weather.oracleWindSpeed != null
+            ? 'bg-sky-500/10 border-sky-500/20 text-sky-300'
+            : 'bg-white/5 border-white/5 text-slate-500'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${weather.isTyphoonActive ? 'bg-rose-400' : weather.oracleWindSpeed != null ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+            <span>
+              {weather.isTyphoonActive
+                ? '⚠️ Oracle: Active Typhoon Detected'
+                : weather.oracleWindSpeed != null
+                ? '✅ Oracle: Clear — No Active Typhoon'
+                : '⏳ Oracle: Awaiting First Scrape (runs every 15 min)'}
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-[10px]">
+            {weather.oracleMaxWindSpeed != null && (
+              <span>Max Wind: <span className="text-white">{weather.oracleMaxWindSpeed} km/h</span></span>
+            )}
+            {weather.oracleWindSpeed != null && (
+              <span>Avg Wind: <span className="text-white">{(weather.oracleWindSpeed as number).toFixed(1)} km/h</span></span>
+            )}
+            {weather.oracleTriggerMet && (
+              <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-lg">
+                🚨 Trigger Threshold Met
+              </span>
+            )}
+            {weather.oracleTimestamp && (
+              <span className="text-slate-500">
+                Updated: {new Date(weather.oracleTimestamp as string).toLocaleTimeString()}
+              </span>
+            )}
+            <a
+              href="https://tyfi-oracle.onrender.com/api/latest"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              Raw →
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* 1. Total Insured Value */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="glass-panel border-white/10 lg:col-span-12 p-8 flex flex-col justify-between min-h-[300px]">
