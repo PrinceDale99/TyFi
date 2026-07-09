@@ -9,13 +9,13 @@ const WEATHER_CACHE_KEY = 'typhoon_vault_weather_cache';
 export const fetchWeather = async (lat: number, lon: number): Promise<WeatherData> => {
   try {
     // 1. Open-Meteo for Hourly/Daily Forecasts + Agricultural Data
-    const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=wind_speed_10m,precipitation&daily=et0_fao_evapotranspiration,soil_moisture_0_to_7cm_max&timezone=auto`;
+    const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=wind_speed_10m,precipitation,soil_moisture_0_to_7cm&daily=et0_fao_evapotranspiration&timezone=auto`;
     
     // 2. OpenWeather for Current Accurate Data
     const openWeatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric`;
 
     // 3. GDACS for Real-time Tropical Cyclone Tracking
-    const gdacsUrl = 'https://www.gdacs.org/gdacsapi/api/events/geteventlist/v1?eventtype=TC';
+    const gdacsUrl = 'https://www.gdacs.org/gdacsapi/api/events/geteventlist/MAP?eventlist=TC';
 
     const [meteoRes, owRes, gdacsRes] = await Promise.all([
       fetch(meteoUrl),
@@ -32,7 +32,9 @@ export const fetchWeather = async (lat: number, lon: number): Promise<WeatherDat
       const cached = localStorage.getItem(WEATHER_CACHE_KEY);
       if (cached) {
         console.warn('Network failed. Using cached weather data.');
-        return JSON.parse(cached);
+        const parsed = JSON.parse(cached);
+        if (parsed.updatedAt) parsed.updatedAt = new Date(parsed.updatedAt);
+        return parsed;
       }
       throw new Error('All weather data fetches failed and no cache available');
     }
@@ -61,7 +63,7 @@ export const fetchWeather = async (lat: number, lon: number): Promise<WeatherDat
 
     // REAL Agromonitor-like metrics from Open-Meteo Agricultural data
     const windGusts = owData?.wind?.gust || currentMeteo.wind_gusts_10m || 0;
-    const soilMoisture = dailyMeteo.soil_moisture_0_to_7cm_max?.[0] || 0.3;
+    const soilMoisture = hourlyMeteo.soil_moisture_0_to_7cm?.[0] || 0.3;
     
     let damageEstimation = 0;
     let agromonitorStatus = 'Normal';
@@ -120,7 +122,9 @@ export const fetchWeather = async (lat: number, lon: number): Promise<WeatherDat
     const cached = localStorage.getItem(WEATHER_CACHE_KEY);
     if (cached) {
       console.warn('Returning cached weather data after error');
-      return JSON.parse(cached);
+      const parsed = JSON.parse(cached);
+      if (parsed.updatedAt) parsed.updatedAt = new Date(parsed.updatedAt);
+      return parsed;
     }
     throw error;
   }
