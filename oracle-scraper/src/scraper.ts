@@ -23,7 +23,6 @@ export class OracleScraper {
     console.log('[Scraper] Initializing headless browser...');
     this.browser = await puppeteer.launch({
       headless: true,
-      executablePath: process.env.RENDER ? '/usr/bin/google-chrome-stable' : undefined,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
