@@ -13,7 +13,6 @@ interface PayoutStatusProps {
 
 const PayoutStatus: React.FC<PayoutStatusProps> = ({ weather, farms, onClaim, network = 'testnet' }) => {
   const { formatPhp } = useXlmToPhp();
-  if (!weather) return null;
   const isMainnet = network === 'mainnet';
 
   const [claimingFarmIds, setClaimingFarmIds] = React.useState<string[]>([]);
@@ -25,6 +24,8 @@ const PayoutStatus: React.FC<PayoutStatusProps> = ({ weather, farms, onClaim, ne
       return farm && !farm.hasClaimed;
     }));
   }, [farms]);
+
+  if (!weather) return null;
 
   // Combined damage analysis matching the Soroban smart contract consensus:
   const ws = weather.windSpeed;

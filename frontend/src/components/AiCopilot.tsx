@@ -217,11 +217,11 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                <div className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex gap-3 max-w-[95%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                   <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center border ${msg.role === 'user' ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' : 'bg-sky-500/10 border-sky-500/30 text-sky-400'}`}>
                     {msg.role === 'user' ? <User size={14} /> : <Bot size={14} />}
                   </div>
-                  <div className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                  <div className={`p-3 rounded-2xl text-sm leading-relaxed ${
                     msg.role === 'user' 
                       ? 'bg-indigo-600 text-white rounded-tr-none' 
                       : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none'
@@ -236,7 +236,7 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
                       </div>
                     )}
                     {msg.timestamp && (
-                      <div className={`text-[9px] mt-1.5 font-medium ${msg.role === 'user' ? 'text-indigo-200/70 text-right' : 'text-slate-500 text-left'}`}>
+                      <div className={`text-[10px] mt-1.5 font-medium ${msg.role === 'user' ? 'text-indigo-200/70 text-right' : 'text-slate-500 text-left'}`}>
                         {new Date(msg.timestamp).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
                       </div>
                     )}
@@ -399,3 +399,4 @@ const AiCopilot: React.FC<AiCopilotProps> = ({
 };
 
 export default AiCopilot;
+

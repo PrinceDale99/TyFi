@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { FarmerDashboard } from './components/FarmerDashboard';
+import { LPDashboard } from './components/LPDashboard';
+
 import {
   Shield,
   Wind,
@@ -335,6 +338,8 @@ function App() {
 
   // Testnet Developer Sandbox States
   const [isSimulatingWeather, setIsSimulatingWeather] = useState(false);
+  const [isSandboxToggleEnabled, setIsSandboxToggleEnabled] = useState(false);
+  const [testnetTvl, setTestnetTvl] = useState(1500000);
 
   useEffect(() => {
     if (isWalletConnected && walletAddress) {
@@ -386,8 +391,6 @@ function App() {
     const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
   }, [network, walletAddress]);
-
-  const [testnetTvl, setTestnetTvl] = useState(1500000);
   const [subsidyBalance, setSubsidyBalance] = useState(750000);
   const isMainnet = network === 'mainnet';
   const isTestnet = network === 'testnet';
@@ -470,6 +473,10 @@ function App() {
   }, [farms, isSimulatingWeather]);
 
   const handleSimulateWeather = (scenario: 'normal' | 'wind_trigger' | 'rain_trigger' | 'double_trigger') => {
+    if (!isSandboxToggleEnabled) {
+      alert("Sandbox mode is disabled. The Oracle detects no typhoons or hurricanes or any destructive natural disaster.");
+      return;
+    }
     setIsSimulatingWeather(true);
     let simulated: WeatherData;
     
@@ -1684,241 +1691,259 @@ function App() {
           >
             ← Back to Main App
           </button>
-          <AdvancedFeatures walletAddress={walletAddress} />
+          <AdvancedFeatures walletAddress={walletAddress} userRole={userRole} setUserRole={setUserRole} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 selection:bg-sky-500/30 relative">
+    <div className="flex h-screen bg-[#020617] text-slate-200 selection:bg-sky-500/30 relative overflow-hidden">
       {/* Dynamic Ambient Background Mesh */}
-      <div className="bg-mesh">
-        <div className="orb orb-1"></div>
-        <div className="orb orb-2"></div>
-        <div className="orb orb-3"></div>
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMSIvPjwvc3ZnPg==')] opacity-[0.03]"></div>
+        <div className={`absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] rounded-full mix-blend-screen filter blur-[150px] opacity-30 animate-pulse ${
+          isMainnet ? 'bg-emerald-900/40' : 'bg-indigo-900/40'
+        }`}></div>
+        <div className={`absolute top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full mix-blend-screen filter blur-[150px] opacity-20 ${
+          isMainnet ? 'bg-teal-900/30' : 'bg-sky-900/30'
+        }`}></div>
+        <div className={`absolute -bottom-[20%] left-[20%] w-[80vw] h-[80vw] rounded-full mix-blend-screen filter blur-[150px] opacity-30 ${
+          isMainnet ? 'bg-green-900/20' : 'bg-blue-900/20'
+        }`}></div>
       </div>
-      <div className={`absolute top-0 right-0 w-96 h-96 rounded-full filter blur-[120px] transition-colors duration-1000 -z-10 ${
-        isMainnet ? 'bg-emerald-500/10' : isTestnet ? 'bg-sky-500/10' : 'bg-indigo-500/10'
-      }`} />
 
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 -ml-2 text-slate-400 hover:text-white md:hidden"
-            >
-              <Menu size={24} />
-            </button>
+      {/* Floating Glassmorphic Sidebar (Desktop) */}
+      <nav className="hidden md:flex flex-col w-72 h-[calc(100vh-2rem)] m-4 rounded-3xl border border-white/10 bg-slate-950/40 backdrop-blur-3xl shadow-2xl relative z-50 overflow-hidden">
+        <div className="p-6 border-b border-white/5">
+          <div className="flex items-center gap-3 mb-6">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-colors duration-700 ${
               isMainnet ? 'bg-emerald-500 shadow-emerald-500/20' : isTestnet ? 'bg-sky-500 shadow-sky-500/20' : 'bg-indigo-500 shadow-indigo-500/20'
             }`}>
               <img src="/logo.svg" alt="TyFi Logo" className="w-7 h-7" />
             </div>
-            <div className="hidden xs:block">
-              <div className="text-sm font-black text-white tracking-tighter uppercase italic">TyFi</div>
-              <div className={`text-[9px] font-bold uppercase tracking-widest transition-colors duration-700 ${
+            <div>
+              <div className="text-lg font-black text-white tracking-tighter uppercase italic">TyFi</div>
+              <div className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-700 ${
                 isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400'
               }`}>
-                {isMainnet ? 'Mainnet' : 'Testnet'}
+                {isMainnet ? 'Mainnet Live' : 'Testnet Sandbox'}
               </div>
             </div>
           </div>
-
-          <div className="hidden md:flex items-center gap-6">
-            {(['monitor', 'history', 'calc', 'vault', 'marketplace', 'docs', 'payment'] as const)
-              .filter(tab => {
-                if (userRole === 'sponsor') {
-                  return ['history', 'vault', 'marketplace', 'docs'].includes(tab);
-                }
-                return true;
-              })
-              .map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === tab ? (isMainnet ? 'text-emerald-400' : isTestnet ? 'text-sky-400' : 'text-indigo-400') : 'text-slate-500 hover:text-white'}`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
+          
+          <div className="flex items-center bg-white/5 p-1 rounded-full border border-white/5 gap-1 select-none w-full">
+            <button
+              onClick={() => setNetwork('testnet')}
+              className={`flex-1 text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-full transition-all duration-300 ${
+                network === 'testnet' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Testnet
+            </button>
+            <button
+              onClick={() => setNetwork('mainnet')}
+              className={`flex-1 text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-full transition-all duration-300 ${
+                network === 'mainnet' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Mainnet
+            </button>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            {/* Sleek Pill Network Toggle - Desktop only or compact on mobile */}
-            <div className="hidden sm:flex items-center bg-white/5 p-1 rounded-full border border-white/5 gap-1 select-none">
-              <button
-                onClick={() => setNetwork('testnet')}
-                className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all duration-300 ${
-                  network === 'testnet' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Testnet
-              </button>
-              <button
-                onClick={() => setNetwork('mainnet')}
-                className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full transition-all duration-300 ${
-                  network === 'mainnet' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Mainnet
-              </button>
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+          {(['monitor', 'history', 'calc', 'vault', 'marketplace', 'docs', 'payment'] as const)
+            .filter(tab => {
+              if (userRole === 'sponsor') {
+                return ['marketplace', 'history', 'vault', 'docs'].includes(tab);
+              }
+              return true;
+            })
+            .map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all ${
+                activeTab === tab 
+                  ? (isMainnet ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : isTestnet ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20') 
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-white/5 space-y-3 relative">
+          <button 
+            onClick={() => setIsNotificationCenterOpen(!isNotificationCenterOpen)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all border border-transparent hover:bg-white/5 ${
+              isNotificationCenterOpen 
+                ? (isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400')
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Bell size={16} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Alerts</span>
             </div>
+            {notificationHistory.length > 0 && (
+              <span className={`w-2 h-2 rounded-full ${
+                notificationHistory[0]?.timestamp > Date.now() - 60000 ? 'bg-rose-500 animate-pulse' : 'bg-slate-500'
+              }`} />
+            )}
+          </button>
 
-            <div className="relative">
-              <button 
-                onClick={() => setIsNotificationCenterOpen(!isNotificationCenterOpen)}
-                className={`p-2 rounded-xl transition-all ${
-                  isNotificationCenterOpen 
-                    ? (isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400')
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Bell size={20} />
-                {notificationHistory.length > 0 && (
-                  <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-slate-950 ${
-                    notificationHistory[0]?.timestamp > Date.now() - 60000 ? 'bg-rose-500 animate-pulse' : 'bg-slate-500'
-                  }`} />
-                )}
-              </button>
-
-              {/* Notification Center Popover */}
-              {isNotificationCenterOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsNotificationCenterOpen(false)}></div>
-                  <div className="absolute right-0 mt-3 w-80 max-h-[480px] bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/5">
-                      <h4 className="text-xs font-black text-white uppercase tracking-widest">Protocol Alerts</h4>
-                      <button 
-                        onClick={() => {
-                          setNotificationHistory([]);
-                          setIsNotificationCenterOpen(false);
-                        }}
-                        className="text-[10px] text-slate-500 hover:text-rose-400 font-bold uppercase transition-colors"
-                      >
-                        Clear All
-                      </button>
+          {/* Notification Popover (Sidebar version) */}
+          {isNotificationCenterOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsNotificationCenterOpen(false)}></div>
+              <div className="absolute bottom-full left-0 mb-4 w-80 max-h-[400px] bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200">
+                <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/5">
+                  <h4 className="text-xs font-black text-white uppercase tracking-widest">Protocol Alerts</h4>
+                  <button 
+                    onClick={() => {
+                      setNotificationHistory([]);
+                      setIsNotificationCenterOpen(false);
+                    }}
+                    className="text-[10px] text-slate-500 hover:text-rose-400 font-bold uppercase transition-colors"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <div className="overflow-y-auto custom-scrollbar flex-1">
+                  {notificationHistory.length === 0 ? (
+                    <div className="p-8 text-center space-y-2">
+                      <Bell size={32} className="mx-auto text-slate-800" />
+                      <p className="text-xs text-slate-500 font-medium">No recent alerts or signals.</p>
                     </div>
-                    <div className="overflow-y-auto custom-scrollbar flex-1">
-                      {notificationHistory.length === 0 ? (
-                        <div className="p-8 text-center space-y-2">
-                          <Bell size={32} className="mx-auto text-slate-800" />
-                          <p className="text-xs text-slate-500 font-medium">No recent alerts or signals.</p>
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-white/5">
-                          {notificationHistory.map((notif) => (
-                            <div key={notif.id} className="p-4 hover:bg-white/5 transition-colors group">
-                              <div className="flex gap-3">
-                                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                                  notif.type === 'success' ? 'bg-emerald-500' : 
-                                  notif.type === 'warning' ? 'bg-amber-500' : 'bg-sky-500'
-                                } shadow-[0_0_8px_rgba(var(--notif-color),0.5)]`}></div>
-                                <div className="space-y-1">
-                                  <p className="text-xs text-slate-200 font-medium leading-relaxed">{notif.text}</p>
-                                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">
-                                    {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </p>
-                                </div>
-                              </div>
+                  ) : (
+                    <div className="divide-y divide-white/5">
+                      {notificationHistory.map((notif) => (
+                        <div key={notif.id} className="p-4 hover:bg-white/5 transition-colors group">
+                          <div className="flex gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                              notif.type === 'success' ? 'bg-emerald-500' : 
+                              notif.type === 'warning' ? 'bg-amber-500' : 'bg-sky-500'
+                            }`} />
+                            <div className="space-y-1">
+                              <p className="text-xs text-slate-200 font-medium leading-relaxed">{notif.text}</p>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">
+                                {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
                             </div>
-                          ))}
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
-                    <div className="p-3 bg-white/5 text-center">
-                      <button 
-                        onClick={() => {
-                          setIsProfileDashboardOpen(true);
-                          setIsNotificationCenterOpen(false);
-                        }}
-                        className="text-[10px] text-sky-400 font-black uppercase tracking-widest hover:text-sky-300 transition-colors"
-                      >
-                        View Full History
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className={`flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border transition-all cursor-pointer group hover:bg-white/10 ${
-              isProfileDashboardOpen 
-                ? (isMainnet ? 'border-emerald-500/30 ring-1 ring-emerald-500/20' : 'border-sky-500/30 ring-1 ring-sky-500/20')
-                : 'border-white/5'
-            }`} onClick={() => setIsProfileDashboardOpen(true)}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-700 ${
-                isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'
-              }`}>
-                <Wallet size={14} />
+                  )}
+                </div>
               </div>
-              <span className="hidden xs:block text-[10px] font-mono text-slate-300">{formatAddress(walletAddress)}</span>
+            </>
+          )}
+
+          <div className={`flex items-center gap-3 bg-white/5 px-3 py-2.5 rounded-2xl border transition-all cursor-pointer group hover:bg-white/10 ${
+            isProfileDashboardOpen 
+              ? (isMainnet ? 'border-emerald-500/30 ring-1 ring-emerald-500/20' : 'border-sky-500/30 ring-1 ring-sky-500/20')
+              : 'border-white/5'
+          }`} onClick={() => setIsProfileDashboardOpen(true)}>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors duration-700 ${
+              isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'
+            }`}>
+              <Wallet size={16} />
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <div className="text-[10px] font-black text-white uppercase tracking-widest truncate">{userRole === 'sponsor' ? sponsorInfo?.name : userRole === 'farmer' ? profileForm.farmerName : 'Profile'}</div>
+              <div className="text-[9px] font-mono text-slate-500 truncate">{formatAddress(walletAddress)}</div>
             </div>
           </div>
         </div>
       </nav>
 
+      {/* Mobile Topbar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 p-4">
+        <div className="glass-panel border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
+           <div className="flex items-center gap-3">
+             <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-lg ${
+                isMainnet ? 'bg-emerald-500' : 'bg-sky-500'
+              }`}>
+                <img src="/logo.svg" alt="TyFi Logo" className="w-5 h-5" />
+             </div>
+             <div className="text-lg font-black text-white tracking-tighter uppercase italic">TyFi</div>
+           </div>
+           <div className="flex items-center gap-4">
+             <button onClick={() => setIsNotificationCenterOpen(!isNotificationCenterOpen)} className="text-slate-400 hover:text-white relative">
+               <Bell size={20} />
+               {notificationHistory.length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500" />}
+             </button>
+             <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-400 hover:text-white">
+               <Menu size={24} />
+             </button>
+           </div>
+        </div>
+      </div>
+
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-2xl animate-in fade-in duration-300 md:hidden">
-          <div className="flex flex-col h-full p-6">
-            <div className="flex items-center justify-between mb-12">
-              <div className="flex items-center gap-3">
-                <img src="/logo.svg" alt="Logo" className="w-8 h-8" />
-                <span className="text-xl font-black text-white italic tracking-tighter">TyFi</span>
-              </div>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-white">
-                <X size={32} />
-              </button>
-            </div>
-            
-            <div className="flex flex-col gap-8">
-              {(['monitor', 'calc', 'payment', 'history', 'vault', 'marketplace', 'docs'] as const).map((tab) => {
-                if (userRole === 'sponsor' && (tab === 'calc' || tab === 'payment' || tab === 'monitor')) return null;
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => { setActiveTab(tab); setIsMobileMenuOpen(false); }}
-                    className={`text-2xl font-black uppercase tracking-tighter text-left transition-all ${
-                      activeTab === tab ? (isMainnet ? 'text-emerald-400' : 'text-sky-400') : 'text-slate-600'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                );
-              })}
-              
-              <div className="h-px w-full bg-white/10 my-1"></div>
-              <div className="flex flex-col gap-6">
-                <button onClick={() => { setIsProfileDashboardOpen(true); setIsMobileMenuOpen(false); }} className="text-xl font-black uppercase tracking-tighter text-left text-slate-400 hover:text-white transition-colors">Profile & Settings</button>
-                {userRole === 'farmer' && (
-                  <button onClick={() => { setIsProfileDashboardOpen(true); setIsMobileMenuOpen(false); }} className="text-xl font-black uppercase tracking-tighter text-left text-slate-400 hover:text-white transition-colors">Edit / Manage Farms</button>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-auto pt-12 border-t border-white/10 space-y-8">
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Network Environment</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => setNetwork('testnet')} className={`py-3 rounded-xl text-xs font-black uppercase border ${network === 'testnet' ? 'bg-sky-500 border-sky-400 text-white' : 'border-white/10 text-slate-500'}`}>Testnet</button>
-                  <button onClick={() => setNetwork('mainnet')} className={`py-3 rounded-xl text-xs font-black uppercase border ${network === 'mainnet' ? 'bg-emerald-500 border-emerald-400 text-white' : 'border-white/10 text-slate-500'}`}>Mainnet</button>
-                </div>
-              </div>
-              <button onClick={handleDisconnect} className="w-full py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 font-black uppercase tracking-widest text-sm">Disconnect Wallet</button>
-            </div>
-          </div>
+        <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-3xl flex flex-col p-6 animate-in fade-in duration-200">
+           <div className="flex justify-end mb-8">
+             <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-white"><X size={32}/></button>
+           </div>
+           <div className="flex flex-col gap-6 flex-1 overflow-y-auto">
+             {(['monitor', 'history', 'calc', 'vault', 'marketplace', 'docs', 'payment'] as const)
+              .filter(t => userRole === 'sponsor' ? ['marketplace', 'history', 'vault', 'docs'].includes(t) : true)
+              .map(tab => (
+               <button key={tab} onClick={() => {setActiveTab(tab); setIsMobileMenuOpen(false);}} className={`text-3xl font-black uppercase tracking-tighter text-left ${activeTab === tab ? 'text-white' : 'text-slate-600'}`}>
+                 {tab}
+               </button>
+             ))}
+             <div className="h-px bg-white/10 my-4" />
+             <button onClick={() => { setIsProfileDashboardOpen(true); setIsMobileMenuOpen(false); }} className="text-2xl font-black uppercase tracking-tighter text-left text-slate-400">Settings</button>
+             <button onClick={handleDisconnect} className="text-xl mt-8 font-black uppercase tracking-tighter text-left text-rose-500">Disconnect</button>
+           </div>
         </div>
       )}
 
-      <main className="pt-24 pb-12 px-4 max-w-7xl mx-auto">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* Main Viewport */}
+      <main className="flex-1 h-screen overflow-y-auto relative z-10 custom-scrollbar p-4 md:p-8 pt-28 md:pt-8 w-full max-w-7xl mx-auto">
+        {activeTab === 'monitor' && userRole === 'farmer' ? (
+          <FarmerDashboard 
+            farms={farms} 
+            profile={profileForm}
+            network={network}
+            walletAddress={walletAddress}
+            notificationHistory={notificationHistory}
+            onAddFarm={() => setIsAddFarmModalOpen(true)}
+            onDeleteFarm={handleDeleteFarm}
+            weather={weather}
+            isLoadingWeather={isLoading}
+            isSandboxToggleEnabled={isSandboxToggleEnabled}
+            setIsSandboxToggleEnabled={setIsSandboxToggleEnabled}
+            isSimulatingWeather={isSimulatingWeather}
+            handleResetWeather={handleResetWeather}
+            handleSimulateWeather={handleSimulateWeather}
+            claims={claims}
+            addNotification={addNotification}
+            setWeather={setWeather}
+          />
+        ) : activeTab === 'marketplace' && userRole === 'sponsor' ? (
+          <LPDashboard 
+            sponsorInfo={sponsorInfo}
+            network={network}
+            walletAddress={walletAddress}
+            userLpBalance={userLpBalance}
+            totalVaultTVL={String(testnetTvl)}
+            notificationHistory={notificationHistory}
+            onAddLiquidity={handleContributeLiquidity}
+            onWithdrawLiquidity={(amount: string) => { setFundingAmount(Number(amount)); setStakingMode('withdraw'); handleContributeLiquidity('lp'); }}
+          />
+        ) : (
+          <div className="container mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-            {/* Left Column - Main View */}
-            <div className="lg:col-span-8 space-y-8">
+              {/* Left Column - Main View */}
+              <div className="lg:col-span-7 space-y-8">
 
               {/* Header section */}
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -2410,7 +2435,7 @@ function App() {
             </div>
 
             {/* Right Column - Controls */}
-            <div className="lg:col-span-4 space-y-6">
+            <div className="lg:col-span-5 space-y-6">
               
 
 
@@ -2580,19 +2605,33 @@ function App() {
                 <div className="glass-panel border border-indigo-500/20 shadow-[0_0_25px_rgba(99,102,241,0.05)] relative overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl" />
                   
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="flex h-2 w-2 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                    </span>
-                    <h3 className="font-black text-white text-sm uppercase tracking-wider flex-1">🧪 Sandbox Weather Simulator</h3>
-                    {isSimulatingWeather && (
-                      <span className="text-[9px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">Active</span>
-                    )}
-                  </div>
-                  
-                  <p className="text-[11px] text-slate-400 mb-5 leading-relaxed">
-                    Trigger simulated weather events to test the Soroban contract parametric payout logic and ledger updates in an isolated sandbox.
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="flex h-2 w-2 relative">
+                        <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${isSandboxToggleEnabled ? 'animate-ping bg-indigo-400' : 'bg-emerald-400 animate-pulse'}`}></span>
+                        <span className={`relative inline-flex rounded-full h-2 w-2 ${isSandboxToggleEnabled ? 'bg-indigo-500' : 'bg-emerald-500'}`}></span>
+                      </span>
+                      <h3 className="font-black text-white text-sm uppercase tracking-wider flex-1">🧪 Sandbox Weather Simulator</h3>
+                      
+                      <button 
+                        onClick={() => {
+                          setIsSandboxToggleEnabled(!isSandboxToggleEnabled);
+                          if (isSandboxToggleEnabled) {
+                            handleResetWeather();
+                          }
+                        }}
+                        className={`w-10 h-5 rounded-full p-1 transition-colors duration-300 ${isSandboxToggleEnabled ? 'bg-indigo-500' : 'bg-white/10'}`}
+                      >
+                        <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-300 ${isSandboxToggleEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+
+                      {isSimulatingWeather && (
+                        <span className="text-[9px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">Active</span>
+                      )}
+                    </div>
+                    
+                    <p className="text-[11px] text-slate-400 mb-5 leading-relaxed">
+                      Trigger simulated weather events to test the Soroban contract parametric payout logic and ledger updates in an isolated sandbox.
+
                   </p>
                   
                   <div className="space-y-2.5">
@@ -2702,8 +2741,7 @@ function App() {
             </div>
           </div>
         </div>
-      </main>
-
+              )}
       {/* Premium Footer */}
       <footer className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500 relative z-10">
         <div>
@@ -2716,6 +2754,7 @@ function App() {
           <button onClick={() => setOpenPolicy('agreement')} className={`font-black transition-colors ${isMainnet ? 'text-emerald-500 hover:text-emerald-400' : 'text-sky-500 hover:text-sky-400'}`}>Parametric Insurance Agreement</button>
         </div>
       </footer>
+      </main>
 
       {/* Legal Modals Overlay */}
       {openPolicy && (
@@ -3890,3 +3929,5 @@ function App() {
 }
 
 export default App;
+
+
