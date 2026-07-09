@@ -14,6 +14,33 @@ import { BarretenbergBackend } from '@noir-lang/backend_barretenberg';
 import fs from 'fs';
 import path from 'path';
 
+// Endpoint for the Oracle Scraper to push data
+oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const expectedKey = process.env.ORACLE_API_KEY || 'development_secret_key';
+
+  if (!authHeader || authHeader !== `Bearer ${expectedKey}`) {
+    await logEvent('WARNING', 'Unauthorized scraper update attempt', { ip: req.ip });
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { averageWindSpeed, maxWindSpeed, isTyphoonActive, timestamp } = req.body;
+    await logEvent('INFO', 'Received validated scraper data', { averageWindSpeed, isTyphoonActive, timestamp });
+
+    // If a typhoon is active, we trigger the Soroban Contract & PDAX sweep
+    if (isTyphoonActive && averageWindSpeed > 100) {
+      await logEvent('INFO', 'Wind threshold breached! Triggering Soroban payout...');
+      // Normally, we'd sign the Stellar tx here using process.env.STELLAR_SECRET_KEY
+    }
+
+    res.json({ success: true, message: 'Data ingested successfully' });
+  } catch (error: any) {
+    await logEvent('ERROR', 'Failed to ingest scraper data', { error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
   try {
     const { lat, lon, severity, targetAddress, paymentPrefs } = req.body;
