@@ -1,0 +1,270 @@
+      {isProfileDashboardOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setIsProfileDashboardOpen(false)}></div>
+          <div className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative z-10 border-white/10 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-2xl ${isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'}`}>
+                  <User size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-white tracking-tight uppercase italic">
+                    {userRole === 'sponsor' ? 'Institutional Sponsor Dashboard' : 'Farmer Profile Dashboard'}
+                  </h2>
+                  <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Protocol Participant Information</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <select
+                  onChange={(e) => i18n.changeLanguage(e.target.value)}
+                  value={i18n.language}
+                  className="bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500/50 appearance-none cursor-pointer"
+                >
+                  <option value="en">English</option>
+                  <option value="tl">Tagalog</option>
+                  <option value="ceb">Cebuano</option>
+                  <option value="war">Waray</option>
+                </select>
+                <button 
+                  onClick={() => setIsProfileDashboardOpen(false)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+              {/* Wallet Info Section */}
+              <div className="glass-panel p-6 bg-white/5 border-white/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-2xl ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
+                      <Wallet size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Connected Wallet</h3>
+                      <p className="text-sm font-mono text-white mb-1">{walletAddress || 'Not Connected'}</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                          isMainnet ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                        }`}>
+                          {network === 'mainnet' ? '≡ƒƒó Mainnet' : '≡ƒö╡ Testnet Sandbox'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile Info Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {userRole === 'sponsor' ? [
+                  { label: 'Entity Name', value: sponsorInfo?.name, icon: User },
+                  { label: 'Type', value: sponsorInfo?.sponsorType, icon: Globe },
+                  { label: 'Contact', value: sponsorInfo?.email, icon: Phone },
+                  { label: 'Incorp. Date', value: sponsorInfo?.birthDate, icon: MapPin },
+                ].map((info, i) => (
+                  <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 group hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <info.icon size={12} className={isMainnet ? 'text-emerald-400' : 'text-sky-400'} />
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{info.label}</span>
+                    </div>
+                    <div className="text-sm font-bold text-white truncate">{info.value || 'Not Set'}</div>
+                  </div>
+                )) : [
+                  { label: 'Farmer Name', value: profileForm.farmerName, icon: User },
+                  { label: 'RSBSA Number', value: profileForm.rsbsaNumber, icon: Shield },
+                  { label: 'Primary Region', value: profileForm.region, icon: MapPin },
+                  { label: 'Phone Number', value: profileForm.phoneNumber, icon: Phone },
+                ].map((info, i) => (
+                  <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 group hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <info.icon size={12} className={isMainnet ? 'text-emerald-400' : 'text-sky-400'} />
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{info.label}</span>
+                    </div>
+                    <div className="text-sm font-bold text-white truncate">{info.value || 'Not Set'}</div>
+                  </div>
+                ))}
+              </div>
+
+              {userRole === 'farmer' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Left: Farms List */}
+                <div className="lg:col-span-7 space-y-4">
+                  <div className="flex items-center justify-between px-2">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Sprout size={14} className={isMainnet ? 'text-emerald-400' : 'text-sky-400'} />
+                      Insured Farm Assets ({farms.length})
+                    </h3>
+                    <button 
+                      onClick={() => { setIsProfileDashboardOpen(false); setIsAddFarmModalOpen(true); }}
+                      className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-colors ${
+                        isMainnet ? 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10' : 'text-sky-400 border-sky-500/20 hover:bg-sky-500/10'
+                      }`}
+                    >
+                      + Add Farm
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {farms.length === 0 ? (
+                      <div className="p-12 rounded-3xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-slate-600 gap-3">
+                        <Sprout size={40} opacity={0.2} />
+                        <p className="text-sm font-bold">No farms registered under this profile.</p>
+                        <button 
+                          onClick={() => {
+                            setIsProfileDashboardOpen(false);
+                            setIsAddFarmModalOpen(true);
+                          }}
+                          className="text-xs text-sky-400 font-black uppercase tracking-widest hover:underline"
+                        >
+                          + Register Your First Farm
+                        </button>
+                      </div>
+                    ) : (
+                      farms.map((farm) => (
+                        <div key={farm.id} className="p-5 rounded-3xl bg-white/5 border border-white/5 hover:border-white/10 transition-all group">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+                                isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'
+                              }`}>
+                                <Sprout size={24} />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-white uppercase italic flex items-center gap-2">
+                                  {farm.farmName}
+                                  <button onClick={() => handleDeleteFarm(farm.id)} className="text-slate-500 hover:text-rose-500 p-1 rounded transition-colors" title="Delete Farm"><Trash2 size={12}/></button>
+                                </h4>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                                    isMainnet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'
+                                  }`}>
+                                    {farm.cropType}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
+                                    {farm.farmSize} Hectares • {farm.season}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-black text-white">{farm.totalCropValue.toLocaleString()} XLM</div>
+                              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Total Valuation</div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div className="p-3 rounded-xl bg-slate-950/50 border border-white/5">
+                              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest block mb-1">Production Cost</span>
+                              <span className="text-xs font-bold text-slate-300">{farm.initialInvestment?.toLocaleString()} XLM</span>
+                            </div>
+                            <div className="p-3 rounded-xl bg-slate-950/50 border border-white/5">
+                              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest block mb-1">Expected Harvest</span>
+                              <span className="text-xs font-bold text-slate-300">{farm.expectedHarvestValue?.toLocaleString()} XLM</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold">
+                                <MapPin size={10} />
+                                {farm.latitude?.toFixed(4)}, {farm.longitude?.toFixed(4)}
+                              </div>
+                              {farm.landDocument && (
+                                <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-black uppercase tracking-tight">
+                                  <ShieldCheck size={10} />
+                                  Ownership Verified
+                                </div>
+                              )}
+                            </div>
+                            <div className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${
+                              farm.hasClaimed 
+                                ? 'bg-emerald-500 text-white' 
+                                : (weather && (weather.windSpeed > 100 || weather.rainfall > 200) ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/10 text-slate-500')
+                            }`}>
+                              {farm.hasClaimed ? 'CLAIMED' : (weather && (weather.windSpeed > 100 || weather.rainfall > 200) ? 'TRIGGERED' : 'SECURED')}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: History & Actions */}
+                <div className="lg:col-span-5 space-y-6">
+                  {/* Certificates Section */}
+                  <div className="glass-panel p-6 bg-white/5 border-white/10">
+                    <CertificateList address={walletAddress} network={network} />
+                  </div>
+
+                  <div className="glass-panel p-6 bg-white/5 border-white/10">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Bell size={14} className="text-indigo-400" />
+                      Notification History
+                    </h3>
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      {notificationHistory.length === 0 ? (
+                        <p className="text-xs text-slate-600 text-center py-8">No past notifications.</p>
+                      ) : (
+                        notificationHistory.map((notif) => (
+                          <div key={notif.id} className="p-3 rounded-xl bg-slate-950/50 border border-white/5 flex gap-3">
+                            <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                              notif.type === 'success' ? 'bg-emerald-500' : 
+                              notif.type === 'warning' ? 'bg-amber-500' : 'bg-sky-500'
+                            }`}></div>
+                            <div className="space-y-1 flex-1">
+                              <p className="text-[11px] text-slate-300 leading-normal">{notif.text}</p>
+                              <p className="text-[9px] text-slate-600 font-bold uppercase">
+                                {new Date(notif.timestamp).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <button 
+                      onClick={() => {
+                        setIsProfileDashboardOpen(false);
+                        setIsEditProfileModalOpen(true);
+                      }}
+                      className={`w-full py-4 rounded-2xl font-black text-sm tracking-widest uppercase transition-all flex items-center justify-center gap-2 border ${
+                        isMainnet 
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                          : 'bg-sky-500/10 border-sky-500/30 text-sky-400 hover:bg-sky-500/20'
+                      }`}
+                    >
+                      <Lock size={16} />
+                      Update Profile Settings
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setIsProfileDashboardOpen(false);
+                        setIsSignoutConfirmOpen(true);
+                      }}
+                      className="w-full py-4 rounded-2xl font-black text-sm tracking-widest uppercase text-rose-500 hover:bg-rose-500/10 transition-all border border-rose-500/20"
+                    >
+                      Disconnect Wallet
+                    </button>
+                  </div>
+                </div>
+              </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-950 text-center border-t border-white/5">
+              <p className="text-[9px] text-slate-600 font-black uppercase tracking-[0.2em]">
+                TyFi • On-Chain Identity Proof • {network.toUpperCase()}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
