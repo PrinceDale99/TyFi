@@ -67,12 +67,17 @@ import WeatherMap from './components/WeatherMap';
 import PayoutStatus from './components/PayoutStatus';
 import WalletModal from './components/WalletModal';
 import AiCopilot from './components/AiCopilot';
+import UnifiedCopilot from './components/UnifiedCopilot';
+
 import LedgerStream from './components/LedgerStream';
 import { fetchWeather } from './services/weatherService';
 import type { WeatherData, FarmData, Claim } from "./types";
 import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance, NETWORK_CONFIGS } from './lib/stellar';
 import { calculateCombinedDamage } from './utils/DamageCalculator';
 import { useXlmToPhp } from './hooks/useXlmToPhp';
+import { useXlmRates } from './hooks/useXlmRates';
+import { useWalletBalance } from './hooks/useWalletBalance';
+import CurrencySelector from './components/CurrencySelector';
 import { WeatherChart } from './components/WeatherChart';
 import { estimateCropMetrics } from './services/aiService';
 import { PHILIPPINE_REGIONS } from './constants';
@@ -395,6 +400,8 @@ function App() {
   const isMainnet = network === 'mainnet';
   const isTestnet = network === 'testnet';
   const { rate: xlmRate, usdRate, formatPhp, formatUsd } = useXlmToPhp();
+  const xlmRates = useXlmRates();
+  const walletBalance = useWalletBalance(walletAddress, network);
 
   const currentTvl = contractTvl;
   const currentSubsidy = contractSubsidy;
@@ -1753,10 +1760,10 @@ function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
-          {(['monitor', 'history', 'calc', 'vault', 'marketplace', 'docs', 'payment'] as const)
+          {(['monitor', 'history', 'calc', 'vault', 'marketplace', 'governance', 'docs', 'payment'] as const)
             .filter(tab => {
               if (userRole === 'sponsor') {
-                return ['marketplace', 'history', 'vault', 'docs'].includes(tab);
+                return ['marketplace', 'history', 'vault', 'docs', 'governance'].includes(tab);
               }
               return true;
             })
@@ -1770,7 +1777,7 @@ function App() {
                   : 'text-slate-500 hover:text-slate-300 hover:bg-white/5 border border-transparent'
               }`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'governance' ? 'DAO Governance' : tab === 'marketplace' ? 'Market' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -1939,11 +1946,8 @@ function App() {
             onWithdrawLiquidity={(amount: string) => { setFundingAmount(Number(amount)); setStakingMode('withdraw'); handleContributeLiquidity('lp'); }}
           />
         ) : (
-          <div className="container mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-              {/* Left Column - Main View */}
-              <div className="lg:col-span-7 space-y-8">
+          <div className="container mx-auto max-w-5xl">
+            <div className="space-y-8">
 
               {/* Header section */}
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -2433,315 +2437,34 @@ function App() {
               {/* Farm Intel */}
               <AssetDistribution farms={farms} />
             </div>
-
-            {/* Right Column - Controls */}
-            <div className="lg:col-span-5 space-y-6">
-              
-
-
-              <div className="glass-panel">
-                <h3 className="font-black text-white mb-6 uppercase tracking-widest text-sm">Quick Protocol Access</h3>
-                <div className="grid grid-cols-2 md:grid-cols-1 gap-3">
-                  <button
-                    onClick={() => setActiveTab('monitor')}
-                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                      activeTab === 'monitor' 
-                        ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
-                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                      <Wind size={20} />
-                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Monitor</span>
-                    </div>
-                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('history')}
-                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                      activeTab === 'history' 
-                        ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
-                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                      <History size={20} />
-                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Claims</span>
-                    </div>
-                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('vault')}
-                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                      activeTab === 'vault' 
-                        ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
-                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                      <Database size={20} />
-                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Vault</span>
-                    </div>
-                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-
-                  {userRole === 'farmer' && (
-                    <>
-                      <button
-                        onClick={() => setActiveTab('calc')}
-                        className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                          activeTab === 'calc' 
-                            ? (isMainnet ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-sky-500/10 border-sky-500 text-sky-400') 
-                            : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
-                        }`}
-                      >
-                        <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                          <Calculator size={20} />
-                          <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Calculator</span>
-                        </div>
-                        <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-
-                      <button
-                        onClick={() => setActiveTab('payment')}
-                        className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                          activeTab === 'payment' 
-                            ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-400 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]'
-                            : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
-                        }`}
-                      >
-                        <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                          <CreditCard size={20} />
-                          <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Payout Config</span>
-                        </div>
-                        <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    </>
-                  )}
-
-                  <button
-                    onClick={() => setActiveTab('marketplace')}
-                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                      activeTab === 'marketplace' 
-                        ? 'bg-rose-500/10 border-rose-500 text-rose-400' 
-                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                      <Heart size={20} />
-                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Market</span>
-                    </div>
-                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('docs')}
-                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                      activeTab === 'docs' 
-                        ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]' :
-                          activeTab === 'payment'
-                            ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-400 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]'
-                            : 'bg-white/5 border border-white/10 text-slate-300'
-                    }`}
-                  >
-                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                      <BookOpen size={20} />
-                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Docs</span>
-                    </div>
-                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('governance')}
-                    className={`p-4 rounded-xl border flex flex-col md:flex-row items-center md:justify-between group transition-all gap-3 ${
-                      activeTab === 'governance' 
-                        ? 'bg-gradient-to-r from-sky-500/20 to-indigo-500/20 text-sky-400 border border-sky-500/30 shadow-[0_0_15px_rgba(56,189,248,0.15)]' 
-                        : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                      <ShieldCheck size={20} />
-                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">DAO Governance</span>
-                    </div>
-                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                  
-                  <button
-                    onClick={() => setIsEditProfileModalOpen(true)}
-                    className="p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex flex-col md:flex-row items-center md:justify-between group cursor-pointer gap-3"
-                  >
-                    <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                      <div className={`p-1.5 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
-                        <User size={16} />
-                      </div>
-                      <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight">Profile</span>
-                    </div>
-                    <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-
-                  {userRole === 'farmer' && (
-                    <button
-                      onClick={() => {
-                        setDeleteConfirmName('');
-                        setIsProfileDashboardOpen(true);
-                      }}
-                      className="p-4 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:border-white/20 hover:text-white transition-all flex flex-col md:flex-row items-center md:justify-between group cursor-pointer gap-3"
-                    >
-                      <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 text-center md:text-left">
-                        <div className={`p-1.5 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                          <Sprout size={16} />
-                        </div>
-                        <span className="font-bold text-[10px] md:text-sm uppercase tracking-tight text-white">Edit Farms</span>
-                      </div>
-                      <ArrowUpRight size={18} className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {isTestnet && (
-                <div className="glass-panel border border-indigo-500/20 shadow-[0_0_25px_rgba(99,102,241,0.05)] relative overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl" />
-                  
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="flex h-2 w-2 relative">
-                        <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${isSandboxToggleEnabled ? 'animate-ping bg-indigo-400' : 'bg-emerald-400 animate-pulse'}`}></span>
-                        <span className={`relative inline-flex rounded-full h-2 w-2 ${isSandboxToggleEnabled ? 'bg-indigo-500' : 'bg-emerald-500'}`}></span>
-                      </span>
-                      <h3 className="font-black text-white text-sm uppercase tracking-wider flex-1">🧪 Sandbox Weather Simulator</h3>
-                      
-                      <button 
-                        onClick={() => {
-                          setIsSandboxToggleEnabled(!isSandboxToggleEnabled);
-                          if (isSandboxToggleEnabled) {
-                            handleResetWeather();
-                          }
-                        }}
-                        className={`w-10 h-5 rounded-full p-1 transition-colors duration-300 ${isSandboxToggleEnabled ? 'bg-indigo-500' : 'bg-white/10'}`}
-                      >
-                        <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-300 ${isSandboxToggleEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                      </button>
-
-                      {isSimulatingWeather && (
-                        <span className="text-[9px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">Active</span>
-                      )}
-                    </div>
-                    
-                    <p className="text-[11px] text-slate-400 mb-5 leading-relaxed">
-                      Trigger simulated weather events to test the Soroban contract parametric payout logic and ledger updates in an isolated sandbox.
-
-                  </p>
-                  
-                  <div className="space-y-2.5">
-                    <button
-                      onClick={() => handleSimulateWeather('normal')}
-                      className={`w-full py-2.5 px-4 rounded-xl text-left border text-xs font-bold transition-all flex items-center justify-between group ${
-                        isSimulatingWeather && weather?.windSpeed === 45
-                          ? 'bg-sky-500/10 border-sky-500 text-sky-400'
-                          : 'bg-white/5 border-white/5 text-slate-300 hover:border-white/10 hover:bg-white/[0.07]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base">☀️</span>
-                        <div>
-                          <div className="font-bold">Normal Conditions</div>
-                          <div className="text-[9px] text-slate-500 font-medium">45 km/h Wind | 25mm Rain (0% Payout)</div>
-                        </div>
-                      </div>
-                      <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-sky-400" />
-                    </button>
-
-                    <button
-                      onClick={() => handleSimulateWeather('wind_trigger')}
-                      className={`w-full py-2.5 px-4 rounded-xl text-left border text-xs font-bold transition-all flex items-center justify-between group ${
-                        isSimulatingWeather && weather?.windSpeed === 115
-                          ? 'bg-sky-500/10 border-sky-500 text-sky-400'
-                          : 'bg-white/5 border-white/5 text-slate-300 hover:border-white/10 hover:bg-white/[0.07]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base">💨</span>
-                        <div>
-                          <div className="font-bold">Moderate Typhoon</div>
-                          <div className="text-[9px] text-slate-500 font-medium">115 km/h Wind | 80mm Rain (30% Payout)</div>
-                        </div>
-                      </div>
-                      <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-sky-400" />
-                    </button>
-
-                    <button
-                      onClick={() => handleSimulateWeather('rain_trigger')}
-                      className={`w-full py-2.5 px-4 rounded-xl text-left border text-xs font-bold transition-all flex items-center justify-between group ${
-                        isSimulatingWeather && weather?.windSpeed === 135
-                          ? 'bg-sky-500/10 border-sky-500 text-sky-400'
-                          : 'bg-white/5 border-white/5 text-slate-300 hover:border-white/10 hover:bg-white/[0.07]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base">🌧️</span>
-                        <div>
-                          <div className="font-bold">Severe Typhoon</div>
-                          <div className="text-[9px] text-slate-500 font-medium">135 km/h Wind | 220mm Rain (70% Payout)</div>
-                        </div>
-                      </div>
-                      <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-sky-400" />
-                    </button>
-
-                    <button
-                      onClick={() => handleSimulateWeather('double_trigger')}
-                      className={`w-full py-2.5 px-4 rounded-xl text-left border text-xs font-bold transition-all flex items-center justify-between group ${
-                        isSimulatingWeather && weather?.windSpeed === 165
-                          ? 'bg-sky-500/10 border-sky-500 text-sky-400'
-                          : 'bg-white/5 border-white/5 text-slate-300 hover:border-white/10 hover:bg-white/[0.07]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base">🌀</span>
-                        <div>
-                          <div className="font-bold">Super Typhoon</div>
-                          <div className="text-[9px] text-slate-500 font-medium">165 km/h Wind | 350mm Rain (100% Payout)</div>
-                        </div>
-                      </div>
-                      <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-sky-400" />
-                    </button>
-
-                    {isSimulatingWeather && (
-                      <button
-                        onClick={handleResetWeather}
-                        className="w-full py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/30 text-rose-400 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5"
-                      >
-                        <RefreshCw size={12} className="animate-spin-slow" />
-                        Revert to Live API Feeds
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {farms.length > 0 && (
-                <AiCopilot
-                  accountId={walletAddress}
-                  weather={weather}
-                  farms={farms}
-                  claims={claims}
-                  addNotification={addNotification}
-                  onUpdateWeatherDamage={(damage, status, aiDamage, confidence) => {
-                    setWeather(prev => prev ? {
-                      ...prev,
-                      damageEstimation: damage,
-                      aiDamageEstimation: aiDamage,
-                      agromonitorStatus: status
-                    } : null);
-                  }}
-                  network={network}
-                />
-              )}
-            </div>
           </div>
-        </div>
-              )}
+        )}
+
+      {/* Unified AI Copilot + Sandbox FAB */}
+      {walletAddress && (
+        <UnifiedCopilot
+          network={network}
+          walletAddress={walletAddress}
+          weather={weather}
+          farms={farms}
+          claims={claims}
+          addNotification={addNotification}
+          onUpdateWeatherDamage={(damage, status, aiDamage, confidence) => {
+            setWeather(prev => prev ? {
+              ...prev,
+              damageEstimation: damage,
+              aiDamageEstimation: aiDamage,
+              agromonitorStatus: status
+            } : null);
+          }}
+          isSandboxToggleEnabled={isSandboxToggleEnabled}
+          setIsSandboxToggleEnabled={setIsSandboxToggleEnabled}
+          isSimulatingWeather={isSimulatingWeather}
+          handleSimulateWeather={handleSimulateWeather}
+          handleResetWeather={handleResetWeather}
+          setWeather={setWeather}
+        />
+      )}
       {/* Premium Footer */}
       <footer className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500 relative z-10">
         <div>
@@ -3022,22 +2745,29 @@ function App() {
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-white tracking-tight uppercase italic">
-                    {userRole === 'sponsor' ? 'Institutional Sponsor Dashboard' : 'Farmer Profile Dashboard'}
+                    {userRole === 'sponsor' ? t('profile.sponsorTitle') : t('profile.title')}
                   </h2>
-                  <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Protocol Participant Information</p>
+                  <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">{t('profile.subtitle')}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                {/* Language selector */}
                 <select
                   onChange={(e) => i18n.changeLanguage(e.target.value)}
                   value={i18n.language}
-                  className="bg-slate-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500/50 appearance-none cursor-pointer"
+                  className="bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500/50 appearance-none cursor-pointer"
                 >
-                  <option value="en">English</option>
-                  <option value="tl">Tagalog</option>
-                  <option value="ceb">Cebuano</option>
-                  <option value="war">Waray</option>
+                  <option value="en">🇵🇭 English</option>
+                  <option value="tl">🇵🇭 Tagalog</option>
+                  <option value="ceb">🇵🇭 Cebuano</option>
+                  <option value="war">🇵🇭 Waray</option>
                 </select>
+                {/* Currency selector */}
+                <CurrencySelector
+                  value={xlmRates.selectedCurrency}
+                  onChange={xlmRates.setSelectedCurrency}
+                  isMainnet={isMainnet}
+                />
                 <button 
                   onClick={() => setIsProfileDashboardOpen(false)}
                   className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-all"
@@ -3049,25 +2779,96 @@ function App() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-              {/* Wallet Info Section */}
-              <div className="glass-panel p-6 bg-white/5 border-white/10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'}`}>
-                      <Wallet size={24} />
+              {/* Wallet Info Section — Live Balance */}
+              <div className={`glass-panel p-5 border ${
+                isMainnet ? 'border-emerald-500/15 bg-emerald-500/[0.03]' : 'border-sky-500/15 bg-sky-500/[0.03]'
+              }`}>
+                {/* Top row: icon + address + network badge */}
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-2xl shrink-0 ${
+                      isMainnet ? 'bg-emerald-500/10 text-emerald-400' : 'bg-sky-500/10 text-sky-400'
+                    }`}>
+                      <Wallet size={18} />
                     </div>
-                    <div>
-                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Connected Wallet</h3>
-                      <p className="text-sm font-mono text-white mb-1">{walletAddress || 'Not Connected'}</p>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                          isMainnet ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
-                        }`}>
-                          {network === 'mainnet' ? '≡ƒƒó Mainnet' : '≡ƒö╡ Testnet Sandbox'}
-                        </span>
-                      </div>
+                    <div className="min-w-0">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{t('profile.connectedWallet')}</h3>
+                      <p className="text-xs font-mono text-white truncate max-w-[220px]">
+                        {walletAddress
+                          ? `${walletAddress.slice(0,8)}...${walletAddress.slice(-6)}`
+                          : t('wallet.notConnected')
+                        }
+                      </p>
                     </div>
                   </div>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${
+                    isMainnet
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                  }`}>
+                    {network === 'mainnet' ? '🟢 Mainnet' : '🧪 Testnet'}
+                  </span>
+                </div>
+
+                {/* Balance row */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* XLM balance */}
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
+                      {t('profile.balance')}
+                    </div>
+                    {walletBalance.isLoading && !walletBalance.balance ? (
+                      <div className="h-6 w-24 rounded-lg bg-white/5 animate-pulse" />
+                    ) : walletBalance.error ? (
+                      <div className="text-xs text-rose-400 font-bold">{t('wallet.fetchError')}</div>
+                    ) : (
+                      <div>
+                        <div className="text-xl font-black text-white font-mono">
+                          {(walletBalance.balance?.xlm ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                        <div className={`text-[10px] font-bold ${
+                          isMainnet ? 'text-emerald-400' : 'text-sky-400'
+                        }`}>XLM</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Fiat equivalent */}
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
+                      {t('profile.fiatValue')}
+                    </div>
+                    {walletBalance.isLoading && !walletBalance.balance ? (
+                      <div className="h-6 w-28 rounded-lg bg-white/5 animate-pulse" />
+                    ) : (
+                      <div>
+                        <div className="text-xl font-black text-white font-mono">
+                          {xlmRates.format(walletBalance.balance?.xlm ?? 0)}
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          {xlmRates.selectedCurrency.toUpperCase()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Live indicator + countdown */}
+                <div className="flex items-center justify-between mt-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                      isMainnet ? 'bg-emerald-400' : 'bg-sky-400'
+                    }`} />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">
+                      {t('profile.live')}
+                    </span>
+                  </div>
+                  <button
+                    onClick={walletBalance.refresh}
+                    className="text-[9px] text-slate-600 hover:text-slate-400 font-bold uppercase tracking-widest transition-colors"
+                  >
+                    {t('profile.refreshIn')} {walletBalance.countdown}s
+                  </button>
                 </div>
               </div>
 
@@ -3929,5 +3730,6 @@ function App() {
 }
 
 export default App;
+
 
 

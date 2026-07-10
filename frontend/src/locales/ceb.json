@@ -1,18 +1,67 @@
 {
   "nav": {
-    "liveMonitor": "Live nga Pagbantay",
-    "claims": "Mga Pangangkon",
-    "vault": "Tagoanan"
+    "monitor": "Monitor",
+    "claims": "Mga Claim",
+    "vault": "Vault",
+    "calculator": "Kalkulator",
+    "payoutConfig": "Payout Config",
+    "market": "Merkado",
+    "docs": "Dokumento",
+    "governance": "DAO Gobernansa",
+    "liveMonitor": "Live Monitor"
   },
   "header": {
     "protocolMonitoring": "Pagbantay sa Protokol",
-    "smartCalculator": "Maalamong Calculator",
-    "claimHistory": "Kasaysayan sa Pangangkon",
-    "vaultInfrastructure": "Imprastraktura sa Tagoanan",
-    "connectWallet": "Ikonektar ang Pitaka"
+    "smartCalculator": "Maalamong Kalkulator",
+    "claimHistory": "Kasaysayan sa Claim",
+    "vaultInfrastructure": "Imprastraktura sa Vault",
+    "connectWallet": "Ikonekta ang Wallet",
+    "payoutConfiguration": "Pag-configure sa Payout",
+    "subsidyMarketplace": "Merkado sa Subsidy",
+    "systemOverview": "Kinatibuk-ang Sistema"
+  },
+  "profile": {
+    "title": "Dashboard sa Mag-uuma",
+    "sponsorTitle": "Dashboard sa Institusyonal nga Sponsor",
+    "subtitle": "Impormasyon sa Partisipante sa Protokol",
+    "connectedWallet": "Nakakonekta nga Wallet",
+    "balance": "Balanse sa XLM",
+    "fiatValue": "Kantidad sa Fiat",
+    "live": "Live",
+    "refreshIn": "I-refresh sa",
+    "farmerName": "Ngalan sa Mag-uuma",
+    "rsbsaNumber": "Numero sa RSBSA",
+    "primaryRegion": "Nag-unang Rehiyon",
+    "phoneNumber": "Numero sa Telepono",
+    "insuredFarms": "Mga Insured nga Umahan",
+    "addFarm": "+ Idugang ang Umahan",
+    "noFarms": "Walay umahan nga naka-rehistro sa profile.",
+    "editProfile": "I-edit ang Profile",
+    "entityName": "Ngalan sa Entidad",
+    "type": "Klase",
+    "contact": "Kontak",
+    "incorpDate": "Petsa sa Pagtukod"
+  },
+  "wallet": {
+    "notConnected": "Wala Nakakonekta",
+    "mainnet": "Mainnet",
+    "testnet": "Testnet Sandbox",
+    "fetchError": "Dili makuha ang balanse"
   },
   "widgets": {
-    "agriMarketPulse": "Presyo sa Agrikultura",
-    "liveDaPrices": "Live nga Presyo sa DA & Updates sa PAGASA"
+    "agriMarketPulse": "Agri-Market Pulse",
+    "liveDaPrices": "Live nga Presyo sa DA ug PAGASA"
+  },
+  "common": {
+    "loading": "Nagkarga...",
+    "error": "Error",
+    "refresh": "I-refresh",
+    "close": "Sirado",
+    "save": "I-save",
+    "cancel": "Kanselahon",
+    "notSet": "Wala Pa Gitakda",
+    "search": "Pangita og salapi...",
+    "majorCurrencies": "Nag-unang Salapi",
+    "asiaPacific": "Asia-Pasipiko"
   }
 }

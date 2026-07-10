@@ -1,18 +1,67 @@
 {
   "nav": {
-    "liveMonitor": "Live Monitor",
+    "monitor": "Monitor",
     "claims": "Claims",
-    "vault": "Vault"
+    "vault": "Vault",
+    "calculator": "Calculator",
+    "payoutConfig": "Payout Config",
+    "market": "Market",
+    "docs": "Docs",
+    "governance": "DAO Governance",
+    "liveMonitor": "Live Monitor"
   },
   "header": {
     "protocolMonitoring": "Protocol Monitoring",
     "smartCalculator": "Smart Calculator",
     "claimHistory": "Claim History",
     "vaultInfrastructure": "Vault Infrastructure",
-    "connectWallet": "Connect Wallet"
+    "connectWallet": "Connect Wallet",
+    "payoutConfiguration": "Payout Configuration",
+    "subsidyMarketplace": "Subsidy Marketplace",
+    "systemOverview": "System Overview"
+  },
+  "profile": {
+    "title": "Farmer Profile Dashboard",
+    "sponsorTitle": "Institutional Sponsor Dashboard",
+    "subtitle": "Protocol Participant Information",
+    "connectedWallet": "Connected Wallet",
+    "balance": "XLM Balance",
+    "fiatValue": "Fiat Value",
+    "live": "Live",
+    "refreshIn": "Refresh in",
+    "farmerName": "Farmer Name",
+    "rsbsaNumber": "RSBSA Number",
+    "primaryRegion": "Primary Region",
+    "phoneNumber": "Phone Number",
+    "insuredFarms": "Insured Farm Assets",
+    "addFarm": "+ Add Farm",
+    "noFarms": "No farms registered under this profile.",
+    "editProfile": "Edit Profile",
+    "entityName": "Entity Name",
+    "type": "Type",
+    "contact": "Contact",
+    "incorpDate": "Incorp. Date"
+  },
+  "wallet": {
+    "notConnected": "Not Connected",
+    "mainnet": "Mainnet",
+    "testnet": "Testnet Sandbox",
+    "fetchError": "Could not fetch balance"
   },
   "widgets": {
     "agriMarketPulse": "Agri-Market Pulse",
     "liveDaPrices": "Live DA Prices & PAGASA Updates"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "refresh": "Refresh",
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "notSet": "Not Set",
+    "search": "Search currency...",
+    "majorCurrencies": "Major Currencies",
+    "asiaPacific": "Asia-Pacific"
   }
 }
