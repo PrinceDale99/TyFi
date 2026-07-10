@@ -1,0 +1,97 @@
+      {isEditProfileModalOpen && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-black text-white uppercase tracking-wider">Edit Farmer Profile</h3>
+              <button 
+                onClick={() => setIsEditProfileModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer text-sm font-bold"
+              >
+                Γ£ò
+              </button>
+            </div>
+            <form onSubmit={handleEditProfileSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Farmer's Full Name</label>
+                <input 
+                  type="text" 
+                  value={profileForm.farmerName}
+                  onChange={(e) => setProfileForm({ ...profileForm, farmerName: e.target.value })}
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-sky-500 font-bold"
+                  placeholder="Juan Dela Cruz"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">RSBSA ID Number</label>
+                <input 
+                  type="text" 
+                  value={profileForm.rsbsaNumber}
+                  onChange={(e) => setProfileForm({ ...profileForm, rsbsaNumber: e.target.value })}
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-sky-500 font-bold"
+                  placeholder="05-16-01-000-00000"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Region</label>
+                  <select 
+                    value={profileForm.region}
+                    onChange={(e) => setProfileForm({ ...profileForm, region: e.target.value })}
+                    className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500 font-bold"
+                  >
+                    <option>Central Luzon</option>
+                    <option>Bicol Region</option>
+                    <option>Eastern Visayas</option>
+                    <option>Western Visayas</option>
+                    <option>Cagayan Valley</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Phone Number</label>
+                  <input 
+                    type="tel" 
+                    value={profileForm.phoneNumber}
+                    onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
+                    className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-sky-500 font-bold"
+                    placeholder="+63 9XX XXX XXXX"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-center">
+                  <div className="text-emerald-500 font-bold text-xs">Γ£ô RSBSA Verified</div>
+                  <div className="text-[9px] text-slate-500 truncate">{profileForm.uploadedRsbsa || 'demo-rsbsa.pdf'}</div>
+                </div>
+                <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-center">
+                  <div className="text-emerald-500 font-bold text-xs">Γ£ô Gov ID Verified</div>
+                  <div className="text-[9px] text-slate-500 truncate">{profileForm.uploadedValidId || 'demo-id.png'}</div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`flex-1 py-2.5 rounded-xl text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg cursor-pointer ${
+                    isMainnet 
+                      ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20' 
+                      : 'bg-sky-500 hover:bg-sky-400 shadow-sky-500/20'
+                  }`}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}

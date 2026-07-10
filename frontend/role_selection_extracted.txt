@@ -1,0 +1,104 @@
+  if (hasAgreedToLegal && !userRole && farms.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        {/* Animated Background */}
+        <div className={`absolute inset-0 bg-grid-slate-900/[0.04] bg-[bottom_1px_center] ${isMainnet ? 'bg-grid-emerald-500/[0.02]' : 'bg-grid-sky-500/[0.02]'}`} style={{ maskImage: 'linear-gradient(to bottom, transparent, black)' }} />
+        <div className={`absolute top-1/3 right-1/4 w-[600px] h-[600px] rounded-full filter blur-[150px] transition-colors duration-1000 -z-10 ${
+          isMainnet ? 'bg-emerald-500/10' : 'bg-sky-500/10'
+        }`} />
+        <div className="absolute bottom-1/3 left-1/4 w-[600px] h-[600px] rounded-full filter blur-[150px] transition-colors duration-1000 -z-10 bg-indigo-500/10" />
+
+        <div className="relative z-10 max-w-5xl w-full">
+          <button 
+            onClick={() => {
+              setIsWalletConnected(false);
+              setWalletAddress('');
+              setHasAgreedToLegal(false);
+            }}
+            className="absolute -top-12 md:-top-16 left-0 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20"
+          >
+            <ArrowLeft size={16} />
+            <span className="text-sm font-bold uppercase tracking-wider">Disconnect Wallet</span>
+          </button>
+          
+          <div className="text-center mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border inline-block mb-6 shadow-2xl ${
+                  isMainnet 
+                    ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' 
+                    : 'text-sky-400 border-sky-500/30 bg-sky-500/10'
+                }`}>
+              {isMainnet ? 'Production Mainnet Active' : 'Developer Sandbox Active'}
+            </div>
+            <h1 className="text-5xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4 leading-tight">Identify Your Profile</h1>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">Select your operational capacity to access the appropriate decentralized infrastructure and tailor your platform experience.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+            {/* Farmer Role */}
+            <button
+              onClick={() => {
+                localStorage.setItem(`typhoon_vault_role_${network}_${walletAddress}`, 'farmer');
+                setUserRole('farmer');
+              }}
+              className="text-left group relative bg-slate-900/60 backdrop-blur-2xl rounded-[2.5rem] p-10 border border-white/10 hover:bg-slate-900/80 hover:border-sky-500/50 hover:shadow-[0_0_50px_rgba(14,165,233,0.15)] transition-all duration-500 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-sky-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute -top-32 -right-32 w-64 h-64 bg-sky-500/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-sky-500/30 transition-all duration-700" />
+              
+              <div className="relative z-10">
+                <div className="w-20 h-20 rounded-3xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center mb-8 shadow-lg shadow-sky-500/10 group-hover:scale-110 group-hover:bg-sky-500 group-hover:text-white transition-all duration-500">
+                  <Sprout size={36} strokeWidth={1.5} />
+                </div>
+                
+                <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Agricultural Asset Owner</h2>
+                <p className="text-slate-400 leading-relaxed mb-8 text-sm md:text-base">
+                  Register agricultural assets to secure parametric weather coverage. Receive autonomous payouts directly to your wallet when disaster thresholds are met, and apply for premium subsidies.
+                </p>
+                
+                <div className="pt-8 border-t border-white/10 flex items-center justify-between">
+                  <div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 group-hover:text-sky-400 transition-colors">
+                    Access Beneficiary Portal
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:bg-sky-500/20 group-hover:border-sky-500/50 group-hover:text-sky-400 transition-all group-hover:translate-x-2">
+                    <ArrowUpRight size={18} />
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {/* Sponsor Role */}
+            <button
+              onClick={() => {
+                localStorage.setItem(`typhoon_vault_role_${network}_${walletAddress}`, 'sponsor');
+                setUserRole('sponsor');
+              }}
+              className="text-left group relative bg-slate-900/60 backdrop-blur-2xl rounded-[2.5rem] p-10 border border-white/10 hover:bg-slate-900/80 hover:border-emerald-500/50 hover:shadow-[0_0_50px_rgba(16,185,129,0.15)] transition-all duration-500 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute -top-32 -right-32 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px] pointer-events-none group-hover:bg-emerald-500/30 transition-all duration-700" />
+              
+              <div className="relative z-10">
+                <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-8 shadow-lg shadow-emerald-500/10 group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-500">
+                  <Globe size={36} strokeWidth={1.5} />
+                </div>
+                
+                <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Sponsor & Liquidity Provider</h2>
+                <p className="text-slate-400 leading-relaxed mb-8 text-sm md:text-base">
+                  Deploy capital to subsidize insurance premiums for vulnerable farmers or provide liquidity to the core vault. Track the immutable impact of your funds and earn protocol yields.
+                </p>
+                
+                <div className="pt-8 border-t border-white/10 flex items-center justify-between">
+                  <div className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 group-hover:text-emerald-400 transition-colors">
+                    Access Institutional Portal
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/50 group-hover:text-emerald-400 transition-all group-hover:translate-x-2">
+                    <ArrowUpRight size={18} />
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
