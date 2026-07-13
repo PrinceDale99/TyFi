@@ -117,8 +117,8 @@ impl TyfiDaoContract {
         log!(&env, "Proposal {} executed", proposal_id);
     }
 
-    pub fn get_proposal(env: Env, proposal_id: u64) -> Proposal {
-        env.storage().persistent().get(&DataKey::Proposal(proposal_id)).expect("Proposal not found")
+    pub fn get_proposal(env: Env, id: u64) -> Proposal {
+        env.storage().persistent().get(&DataKey::Proposal(id)).unwrap()
     }
 
     pub fn get_proposal_count(env: Env) -> u64 {

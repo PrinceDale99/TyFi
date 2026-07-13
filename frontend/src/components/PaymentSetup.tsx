@@ -310,6 +310,48 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
           {isSaved ? 'Configuration Saved' : 'Save Payout Configuration'}
         </button>
       </div>
+
+      {/* Auto-Collect Confirmation Modal */}
+      {showAutoCollectModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-in zoom-in-95">
+            <button 
+              onClick={() => setShowAutoCollectModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl">
+                <AlertTriangle size={24} />
+              </div>
+              <h3 className="text-xl font-black text-white">Enable Auto-Collect</h3>
+            </div>
+            <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+              By enabling this feature, you authorize the TyFi Oracle Scraper to automatically trigger claim payouts on your behalf when a weather trigger is met. 
+              <br/><br/>
+              Your payout will be automatically routed to your selected {paymentMethod === 'fiat' ? 'Fiat Provider' : 'Wallet'}.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowAutoCollectModal(false)}
+                className="flex-1 py-3 rounded-xl border border-white/10 font-bold hover:bg-white/5 transition-all text-slate-300"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  setIsAutoCollectEnabled(true);
+                  setShowAutoCollectModal(false);
+                }}
+                className={`flex-1 py-3 rounded-xl font-bold transition-all ${isMainnet ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950' : 'bg-sky-500 hover:bg-sky-400 text-slate-950'}`}
+              >
+                I Understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

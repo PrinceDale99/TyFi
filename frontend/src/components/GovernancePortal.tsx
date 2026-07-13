@@ -54,7 +54,9 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
         const server = new rpc.Server(RPC_URL);
         const vaultContract = new Contract(VAULT_CONTRACT_ID);
         const daoContract = new Contract(DAO_CONTRACT_ID);
-        const dummyAccount = new Account(walletAddress || 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
+        // Always use the zero account for read-only simulations to avoid op_no_source_account errors
+        // if the user's connected wallet is unfunded on testnet.
+        const dummyAccount = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
 
         // Fetch Voting Power if wallet connected
         if (walletAddress) {
@@ -241,7 +243,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
             <Vote size={48} />
           </div>
           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Active Proposals</p>
-          <div className="text-3xl font-black text-white">{daoMetrics.active_proposals}</div>
+          <div className="text-3xl font-black text-white">{proposals.filter(p => p.deadline > Date.now()).length}</div>
           <div className="text-xs text-sky-400 font-bold mt-2">Voting in progress</div>
         </div>
 

@@ -16,13 +16,16 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
 
   const isMainnet = network === 'mainnet';
 
+  const [error, setError] = React.useState<string | null>(null);
+
   const handleConnect = async (walletId: string) => {
     try {
+      setError(null);
       onConnect(walletId);
       onClose();
     } catch (err) {
       console.error("Connection error:", err);
-      alert("An error occurred while connecting to the wallet.");
+      setError("An error occurred while connecting to the wallet.");
     }
   };
 
@@ -58,6 +61,11 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
             <p className="text-slate-400 text-sm leading-relaxed max-w-sm mx-auto">
               Select your preferred Stellar wallet to interact with the Vault on <span className={isMainnet ? 'text-emerald-400 font-bold' : 'text-sky-400 font-bold'}>{isMainnet ? 'Production Mainnet' : 'Developer Testnet'}</span>.
             </p>
+            {error && (
+              <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium">
+                {error}
+              </div>
+            )}
           </div>
 
           <div className="w-full flex flex-col gap-4 mt-2">
