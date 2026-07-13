@@ -11,4 +11,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Health Endpoint
-        run: curl -s https://tyfi-backend.onrender.com/api/health
+        run: curl -s https://tyfi-yzbn.onrender.com/api/health
