@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { ChevronDown, ChevronUp, Plus, Image as ImageIcon, Building, HandCoins, Radio, Activity, CheckCircle, Bell, AlertTriangle, CloudRain, LineChart, ThermometerSun, FileText, Download, Languages, Terminal, Users, Code, Zap, RefreshCw, XCircle } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-backend.onrender.com';
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
 
 interface AdvancedFeaturesProps {
   walletAddress: string | null;

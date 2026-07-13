@@ -4,7 +4,7 @@
  * pushed by the Oracle Scraper (https://tyfi-oracle.onrender.com)
  */
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-backend.onrender.com';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
 const ORACLE_CACHE_KEY = 'tyfi_oracle_cache';
 const ORACLE_CACHE_TTL_MS = 20 * 60 * 1000; // 20 minutes — matches the 15-min cron + buffer
 
