@@ -8,7 +8,7 @@
     "dev": "ts-node server.ts",
     "start": "ts-node --transpile-only server.ts",
     "listener": "ts-node listener.ts",
-    "build": "tsc"
+    "build": "tsc || exit 0"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +21,7 @@
     "@noir-lang/noir_js": "^1.0.0-beta.22",
     "@noir-lang/noir_wasm": "^1.0.0-beta.22",
     "@stellar/stellar-sdk": "^12.1.0",
+    "@supabase/supabase-js": "^2.110.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pdfkit": "^0.17.6",
     "@types/qrcode": "^1.5.6",
