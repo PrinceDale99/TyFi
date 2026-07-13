@@ -23,11 +23,28 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
   const [filter, setFilter] = useState<'all' | 'active' | 'executed' | 'failed'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [votingPower, setVotingPower] = useState('0');
+  const [daoMetrics, setDaoMetrics] = useState({
+    total_members: 1248,
+    weekly_growth: 12,
+    active_proposals: 1
+  });
 
   useEffect(() => {
     const fetchGovernanceData = async () => {
       setIsLoading(true);
       try {
+        // Fetch Supabase DAO metrics from backend
+        try {
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
+          const metricsRes = await fetch(`${backendUrl}/api/dao/metrics`);
+          if (metricsRes.ok) {
+            const metrics = await metricsRes.json();
+            setDaoMetrics(metrics);
+          }
+        } catch (e) {
+          console.error("Failed to fetch DAO metrics", e);
+        }
+
         const server = new rpc.Server(RPC_URL);
 
         // Fetch Voting Power if wallet connected
@@ -235,9 +252,9 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
             <Users size={48} />
           </div>
           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Total DAO Members</p>
-          <div className="text-3xl font-black text-white">1,248</div>
+          <div className="text-3xl font-black text-white">{daoMetrics.total_members.toLocaleString()}</div>
           <div className="text-xs text-emerald-400 font-bold mt-2 flex items-center gap-1">
-            <Activity size={12} /> +12 this week
+            <Activity size={12} /> +{daoMetrics.weekly_growth} this week
           </div>
         </div>
 
@@ -246,7 +263,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
             <Vote size={48} />
           </div>
           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Active Proposals</p>
-          <div className="text-3xl font-black text-white">1</div>
+          <div className="text-3xl font-black text-white">{daoMetrics.active_proposals}</div>
           <div className="text-xs text-sky-400 font-bold mt-2">Voting in progress</div>
         </div>
 
