@@ -51,7 +51,7 @@ const MagneticButton: React.FC<MagneticButtonProps> = ({
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
     >
-      <span ref={innerRef} className="magnetic-inner w-full h-full flex items-center justify-center">
+      <span ref={innerRef} className="magnetic-inner w-full h-full flex items-center justify-center overflow-hidden rounded-[inherit] relative">
         {children}
       </span>
     </button>
