@@ -1,6 +1,8 @@
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import admin from 'firebase-admin';
+import axios from 'axios';
+import FormData from 'form-data';
 import { logEvent } from './logger';
 
 export async function generateCertificate(data: {
@@ -27,23 +29,24 @@ export async function generateCertificate(data: {
         try {
           const buffer = Buffer.concat(chunks);
           
-          // Upload to Firebase Storage
-          const bucket = admin.storage().bucket();
-          const filename = `certificates/${address}/${txHash}.pdf`;
-          const file = bucket.file(filename);
-          
-          await file.save(buffer, {
-            metadata: { 
-              contentType: 'application/pdf',
-              cacheControl: 'public, max-age=31536000'
-            }
-          });
-          
-          // Get a signed URL that lasts for a very long time
-          const [url] = await file.getSignedUrl({
-            action: 'read',
-            expires: '03-01-2500', // Far future
-          });
+          // Upload to Pinata IPFS
+          let url = '';
+          try {
+            const formData = new FormData();
+            formData.append('file', buffer, { filename: `${txHash}.pdf` });
+            
+            const pinataRes = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', formData, {
+              headers: {
+                'Authorization': `Bearer ${process.env.PINATA_JWT}`,
+                ...formData.getHeaders()
+              }
+            });
+            url = `https://gateway.pinata.cloud/ipfs/${pinataRes.data.IpfsHash}`;
+            await logEvent('INFO', 'Certificate pinned to IPFS via Pinata', { ipfsHash: pinataRes.data.IpfsHash });
+          } catch (pinataErr: any) {
+            await logEvent('WARNING', 'Pinata upload failed, using fallback URL', { error: pinataErr.message });
+            url = `https://tyfi.app/certificate-fallback/${txHash}.pdf`;
+          }
           
           // Save metadata to Firestore
           const db = admin.firestore();
