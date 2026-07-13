@@ -11,20 +11,26 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
-const db = getFirestore(app);
+let app;
+let messaging;
+let db;
 
-// Enable offline persistence
-enableMultiTabIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    // Multiple tabs open, persistence can only be enabled in one tab at a time.
-    console.warn('Firestore persistence failed: Multiple tabs open');
-  } else if (err.code === 'unimplemented') {
-    // The current browser does not support all of the features required to enable persistence
-    console.warn('Firestore persistence failed: Browser not supported');
-  }
-});
+if (firebaseConfig.projectId && firebaseConfig.apiKey) {
+  app = initializeApp(firebaseConfig);
+  messaging = getMessaging(app);
+  db = getFirestore(app);
+
+  // Enable offline persistence
+  enableMultiTabIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a a time.');
+    } else if (err.code === 'unimplemented') {
+      console.warn('The current browser does not support all of the features required to enable persistence');
+    }
+  });
+} else {
+  console.warn('Firebase configuration is missing! Push notifications and offline database will be disabled.');
+}
 
 export const requestNotificationPermission = async () => {
   try {
