@@ -1,6 +1,6 @@
-import { initializeApp, FirebaseApp } from "firebase/app";
-import { getMessaging, getToken, onMessage, Messaging } from "firebase/messaging";
-import { getFirestore, enableMultiTabIndexedDbPersistence, Firestore } from "firebase/firestore";
+import { initializeApp, type FirebaseApp } from "firebase/app";
+import { getMessaging, getToken, onMessage, type Messaging } from "firebase/messaging";
+import { getFirestore, enableMultiTabIndexedDbPersistence, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
