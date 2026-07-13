@@ -153,8 +153,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       alert(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`);
       
       const server = new rpc.Server(RPC_URL);
-      const accountRes = await server.getAccount(walletAddress);
-      const account = new Account(walletAddress, accountRes.sequence);
+      const account = await server.getAccount(walletAddress);
       const daoContract = new Contract(DAO_CONTRACT_ID);
       
       let tx = new TransactionBuilder(account, {
