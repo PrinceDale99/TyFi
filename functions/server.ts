@@ -16,7 +16,7 @@ import { executeMicroloanPipeline } from './loanService';
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -606,6 +606,9 @@ app.post('/api/pdax/webhook', async (req, res) => {
   }
 });
 
-app.listen(PORT, async () => {
-  await logEvent('INFO', `Notification telemetry server successfully launched`, { port: PORT });
-});
+// Only start the server if executed directly (e.g., via ts-node on Render)
+if (require.main === module) {
+  app.listen(PORT, async () => {
+    await logEvent('INFO', `Notification telemetry server successfully launched`, { port: PORT });
+  });
+}
