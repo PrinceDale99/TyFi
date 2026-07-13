@@ -8,7 +8,7 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:functions": "npm --prefix functions run dev",
     "postinstall": "npm install --prefix frontend && npm install --prefix functions",
-    "build": "npm --prefix frontend run build",
+    "build": "npm --prefix frontend run build && rm -rf public && cp -r frontend/dist public",
     "build:frontend": "npm --prefix frontend run build",
     "listener": "npm --prefix functions run listener",
     "install:all": "npm install --prefix frontend && npm install --prefix functions"
