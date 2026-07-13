@@ -96,6 +96,7 @@ import { GovernancePortal } from './components/GovernancePortal';
 import LandingPage from './components/LandingPage';
 import AuroraBackground from './components/AuroraBackground';
 import TiltCard from './components/TiltCard';
+import VaultAnalytics from './components/VaultAnalytics';
 import ParticleBurst from './components/ParticleBurst';
 import MagneticButton from './components/MagneticButton';
 
@@ -2204,6 +2205,9 @@ function App() {
                     </div>
                     </TiltCard>
                   </div>
+
+                  {/* XLM Market Action & TVL Analytics */}
+                  <VaultAnalytics currentTvl={currentTvl} />
 
                   {/* Liquidity Providers */}
                   {isTestnet && (
