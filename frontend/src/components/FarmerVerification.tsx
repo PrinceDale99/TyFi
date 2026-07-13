@@ -63,6 +63,13 @@ interface FarmerVerificationProps {
 
 const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'testnet', onBack }) => {
   const [step, setStep] = useState(1);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
+
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isUploadingRsbsa, setIsUploadingRsbsa] = useState(false);
   const [uploadedRsbsa, setUploadedRsbsa] = useState<string | null>(null);
@@ -429,7 +436,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                       latitude: 13.421,
                       longitude: 123.413
                     });
-                    alert("Demo profile details pre-populated! Please verify them and click 'Continue to Farm Details'.");
+                    showToast("Demo profile details pre-populated! Please verify them and click 'Continue to Farm Details'.", "success");
                   }}
                   className="px-4 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 hover:border-sky-500/50 text-sky-400 text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 shadow-[0_0_15px_rgba(14,165,233,0.1)] self-start sm:self-center cursor-pointer"
                 >
@@ -1305,6 +1312,22 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
           </div>
         )}
       </div>
+      
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[100] animate-fade-in">
+          <div className={`px-6 py-4 rounded-xl shadow-2xl border backdrop-blur-md flex items-center gap-3 ${
+            toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+            toast.type === 'error' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' :
+            'bg-sky-500/10 border-sky-500/30 text-sky-400'
+          }`}>
+            {toast.type === 'success' && <CheckCircle2 size={20} />}
+            {toast.type === 'error' && <AlertCircle size={20} />}
+            {toast.type === 'info' && <Shield size={20} />}
+            <span className="font-bold text-sm">{toast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
