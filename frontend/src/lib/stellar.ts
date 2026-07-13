@@ -2,6 +2,7 @@ import {
   StellarWalletsKit,
   Networks as SWKNetworks,
 } from '@creit.tech/stellar-wallets-kit';
+export { StellarWalletsKit };
 import { FreighterModule, FREIGHTER_ID } from '@creit.tech/stellar-wallets-kit/modules/freighter';
 import { AlbedoModule, ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
 import { WalletConnectModule, WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
@@ -503,12 +504,13 @@ export async function getDaoProposals(network: 'testnet' | 'mainnet'): Promise<D
       .build()
     );
 
-    if (countTx.result?.retval?.switch()?.name !== 'scvU64') {
+    const countSuccess = countTx as any;
+    if (!rpc.Api.isSimulationSuccess(countTx) || countSuccess.result.retval.switch().name !== 'scvU64') {
       return []; // Return empty if count fails or is missing
     }
 
     // Safely parse u64 from XDR
-    const countVal = countTx.result.retval.u64();
+    const countVal = countSuccess.result.retval.u64();
     const countStr = typeof countVal === 'bigint' ? countVal.toString() : 
                      (countVal && typeof countVal === 'object' && countVal.low !== undefined) ? countVal.low.toString() : 
                      countVal.toString();
@@ -528,8 +530,9 @@ export async function getDaoProposals(network: 'testnet' | 'mainnet'): Promise<D
           .build()
         );
 
-        if (propTx.result && propTx.result.retval) {
-          const pMap = propTx.result.retval.value() as any[];
+        if (rpc.Api.isSimulationSuccess(propTx)) {
+          const propSuccess = propTx as any;
+          const pMap = propSuccess.result.retval.value() as any[];
           if (pMap && pMap.length) {
             // Unpack struct fields based on TyfiDaoContract DataKey::Proposal order
             let id = i;
@@ -576,17 +579,17 @@ export async function getDaoProposals(network: 'testnet' | 'mainnet'): Promise<D
 export async function voteOnDaoProposal(
   proposalId: number,
   support: boolean,
-  network: 'testnet' | 'mainnet'
+  network: 'testnet' | 'mainnet',
+  walletAddress: string
 ): Promise<string> {
-  const isConnected = await isFreighterConnected();
-  if (!isConnected) throw new Error('Freighter not connected');
+  const pubKey = walletAddress;
+  if (!pubKey) throw new Error('Wallet not connected');
 
-  const pubKey = await getFreighterPublicKey();
   const config = NETWORK_CONFIGS[network];
   const server = new rpc.Server(config.sorobanRpcUrl);
 
   const accountResp = await server.getAccount(pubKey);
-  const account = new Account(pubKey, accountResp.sequence);
+  const account = new Account(pubKey, (accountResp as any).sequence);
 
   const contract = new Contract(config.daoContractId);
   const operation = contract.call(
@@ -605,16 +608,19 @@ export async function voteOnDaoProposal(
     .build();
 
   const simulated = await server.simulateTransaction(tx);
-  if (simulated.error) {
-    throw new Error(`Simulation failed: ${simulated.error}`);
+  if (!rpc.Api.isSimulationSuccess(simulated)) {
+    throw new Error('Simulation failed');
   }
 
-  tx = rpc.assembleTransaction(tx, config.passphrase, simulated).build();
+  tx = (rpc as any).assembleTransaction(tx, config.passphrase, simulated).build() as Transaction;
 
-  const signedTxXdr = await signTransaction(tx.toXDR(), { network: config.name.toUpperCase() as any });
+  const signedTxXdr = (await StellarWalletsKit.signTransaction(tx.toXDR(), { 
+    address: pubKey, 
+    networkPassphrase: config.passphrase 
+  })).signedTxXdr;
   const signedTx = TransactionBuilder.fromXDR(signedTxXdr, config.passphrase);
 
-  const sendResponse = await server.sendTransaction(signedTx as any);
+  const sendResponse = await server.sendTransaction(signedTx as Transaction);
   if (sendResponse.status === 'ERROR') {
     throw new Error('Transaction submission failed');
   }
