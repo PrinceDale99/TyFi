@@ -4,7 +4,7 @@ import {
   Filter, Plus, Shield, ShieldCheck, Users,
   Activity, ArrowRight, Loader2, ChevronRight, ChevronDown
 } from 'lucide-react';
-import { rpc, Address, nativeToScVal, scValToNative, TransactionBuilder } from '@stellar/stellar-sdk';
+import { rpc, Address, nativeToScVal, scValToNative, TransactionBuilder, Account, Contract, Transaction } from '@stellar/stellar-sdk';
 import { signTransaction, requestAccess } from '@stellar/freighter-api';
 import type { Proposal } from '../types';
 
@@ -46,30 +46,21 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
         }
 
         const server = new rpc.Server(RPC_URL);
+        const vaultContract = new Contract(VAULT_CONTRACT_ID);
+        const daoContract = new Contract(DAO_CONTRACT_ID);
+        const dummyAccount = new Account(walletAddress || 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
 
         // Fetch Voting Power if wallet connected
         if (walletAddress) {
           try {
             const args = [nativeToScVal(Address.fromString(walletAddress), { type: 'address' })];
             
-            const result = await server.simulateTransaction({
-              source: walletAddress,
-              fee: "100",
-              networkPassphrase: 'Test SDF Network ; September 2015',
-              operations: [
-                {
-                  type: 'invokeHostFunction',
-                  func: {
-                    type: 'invokeContract',
-                    value: {
-                      contractAddress: Address.fromString(VAULT_CONTRACT_ID),
-                      functionName: 'get_lp_shares',
-                      args: args
-                    }
-                  }
-                }
-              ]
-            } as any);
+            const tx = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: 'Test SDF Network ; September 2015' })
+              .addOperation(vaultContract.call('get_lp_shares', ...args))
+              .setTimeout(30)
+              .build();
+
+            const result = await server.simulateTransaction(tx);
 
             if (result && rpc.Api.isSimulationSuccess(result) && result.result) {
               const val = scValToNative(result.result.retval);
@@ -82,48 +73,24 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
         // Fetch actual Proposals from DAO contract
         try {
-          const countResult = await server.simulateTransaction({
-            source: walletAddress || 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
-            fee: "100",
-            networkPassphrase: 'Test SDF Network ; September 2015',
-            operations: [
-              {
-                type: 'invokeHostFunction',
-                func: {
-                  type: 'invokeContract',
-                  value: {
-                    contractAddress: Address.fromString(DAO_CONTRACT_ID),
-                    functionName: 'get_proposal_count',
-                    args: []
-                  }
-                }
-              }
-            ]
-          } as any);
+          const txCount = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: 'Test SDF Network ; September 2015' })
+            .addOperation(daoContract.call('get_proposal_count'))
+            .setTimeout(30)
+            .build();
+
+          const countResult = await server.simulateTransaction(txCount);
 
           if (countResult && rpc.Api.isSimulationSuccess(countResult) && countResult.result) {
             const count = Number(scValToNative(countResult.result.retval));
             const fetchedProposals: Proposal[] = [];
 
             for (let i = 1; i <= count; i++) {
-              const propResult = await server.simulateTransaction({
-                source: walletAddress || 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
-                fee: "100",
-                networkPassphrase: 'Test SDF Network ; September 2015',
-                operations: [
-                  {
-                    type: 'invokeHostFunction',
-                    func: {
-                      type: 'invokeContract',
-                      value: {
-                        contractAddress: Address.fromString(DAO_CONTRACT_ID),
-                        functionName: 'get_proposal',
-                        args: [nativeToScVal(i, { type: 'u64' })]
-                      }
-                    }
-                  }
-                ]
-              } as any);
+              const txProp = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: 'Test SDF Network ; September 2015' })
+                .addOperation(daoContract.call('get_proposal', nativeToScVal(i, { type: 'u64' })))
+                .setTimeout(30)
+                .build();
+
+              const propResult = await server.simulateTransaction(txProp);
 
               if (propResult && rpc.Api.isSimulationSuccess(propResult) && propResult.result) {
                 const p = scValToNative(propResult.result.retval);
@@ -186,41 +153,32 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       alert(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`);
       
       const server = new rpc.Server(RPC_URL);
-      const account = await server.getAccount(walletAddress);
+      const accountRes = await server.getAccount(walletAddress);
+      const account = new Account(walletAddress, accountRes.sequence);
+      const daoContract = new Contract(DAO_CONTRACT_ID);
       
       let tx = new TransactionBuilder(account, {
         fee: "10000",
         networkPassphrase: 'Test SDF Network ; September 2015',
       })
       .addOperation(
-        {
-          type: 'invokeHostFunction',
-          func: {
-            type: 'invokeContract',
-            value: {
-              contractAddress: Address.fromString(DAO_CONTRACT_ID),
-              functionName: 'vote',
-              args: [
-                nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
-                nativeToScVal(id, { type: 'u64' }),
-                nativeToScVal(support, { type: 'bool' })
-              ]
-            }
-          },
-          auth: []
-        } as any
+        daoContract.call('vote', 
+          nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
+          nativeToScVal(id, { type: 'u64' }),
+          nativeToScVal(support, { type: 'bool' })
+        )
       )
       .setTimeout(30)
       .build();
 
-      const preparedTx = await server.prepareTransaction(tx);
+      const preparedTx = await server.prepareTransaction(tx) as Transaction;
       
       const signResult = await signTransaction(preparedTx.toXDR(), {
         networkPassphrase: 'Test SDF Network ; September 2015'
       });
       
       const signedTx = TransactionBuilder.fromXDR(signResult.signedTxXdr, 'Test SDF Network ; September 2015');
-      const sendResult = await server.sendTransaction(signedTx as any);
+      const sendResult = await server.sendTransaction(signedTx as Transaction);
       
       if (sendResult.status === 'PENDING') {
         alert("Vote transaction submitted! It may take a few seconds to confirm.");
