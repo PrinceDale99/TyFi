@@ -23,11 +23,17 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
   const [filter, setFilter] = useState<'all' | 'active' | 'executed' | 'failed'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [votingPower, setVotingPower] = useState('0');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [daoMetrics, setDaoMetrics] = useState({
     total_members: 1248,
     weekly_growth: 12,
     active_proposals: 1
   });
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   useEffect(() => {
     const fetchGovernanceData = async () => {
@@ -145,12 +151,12 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
   const handleVote = async (id: number, support: boolean) => {
     if (!walletAddress) {
-      alert("Please connect your wallet to vote.");
+      showToast("Please connect your wallet first.", "error");
       return;
     }
     
     try {
-      alert(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`);
+      showToast(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`, "info");
       
       const server = new rpc.Server(RPC_URL);
       const account = await server.getAccount(walletAddress);
@@ -180,7 +186,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       const sendResult = await server.sendTransaction(signedTx as Transaction);
       
       if (sendResult.status === 'PENDING') {
-        alert("Vote transaction submitted! It may take a few seconds to confirm.");
+        showToast("Vote transaction submitted! It may take a few seconds to confirm.", "success");
         // Optimistic UI update
         setProposals(prev => prev.map(p => {
           if (p.id === id) {
@@ -193,16 +199,31 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           return p;
         }));
       } else {
-        alert("Transaction failed to submit.");
+        showToast("Transaction failed to submit.", "error");
       }
     } catch (e) {
       console.error("Voting failed", e);
-      alert("Voting failed. Check console for details.");
+      showToast("Voting failed. Check console for details.", "error");
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12 relative">
+      
+      {/* Toast Notification UI */}
+      {toast && (
+        <div className={`fixed bottom-8 right-8 p-4 rounded-xl shadow-2xl border z-[60] animate-in slide-in-from-bottom-5 font-bold flex items-center gap-3 ${
+          toast.type === 'success' ? 'bg-emerald-900/90 border-emerald-500/50 text-emerald-100' :
+          toast.type === 'error' ? 'bg-rose-900/90 border-rose-500/50 text-rose-100' :
+          'bg-slate-900/90 border-sky-500/50 text-sky-100'
+        }`}>
+          {toast.type === 'success' && <CheckCircle2 size={20} className="text-emerald-400" />}
+          {toast.type === 'error' && <XCircle size={20} className="text-rose-400" />}
+          {toast.type === 'info' && <Activity size={20} className="text-sky-400" />}
+          {toast.message}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="glass-panel p-6 border border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -403,7 +424,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
               <button 
                 onClick={async () => {
                   if (!walletAddress) {
-                    alert("Please connect your wallet first.");
+                    showToast("Please connect your wallet first.", "error");
                     return;
                   }
                   try {
@@ -411,58 +432,48 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     const action = (document.getElementById('proposalAction') as HTMLSelectElement).value;
                     
                     if (!desc || !action) {
-                      alert("Please fill all fields");
+                      showToast("Please fill all fields", "error");
                       return;
                     }
 
-                    alert(`Submitting Proposal via Smart Contract... Please check Freighter.`);
+                    showToast(`Submitting Proposal via Smart Contract... Please check Freighter.`, "info");
                     const server = new rpc.Server(RPC_URL);
                     const account = await server.getAccount(walletAddress);
+                    const daoContract = new Contract(DAO_CONTRACT_ID);
                     
                     let tx = new TransactionBuilder(account, {
                       fee: "10000",
                       networkPassphrase: 'Test SDF Network ; September 2015',
                     })
                     .addOperation(
-                      {
-                        type: 'invokeHostFunction',
-                        func: {
-                          type: 'invokeContract',
-                          value: {
-                            contractAddress: Address.fromString(DAO_CONTRACT_ID),
-                            functionName: 'create_proposal',
-                            args: [
-                              nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
-                              nativeToScVal(desc, { type: 'string' }),
-                              nativeToScVal(action, { type: 'symbol' }),
-                              nativeToScVal(86400, { type: 'u64' }) // ~5 days duration in ledgers (assuming 5s per ledger, 86400 ledgers)
-                            ]
-                          }
-                        },
-                        auth: []
-                      } as any
+                      daoContract.call('create_proposal',
+                        nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
+                        nativeToScVal(desc, { type: 'string' }),
+                        nativeToScVal(action, { type: 'symbol' }),
+                        nativeToScVal(86400, { type: 'u64' }) // ~5 days duration in ledgers
+                      )
                     )
                     .setTimeout(30)
                     .build();
 
-                    const preparedTx = await server.prepareTransaction(tx);
+                    const preparedTx = await server.prepareTransaction(tx) as Transaction;
                     
                     const signResult = await signTransaction(preparedTx.toXDR(), {
                       networkPassphrase: 'Test SDF Network ; September 2015'
                     });
                     
                     const signedTx = TransactionBuilder.fromXDR(signResult.signedTxXdr, 'Test SDF Network ; September 2015');
-                    const sendResult = await server.sendTransaction(signedTx as any);
+                    const sendResult = await server.sendTransaction(signedTx as Transaction);
                     
                     if (sendResult.status === 'PENDING') {
-                      alert("Proposal submitted! Please refresh after a few seconds.");
+                      showToast("Proposal submitted! Please refresh after a few seconds.", "success");
                       setShowCreateModal(false);
                     } else {
-                      alert("Failed to submit proposal.");
+                      showToast("Failed to submit proposal.", "error");
                     }
                   } catch (e) {
                     console.error("Create proposal failed", e);
-                    alert("Failed to create proposal. Check console for details.");
+                    showToast("Failed to create proposal. Check console for details.", "error");
                   }
                 }}
                 className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-black uppercase tracking-wider text-sm transition-all"
