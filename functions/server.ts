@@ -128,7 +128,13 @@ app.post('/api/notify-payout', async (req, res) => {
       token: fcmToken,
     };
 
-    const response = await admin.messaging().send(message);
+    let messageId = 'mock_id';
+    try {
+      messageId = await admin.messaging().send(message);
+    } catch (fcmErr: any) {
+      await logEvent('WARNING', 'FCM invalid token or failed to send', { error: fcmErr.message });
+      messageId = 'failed_to_send';
+    }
     
     if (db) {
       await db.collection('payouts').add({
@@ -140,11 +146,11 @@ app.post('/api/notify-payout', async (req, res) => {
       });
     }
 
-    await logEvent('INFO', 'FCM payout notification dispatched', { response, address });
-    res.json({ success: true, notified: true, messageId: response });
+    await logEvent('INFO', 'FCM payout notification process completed', { messageId, address });
+    res.json({ success: true, notified: messageId !== 'failed_to_send', messageId });
   } catch (error: any) {
     await logEvent('ERROR', 'Error dispatching payout notification', { errorMessage: error.message, address });
-    res.status(500).json({ error: 'Failed to send notification' });
+    res.status(500).json({ error: 'Failed to process notification' });
   }
 });
 
@@ -239,7 +245,14 @@ app.post('/api/notify-alert', async (req, res) => {
       token: fcmToken,
     };
 
-    const response = await admin.messaging().send(fcmMessage);
+    let messageId = 'mock_id';
+    try {
+      messageId = await admin.messaging().send(fcmMessage);
+    } catch (fcmErr: any) {
+      await logEvent('WARNING', 'FCM invalid token or failed to send', { error: fcmErr.message });
+      messageId = 'failed_to_send';
+    }
+
     if (db) {
       await db.collection('alerts').add({
         farmerAddress: address,
@@ -248,15 +261,15 @@ app.post('/api/notify-alert', async (req, res) => {
         reason: message || reason,
         probability,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        pushed: true,
-        messageId: response
+        pushed: messageId !== 'failed_to_send',
+        messageId
       });
     }
-    await logEvent('INFO', 'FCM warning alert dispatched', { response, address });
-    res.json({ success: true, notified: true, messageId: response });
+    await logEvent('INFO', 'FCM warning alert process completed', { messageId, address });
+    res.json({ success: true, notified: messageId !== 'failed_to_send', messageId });
   } catch (error: any) {
     await logEvent('ERROR', 'Error dispatching FCM warning alert', { errorMessage: error.message, address });
-    res.status(500).json({ error: 'Failed to send notification' });
+    res.status(500).json({ error: 'Failed to process notification' });
   }
 });
 
