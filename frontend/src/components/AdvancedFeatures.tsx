@@ -17,7 +17,14 @@ export const AdvancedFeatures: React.FC<AdvancedFeaturesProps> = ({ walletAddres
   const [activeTab, setActiveTab] = useState<'clean' | 'json'>('clean');
   
   // Terminal state
-  const [logs, setLogs] = useState<{timestamp: string, message: string, type: 'info' | 'success' | 'error' | 'command'}[]>([]);
+  const [logs, setLogs] = useState<{timestamp: string, message: string, type: 'info' | 'success' | 'error' | 'command'}[]>(() => {
+    try {
+      const saved = localStorage.getItem('typhoon_vault_debug_logs');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   const addLog = (message: string, type: 'info' | 'success' | 'error' | 'command' = 'info') => {
@@ -26,6 +33,7 @@ export const AdvancedFeatures: React.FC<AdvancedFeaturesProps> = ({ walletAddres
   };
 
   useEffect(() => {
+    localStorage.setItem('typhoon_vault_debug_logs', JSON.stringify(logs));
     if (terminalEndRef.current) {
       terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
@@ -166,6 +174,15 @@ export const AdvancedFeatures: React.FC<AdvancedFeaturesProps> = ({ walletAddres
                     className="text-[10px] text-slate-500 hover:text-sky-400 font-bold tracking-widest uppercase transition-colors"
                   >
                     Copy Logs
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setLogs([]);
+                      localStorage.removeItem('typhoon_vault_debug_logs');
+                    }}
+                    className="text-[10px] text-slate-500 hover:text-rose-400 font-bold tracking-widest uppercase transition-colors"
+                  >
+                    Clear Logs
                   </button>
                   <div className="flex gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
