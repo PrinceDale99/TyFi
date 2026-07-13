@@ -94,6 +94,10 @@ import SponsorVerification from './components/SponsorVerification';
 import { registerForSubsidy, getUserProfile, saveUserProfile, logPayout } from './services/firebaseService';
 import { GovernancePortal } from './components/GovernancePortal';
 import LandingPage from './components/LandingPage';
+import AuroraBackground from './components/AuroraBackground';
+import TiltCard from './components/TiltCard';
+import ParticleBurst from './components/ParticleBurst';
+import MagneticButton from './components/MagneticButton';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -246,6 +250,7 @@ function App() {
   // Profile Dashboard State
   const [isProfileDashboardOpen, setIsProfileDashboardOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [burstCount, setBurstCount] = useState(0);
   
   // InstaPay Receipt State
   const [instapayReceipt, setInstapayReceipt] = useState<{
@@ -862,6 +867,7 @@ function App() {
       const mockPasskeyAddress = "WEBAUTHN_SPONSORED_" + Math.random().toString(36).substr(2, 9).toUpperCase();
       setWalletAddress(mockPasskeyAddress);
       setIsWalletConnected(true);
+      setBurstCount(c => c + 1);
       
       // Load standard profile for mock
       await loadProfile(mockPasskeyAddress, network);
@@ -879,6 +885,7 @@ function App() {
         // Special case for demo mode bypass
         setWalletAddress(walletId);
         setIsWalletConnected(true);
+        setBurstCount(c => c + 1);
         await loadProfile(walletId, network);
         addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
         return;
@@ -886,6 +893,7 @@ function App() {
       const address = await connectWallet(network, walletId);
       setWalletAddress(address);
       setIsWalletConnected(true);
+      setBurstCount(c => c + 1);
       await loadProfile(address, network);
       addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
     } catch (error: any) {
@@ -1260,6 +1268,7 @@ function App() {
           };
 
           setClaims(prev => [newClaim, ...prev]);
+          setBurstCount(c => c + 1);
           
           logPayout({
             farmerAddress: walletAddress,
@@ -1296,6 +1305,7 @@ function App() {
       };
 
       setClaims(prev => [newClaim, ...prev]);
+      setBurstCount(c => c + 1);
       
       if (!isMainnet) {
         setTestnetTvl(prev => Math.max(0, prev - claimAmount));
@@ -1720,6 +1730,10 @@ function App() {
         }`}></div>
       </div>
 
+      {/* Aurora constellation + aurora bands — layered behind orbs */}
+      <AuroraBackground />
+      <ParticleBurst trigger={burstCount} />
+
       {/* Floating Glassmorphic Sidebar (Desktop) */}
       <nav className="hidden md:flex flex-col w-72 h-[calc(100vh-2rem)] m-4 rounded-3xl border border-white/10 bg-slate-950/40 backdrop-blur-3xl shadow-2xl relative z-50 overflow-hidden">
         <div className="p-6 border-b border-white/5">
@@ -1913,7 +1927,7 @@ function App() {
       )}
 
       {/* Main Viewport */}
-      <main className="flex-1 h-screen overflow-y-auto relative z-10 custom-scrollbar p-4 md:p-8 pt-28 md:pt-8 w-full max-w-7xl mx-auto">
+      <main className="flex-1 h-screen overflow-y-auto relative z-10 custom-scrollbar p-4 md:p-8 pt-28 md:pt-32 w-full max-w-7xl mx-auto">
         {activeTab === 'monitor' && userRole === 'farmer' ? (
           <FarmerDashboard 
             farms={farms} 
@@ -2089,10 +2103,11 @@ function App() {
 
               {activeTab === 'vault' && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 reveal-group animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* TVL */}
+                    <TiltCard className="reveal-item">
                     <div 
-                      className={`glass-panel border transition-all duration-700 cursor-pointer ${isMainnet ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-500/50' : isTestnet ? 'border-sky-500/20 shadow-[0_0_20px_rgba(14,165,233,0.05)] hover:border-sky-500/50' : 'border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)] hover:border-indigo-500/50'}`}
+                      className={`glass-panel animated-border border transition-all duration-700 cursor-pointer ${isMainnet ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-500/50' : isTestnet ? 'border-sky-500/20 shadow-[0_0_20px_rgba(14,165,233,0.05)] hover:border-sky-500/50' : 'border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)] hover:border-indigo-500/50'}`}
                       onClick={() => window.open(`https://stellar.expert/explorer/${network}/contract/${NETWORK_CONFIGS[network as 'testnet' | 'mainnet'].vaultContractId}`, '_blank')}
                     >
                       <div className="flex items-center justify-between mb-4">
@@ -2117,8 +2132,10 @@ function App() {
                         {isTestnet ? 'Testnet Real-time Data' : 'Mainnet Ledger Data'}
                       </div>
                     </div>
+                    </TiltCard>
 
                     {/* Subsidy Pool */}
+                    <TiltCard className="reveal-item">
                     <div className={`glass-panel border transition-all duration-700 ${isMainnet ? 'border-emerald-500/20' : isTestnet ? 'border-sky-500/20' : 'border-indigo-500/20'}`}>
                       <div className="flex items-center gap-3 mb-4">
                         <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
@@ -2136,8 +2153,10 @@ function App() {
                         Government & Donor Subsidy
                       </div>
                     </div>
+                    </TiltCard>
 
                     {/* Reserve Ratio */}
+                    <TiltCard className="reveal-item">
                     <div className={`glass-panel border transition-all duration-700 ${isMainnet ? 'border-emerald-500/20' : isTestnet ? 'border-sky-500/20' : 'border-indigo-500/20'}`}>
                       <div className="flex items-center gap-3 mb-4">
                         <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
@@ -2152,6 +2171,7 @@ function App() {
                         Over-collateralized protection
                       </div>
                     </div>
+                    </TiltCard>
                   </div>
 
                   {/* Liquidity Providers */}
@@ -2439,7 +2459,6 @@ function App() {
             </div>
           </div>
         )}
-
       {/* Unified AI Copilot + Sandbox FAB */}
       {walletAddress && (
         <UnifiedCopilot

@@ -18,6 +18,7 @@ pub enum Error {
     NoConsensus = 9,
     Overflow = 10,
     InsufficientSignatures = 11,
+    NoParametricBands = 12,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -52,6 +53,15 @@ pub enum DataKey {
     DaoAddress,                         // Address of the DAO contract
     RiskZoneMultiplier(Symbol),         // Premium multiplier per zone (region) -> u32
     MicroLoan(Address, Symbol),         // Microloan details: (farmer, loan_id) -> MicroLoan
+    ParametricBands(Symbol),            // region -> Vec<PayoutBand>
+    OracleWindSpeed(Symbol, Symbol),    // Raw wind speed reported by Oracle: (typhoon_id, region) -> u32
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracttype]
+pub struct PayoutBand {
+    pub min_wind_speed: u32,
+    pub payout_percentage: u32,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -760,8 +770,19 @@ impl TyphoonVault {
         
         let damage_percentage: u32 = env.storage().persistent().get(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), policy.region.clone())).unwrap_or(0);
         
-        // Payout percentage is now derived directly from the combined consensus damage estimation
-        let payout_percentage = damage_percentage;
+        let mut payout_percentage = damage_percentage; // Fallback to damage percentage if no bands
+        
+        // Advanced: Use Parametric Bands if available for this region
+        if let Some(bands) = env.storage().persistent().get::<_, Vec<PayoutBand>>(&DataKey::ParametricBands(policy.region.clone())) {
+            let wind_speed: u32 = env.storage().persistent().get(&DataKey::OracleWindSpeed(typhoon_id.clone(), policy.region.clone())).unwrap_or(0);
+            
+            payout_percentage = 0;
+            for band in bands.iter() {
+                if wind_speed >= band.min_wind_speed && band.payout_percentage > payout_percentage {
+                    payout_percentage = band.payout_percentage;
+                }
+            }
+        }
         
         if payout_percentage == 0 {
             return Err(Error::ThresholdNotMet);
@@ -828,6 +849,26 @@ impl TyphoonVault {
     /// Get whether farmer is RSBSA verified
     pub fn is_farmer_verified(env: Env, farmer: Address) -> bool {
         env.storage().persistent().get(&DataKey::Verified(farmer)).unwrap_or(false)
+    }
+
+    /// Admin Multi-sig: Update parametric payout bands for a region
+    pub fn update_parametric_bands(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, region: Symbol, bands: Vec<PayoutBand>) -> Result<(), Error> {
+        require_multisig_auth(&env, payload, signatures)?;
+        env.storage().persistent().set(&DataKey::ParametricBands(region.clone()), &bands);
+        bump_persistent(&env, &DataKey::ParametricBands(region.clone()));
+        Ok(())
+    }
+
+    /// Oracle: Report raw wind speed for a region
+    pub fn report_wind_speed(env: Env, oracle: Address, typhoon_id: Symbol, region: Symbol, wind_speed: u32) -> Result<(), Error> {
+        oracle.require_auth();
+        let is_authorized = env.storage().instance().get(&DataKey::Oracle(oracle.clone())).unwrap_or(false);
+        if !is_authorized {
+            return Err(Error::Unauthorized);
+        }
+        env.storage().persistent().set(&DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()), &wind_speed);
+        bump_persistent(&env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
+        Ok(())
     }
 }
 

@@ -1,5 +1,7 @@
 import React from 'react';
-import { Shield, CloudRain, Clock, ArrowUpRight, Zap, TrendingUp, Sun, FileText, CheckCircle2, Camera, Crosshair, Wind, AlertTriangle, X } from 'lucide-react';
+import { Shield, Zap, Info, Sprout, Wind, Droplets, MapPin, CheckCircle2, ChevronRight, Activity, AlertTriangle, ArrowUpRight, CloudRain, Clock, Camera, Crosshair, TrendingUp, FileText } from 'lucide-react';
+import { useCountUp } from '../hooks/useCountUp';
+import MagneticButton from './MagneticButton';
 import WeatherWidget from './WeatherWidget';
 import AssetDistribution from './AssetDistribution';
 import PayoutStatus from './PayoutStatus';
@@ -16,6 +18,14 @@ export const FarmerDashboard = ({
   isSimulatingWeather, handleResetWeather, handleSimulateWeather,
   claims, addNotification, setWeather
 }: any) => {
+  const totalInsuredValue = farms.reduce((acc: any, farm: any) => acc + Number(farm.coverageAmount || 0), 0);
+  const totalAreaValue = farms.reduce((acc: any, farm: any) => acc + Number(farm.size || 0), 0);
+  const activeFarmsCount = farms.length;
+
+  const { value: animatedInsuredValue } = useCountUp(totalInsuredValue, 1100, 0);
+  const { value: animatedAreaValue } = useCountUp(totalAreaValue, 1100, 1);
+  const { value: animatedFarmsCount } = useCountUp(activeFarmsCount, 1100, 0);
+
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 lg:space-y-8 pb-32 animate-in fade-in duration-700">
       
@@ -27,9 +37,9 @@ export const FarmerDashboard = ({
           </h2>
           <p className="text-slate-400 text-sm font-medium uppercase tracking-widest mt-1">Active Shield Overview</p>
         </div>
-        <button 
+        <MagneticButton 
           onClick={onAddFarm}
-          className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm uppercase tracking-wider transition-all shadow-lg hover:shadow-xl ${
+          className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-bold text-sm uppercase tracking-wider transition-all shadow-lg hover:shadow-xl ${
             network === 'mainnet' 
               ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-emerald-500/20' 
               : 'bg-sky-500 hover:bg-sky-400 text-slate-900 shadow-sky-500/20'
@@ -37,7 +47,7 @@ export const FarmerDashboard = ({
         >
           <Zap size={16} />
           Register New Farm
-        </button>
+        </MagneticButton>
       </div>
 
       {/* Oracle Status Banner */}
@@ -100,18 +110,18 @@ export const FarmerDashboard = ({
               <span className="text-xs font-black uppercase tracking-widest text-slate-300">Total Insured Value</span>
             </div>
             <div className="text-5xl lg:text-7xl font-black text-white tracking-tighter">
-              {farms.reduce((acc: any, farm: any) => acc + Number(farm.coverageAmount || 0), 0).toLocaleString()} <span className={network === 'mainnet' ? 'text-emerald-500' : 'text-sky-500'}>XLM</span>
+              {animatedInsuredValue.toLocaleString()} <span className={network === 'mainnet' ? 'text-emerald-500' : 'text-sky-500'}>XLM</span>
             </div>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-white/5 rounded-2xl p-4 border border-white/5 backdrop-blur-md">
               <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1">Active Farms</div>
-              <div className="text-2xl font-black text-white">{farms.length}</div>
+              <div className="text-2xl font-black text-white">{animatedFarmsCount}</div>
             </div>
             <div className="bg-white/5 rounded-2xl p-4 border border-white/5 backdrop-blur-md">
               <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1">Total Area</div>
-              <div className="text-2xl font-black text-white">{farms.reduce((acc: any, farm: any) => acc + Number(farm.size || 0), 0)} <span className="text-sm text-slate-500">Ha</span></div>
+              <div className="text-2xl font-black text-white">{animatedAreaValue} <span className="text-sm text-slate-500">Ha</span></div>
             </div>
             <div className="col-span-2 bg-white/5 rounded-2xl p-4 border border-white/5 backdrop-blur-md flex items-center justify-between">
               <div>
