@@ -488,7 +488,13 @@ app.post('/api/ai/translate', async (req, res) => {
 
 app.post('/api/sms/webhook', async (req, res) => {
   // Pass db to the handler so it can interact with Firestore
-  await handleIncomingSms(req, res, db);
+  try {
+    await handleIncomingSms(req, res, db);
+  } catch (error: any) {
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal SMS webhook error' });
+    }
+  }
 });
 
 // ==========================================
