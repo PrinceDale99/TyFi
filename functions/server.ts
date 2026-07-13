@@ -9,6 +9,7 @@ import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { handleIncomingSms } from './smsHandler';
 import { processPayoutOfframp } from './pdaxService';
+import { supabase } from './supabase';
 import { oracleRouter } from './oracle';
 import { calculateBondYield } from './bondService';
 import { flushOfflineQueue } from './offlineQueue';
@@ -52,6 +53,55 @@ const db = admin.apps.length ? admin.firestore() : null;
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/preferences/:address', async (req, res) => {
+  const { address } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .select('*')
+      .eq('wallet_address', address)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    
+    res.json(data || {});
+  } catch (error: any) {
+    await logEvent('ERROR', 'Failed to fetch user preferences', { address, error: error.message });
+    res.status(500).json({ error: 'Failed to fetch preferences' });
+  }
+});
+
+app.post('/api/preferences', async (req, res) => {
+  const { walletAddress, isAutoCollectEnabled, paymentMethod, fiatProvider, accountNumber, accountName } = req.body;
+  
+  if (!walletAddress) {
+    return res.status(400).json({ error: 'walletAddress is required' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .upsert({
+        wallet_address: walletAddress,
+        is_auto_collect_enabled: isAutoCollectEnabled,
+        payment_method: paymentMethod,
+        fiat_provider: fiatProvider,
+        account_number: accountNumber,
+        account_name: accountName,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'wallet_address' });
+
+    if (error) throw error;
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    await logEvent('ERROR', 'Failed to update user preferences', { address: walletAddress, error: error.message });
+    res.status(500).json({ error: 'Failed to save preferences' });
+  }
 });
 
 app.get('/api/v1/xlm-rate', async (req, res) => {
