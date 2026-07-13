@@ -517,7 +517,7 @@ function App() {
 
   const handleSimulateWeather = (scenario: 'normal' | 'wind_trigger' | 'rain_trigger' | 'double_trigger') => {
     if (!isSandboxToggleEnabled) {
-      setNotifications(prev => [...prev, { id: Date.now(), text: "Sandbox mode is disabled. The Oracle detects no typhoons or hurricanes or any destructive natural disaster.", type: 'warning' }]);
+      setNotifications(prev => [...prev, { id: Date.now().toString(), text: "Sandbox mode is disabled. The Oracle detects no typhoons or hurricanes or any destructive natural disaster.", type: 'warning', timestamp: Date.now() }]);
       return;
     }
     setIsSimulatingWeather(true);
