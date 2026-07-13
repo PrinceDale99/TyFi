@@ -1,6 +1,6 @@
-import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
-import { getFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
+import { initializeApp, FirebaseApp } from "firebase/app";
+import { getMessaging, getToken, onMessage, Messaging } from "firebase/messaging";
+import { getFirestore, enableMultiTabIndexedDbPersistence, Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,9 +11,9 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-let app;
-let messaging;
-let db;
+let app: FirebaseApp | any;
+let messaging: Messaging | any;
+let db: Firestore | any;
 
 if (firebaseConfig.projectId && firebaseConfig.apiKey) {
   app = initializeApp(firebaseConfig);
