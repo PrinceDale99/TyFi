@@ -1,6 +1,7 @@
 import React, { useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Shield, Wind, Zap, Activity, ArrowRight, ShieldCheck, Globe, Coins, ShieldAlert, Check } from 'lucide-react';
 import { motion, useMotionTemplate, useMotionValue } from 'framer-motion';
+import MagneticButton from './MagneticButton';
 
 interface LandingPageProps {
   onConnect: () => void;
@@ -75,7 +76,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
             </div>
             
             <div>
-              <button 
+              <MagneticButton 
                 onClick={onConnect}
                 disabled={isLoading}
                 className="group relative inline-flex items-center justify-center px-6 py-2.5 sm:px-8 sm:py-3 font-semibold text-white transition-all duration-200 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 hover:border-white/20 hover:scale-105 overflow-hidden disabled:opacity-50 disabled:hover:scale-100 text-sm sm:text-base"
@@ -87,7 +88,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
                   {isLoading ? 'Connecting...' : 'Connect Wallet'}
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                 </span>
-              </button>
+              </MagneticButton>
             </div>
           </div>
         </div>
@@ -118,7 +119,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
           </motion.p>
           
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4">
-            <button 
+            <MagneticButton 
               onClick={onConnect}
               disabled={isLoading}
               className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-300 bg-gradient-to-r from-sky-500 to-indigo-600 rounded-2xl shadow-[0_0_30px_rgba(56,189,248,0.3)] hover:shadow-[0_0_50px_rgba(56,189,248,0.5)] hover:scale-105 overflow-hidden text-lg w-full sm:w-auto"
@@ -128,7 +129,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
               </div>
               <Shield className="w-5 h-5 mr-2 relative z-10" />
               <span className="relative z-10">Enter the Vault</span>
-            </button>
+            </MagneticButton>
             <a href="#stats" className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-2xl border border-white/10 transition-all hover:border-white/20 text-lg w-full sm:w-auto text-center flex items-center justify-center gap-2 hover:scale-105">
               View Protocol Stats
             </a>

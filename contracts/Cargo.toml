@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["smart_wallet_factory","tyfi_dao",
+members = ["smart_wallet_factory","tyfi_dao", "tyfi_vault",
     "typhoon_resilience_vault",
 ]
 
