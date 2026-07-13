@@ -442,7 +442,7 @@ function App() {
   const currentSubsidy = contractSubsidy;
 
   // Hook for simulating real-time yield compounding (TVL + 8% APY starting 30 days ago)
-  const liveYield = useContinuousYield(currentTvl || 100000, Date.now() - 30 * 24 * 60 * 60 * 1000, 0.08);
+  const liveYield = useContinuousYield(currentTvl || 100000, (Date.now() / 1000) - (30 * 24 * 60 * 60), 0.08);
 
   // Open Policy modal state
   const [openPolicy, setOpenPolicy] = useState<'tos' | 'privacy' | 'cookie' | 'agreement' | null>(null);
