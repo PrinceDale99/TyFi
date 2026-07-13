@@ -48,7 +48,7 @@ TyFi was built to eliminate the middleman and the waiting game in disaster recov
 - **Donors & NGOs**: Climate-focused organizations (USAID, WFP) seeking transparent mechanisms to subsidize farmer premiums.
 
 ## ✨ Features
-- **🚀 Parametric Payouts** — Automated payouts triggered by objective PAGASA-verified wind speed thresholds—no claim forms required. The contract uses a sliding-scale damage curve to ensure fairness.
+- **🚀 Layer 1 Parameterized Payouts** — Automated payouts triggered by strict mathematical bounds. The contract holds a DAO-configurable `PayoutBand` array (e.g. `>150km/h = 90% payout`) within the blockchain state. No hardcoded logic, entirely dynamic and governed via Multi-Sig.
 - **🛰️ Live Typhoon Tracking** — Interactive dashboard tracking storm paths in real-time within the Philippine Area of Responsibility (PAR), featuring multi-farm proximity detection.
 - **🌾 Farmer Verification & Gemini Vision OCR** — RSBSA and land title verification gate to ensure legitimate policy registration. Automated document processing via Google Cloud Vision API and Gemini 1.5 Flash with strict NPC (Data Privacy) compliance and PII purging.
 - **🏦 LP Reinsurance Pool** — Yield-bearing liquidity pool (8.4% APY) lets DeFi users back agricultural risk. Premiums paid by farmers flow directly to LPs as yield.
@@ -60,7 +60,8 @@ TyFi was built to eliminate the middleman and the waiting game in disaster recov
 - **🛡️ Account Abstraction** — Smart wallet infrastructure with custom authorization logic, allowing seamless onboarding for non-crypto-native farmers.
 - **🗳️ TyFi DAO Governance** — Fully on-chain decentralized community governance allowing tokenless parameter voting proportional to LP deposits using Soroban smart contracts.
 - **📊 Parametric Analytics** — High-fidelity telemetry charts overlaying real wind/rain data against contract trigger thresholds for transparent risk assessment.
-- **📱 FCM Push Notifications** — Real-time mobile alerts for farmers before, during, and after typhoon events, keeping them informed of their policy status.
+- **📊 Parametric Analytics** — High-fidelity telemetry charts overlaying real wind/rain data against contract trigger thresholds for transparent risk assessment.
+- **📱 Twilio Offline Mesh & SMS Fallback** — Real-time SMS webhook fallback (`CLAIM POL-123`). Gasless Soroban relayer executes the smart contract on the farmer's behalf when they lose internet during a storm.
 
 ## 📊 Parametric Payout Scale
 
@@ -95,11 +96,11 @@ graph TD
         BE["Node.js / Firebase Functions Backend"]
         AI["Gemini 1.5 Pro (Vision/Loan Actuary)"]
         IPFS["Pinata IPFS (Image Storage)"]
-        Oracle["PAGASA & NASA EONET Weather Oracles"]
+        Oracle["PAGASA, NOAA, & OpenWeather APIs"]
         
-        subgraph ZK ["NoirJS ZK Prover"]
-            NC["Noir Circuit (WASM)"]
-            BB["Barretenberg Backend"]
+        subgraph ZK ["RISC Zero zkVM Prover"]
+            NC["Rust ZK Oracle Consensus"]
+            BB["STARK Receipt Generator"]
         end
         
         subgraph PDAX ["PDAX Enterprise APIs"]
@@ -132,9 +133,9 @@ graph TD
     BE -->|"Uploads Images"| IPFS
     BE <-->|"Damage & Loan Prediction"| AI
     
-    BE -->|"Raw Weather Data (Hidden)"| NC
-    NC -->|"Generates Plonk Proof"| BB
-    BB -->|"Submits ZK Proof"| ZKV
+    BE -->|"Raw Signed Weather Data"| NC
+    NC -->|"Aggregates Math & Generates STARK"| BB
+    BB -->|"Submits ZK Receipt"| ZKV
     ZKV -->|"Verifies Proof"| SC
     
     SC -->|"Generates Yield"| P_Sec
@@ -145,9 +146,9 @@ graph TD
 ```
 
 ### Layer 1: Stellar Soroban Smart Contract
-- **Parametric Vault**: Non-custodial XLM/USDC vault handling automated disbursements based on objective weather oracles.
-- **ZK Verifier**: Utilizes Stellar Protocol 27 BN254 host functions to cryptographically verify Plonk proofs.
-- **Tokenized Bonds & Micro-Loans**: Supports transferable disaster relief bond shares and AI-underwritten uncollateralized micro-loans directly from the vault's liquidity pool.
+- **Parametric Actuarial Engine**: Non-custodial XLM vault that iterates through dynamic `ParametricBands` to strictly enforce payout rules directly on-chain.
+- **ZK Verifier**: Cryptographically verifies the STARK receipt from the RISC Zero oracle network.
+- **Enterprise Multi-Sig**: Enforces DAO governance controls (`update_parametric_bands`) to ensure parametric curves cannot be manipulated maliciously.
 
 ### Layer 2: Off-Chain Infrastructure, ZK Proving & PDAX
 Our backend bridges enterprise DeFi, zero-knowledge cryptography, and Philippine banking rails:
