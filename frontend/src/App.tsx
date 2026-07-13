@@ -1333,7 +1333,7 @@ function App() {
       <div className="min-h-screen bg-[#020617] text-slate-200">
         <LandingPage 
           onConnect={() => setIsWalletModalOpen(true)}
-          isLoading={isLoading && !isWalletModalOpen}
+          isLoading={false}
           tvl={contractTvl}
           subsidy={contractSubsidy}
         />
