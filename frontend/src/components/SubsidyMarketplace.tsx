@@ -13,7 +13,7 @@ import {
   MapPin,
   Calendar
 } from 'lucide-react';
-import { getActiveSubsidyRequests, getSponsoredFarms } from '../services/firebaseService';
+import { getActiveSubsidyRequests, getSponsoredFarms, unlistFromSubsidy, registerForSubsidy } from '../services/firebaseService';
 import { registerPolicyOnChain, contributeLiquidityOnChain } from '../lib/stellar';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -195,7 +195,7 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
                         setIsProcessing(farm.id);
                         try {
                           addNotification(`Unlisting ${farm.farmName} from the marketplace...`, 'info');
-                          const { unlistFromSubsidy } = await import('../services/firebaseService');
+                          // Using statically imported unlistFromSubsidy
                           await unlistFromSubsidy(listedRequest.id);
                           addNotification(`${farm.farmName} has been removed from the marketplace.`, 'success');
                           fetchRequests(); // Refresh the list
@@ -220,7 +220,7 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
                         setIsProcessing(farm.id);
                         try {
                           addNotification(`Registering ${farm.farmName} for financial assistance...`, 'info');
-                          const { registerForSubsidy } = await import('../services/firebaseService');
+                          // Using statically imported registerForSubsidy
                           await registerForSubsidy(sponsorAddress, farm, network);
                           addNotification(`${farm.farmName} successfully listed in the Subsidy Marketplace.`, 'success');
                           fetchRequests(); // Refresh the list
