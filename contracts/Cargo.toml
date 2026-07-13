@@ -1,8 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["smart_wallet_factory","tyfi_dao", "tyfi_vault",
-    "typhoon_resilience_vault",
-]
+members = ["smart_wallet_factory", "tyfi_dao", "typhoon_resilience_vault"]
 
 [profile.dev]
 debug = 0
