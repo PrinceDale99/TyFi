@@ -2134,9 +2134,9 @@ function App() {
 
               {activeTab === 'vault' && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 reveal-group animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* TVL */}
-                    <TiltCard className="reveal-item">
+                    <TiltCard>
                     <div 
                       className={`glass-panel animated-border border transition-all duration-700 cursor-pointer ${isMainnet ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-500/50' : isTestnet ? 'border-sky-500/20 shadow-[0_0_20px_rgba(14,165,233,0.05)] hover:border-sky-500/50' : 'border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)] hover:border-indigo-500/50'}`}
                       onClick={() => window.open(`https://stellar.expert/explorer/${network}/contract/${NETWORK_CONFIGS[network as 'testnet' | 'mainnet'].vaultContractId}`, '_blank')}
@@ -2166,7 +2166,7 @@ function App() {
                     </TiltCard>
 
                     {/* Subsidy Pool */}
-                    <TiltCard className="reveal-item">
+                    <TiltCard>
                     <div className={`glass-panel border transition-all duration-700 ${isMainnet ? 'border-emerald-500/20' : isTestnet ? 'border-sky-500/20' : 'border-indigo-500/20'}`}>
                       <div className="flex items-center gap-3 mb-4">
                         <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
@@ -2187,7 +2187,7 @@ function App() {
                     </TiltCard>
 
                     {/* Reserve Ratio */}
-                    <TiltCard className="reveal-item">
+                    <TiltCard>
                     <div className={`glass-panel border transition-all duration-700 ${isMainnet ? 'border-emerald-500/20' : isTestnet ? 'border-sky-500/20' : 'border-indigo-500/20'}`}>
                       <div className="flex items-center gap-3 mb-4">
                         <div className={`p-2 rounded-lg ${isMainnet ? 'bg-emerald-500/10 text-emerald-400' : isTestnet ? 'bg-sky-500/10 text-sky-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
