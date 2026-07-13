@@ -253,23 +253,29 @@ function App() {
       const savedWalletId = localStorage.getItem('typhoon_vault_walletId');
       const savedAddress = localStorage.getItem('typhoon_vault_walletAddress');
       
-      // Only attempt if not already connected but we have a known wallet provider
-      if (!isWalletConnected && savedWalletId && savedAddress) {
+      if (savedWalletId && savedAddress) {
         try {
-          // Attempt silent reconnect
-          const address = await connectWallet(network, savedWalletId);
-          if (address) {
-            setWalletAddress(address);
-            setIsWalletConnected(true);
-            await loadProfile(address, network);
+          // Always ensure kit is initialized with the saved network
+          initKit(network);
+          StellarWalletsKit.setWallet(savedWalletId);
+          
+          if (!isWalletConnected) {
+            const address = await connectWallet(network, savedWalletId);
+            if (address) {
+              setWalletAddress(address);
+              setIsWalletConnected(true);
+              await loadProfile(address, network);
+            }
           }
         } catch (e) {
           console.warn("Silent auto-reconnect failed", e);
+          setIsWalletConnected(false);
+          setWalletAddress('');
         }
       }
     };
     checkAutoReconnect();
-  }, []);
+  }, [network]);
 
   // Profile Dashboard State
   const [isProfileDashboardOpen, setIsProfileDashboardOpen] = useState(false);
