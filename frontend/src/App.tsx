@@ -247,6 +247,30 @@ function App() {
     return () => window.removeEventListener('online', handleOnline);
   }, []);
 
+  // Auto-Reconnect Fallback for persistent logins
+  useEffect(() => {
+    const checkAutoReconnect = async () => {
+      const savedWalletId = localStorage.getItem('typhoon_vault_walletId');
+      const savedAddress = localStorage.getItem('typhoon_vault_walletAddress');
+      
+      // Only attempt if not already connected but we have a known wallet provider
+      if (!isWalletConnected && savedWalletId && savedAddress) {
+        try {
+          // Attempt silent reconnect
+          const address = await connectWallet(network, savedWalletId);
+          if (address) {
+            setWalletAddress(address);
+            setIsWalletConnected(true);
+            await loadProfile(address, network);
+          }
+        } catch (e) {
+          console.warn("Silent auto-reconnect failed", e);
+        }
+      }
+    };
+    checkAutoReconnect();
+  }, []);
+
   // Profile Dashboard State
   const [isProfileDashboardOpen, setIsProfileDashboardOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
@@ -893,6 +917,7 @@ function App() {
       const address = await connectWallet(network, walletId);
       setWalletAddress(address);
       setIsWalletConnected(true);
+      localStorage.setItem('typhoon_vault_walletId', walletId);
       setBurstCount(c => c + 1);
       await loadProfile(address, network);
       addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
