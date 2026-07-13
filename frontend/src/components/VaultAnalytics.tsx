@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, ColorType } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi } from 'lightweight-charts';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Activity, BarChart2, Shield } from 'lucide-react';
 
@@ -73,7 +74,7 @@ export const VaultAnalytics: React.FC<VaultAnalyticsProps> = ({ currentTvl }) =>
       }
     });
 
-    const candlestickSeries = chart.addCandlestickSeries({
+    const candlestickSeries = (chart as any).addCandlestickSeries({
       upColor: '#10b981',
       downColor: '#f43f5e',
       borderVisible: false,
@@ -225,7 +226,7 @@ export const VaultAnalytics: React.FC<VaultAnalyticsProps> = ({ currentTvl }) =>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="name" stroke="rgba(255,255,255,0.2)" fontSize={10} tickMargin={10} />
-                <YAxis stroke="rgba(255,255,255,0.2)" fontSize={10} tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
+                <YAxis stroke="rgba(255,255,255,0.2)" fontSize={10} tickFormatter={(value: any) => `${(value / 1000).toFixed(0)}k`} />
                 <RechartsTooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="tvl" stroke="#0ea5e9" strokeWidth={2} fillOpacity={1} fill="url(#colorTvl)" />
                 <Area type="monotone" dataKey="subsidy" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorSubsidy)" />
