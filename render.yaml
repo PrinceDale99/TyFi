@@ -1,15 +1,56 @@
 services:
+  # Main Backend Web Service
   - type: web
     name: tyfi-backend
-    plan: free
     env: node
     rootDir: functions
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
     envVars:
-      - key: NODE_VERSION
-        value: 20
-      - key: SMART_WALLET_FACTORY_ID
-        value: CBOYTPCURZUI47CZK3MGQYBA54FULGHWNHIFBFCP2G2OJL24IRBCE5M6
-      - key: WALLET_WASM_HASH
-        value: 64c0d6b8ef81b319453405009750467f187d963155472de2b7e7f6d6510a7675
+      - key: PORT
+        value: 3001
+      - key: SUPABASE_URL
+        value: https://dkprrplswejxdsjmvsox.supabase.co
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: ORACLE_SECRET_KEY
+        sync: false
+      - key: PDAX_API_KEY
+        sync: false
+      - key: PDAX_API_SECRET
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+
+  # Oracle Scraper Background Worker
+  - type: worker
+    name: tyfi-oracle-scraper
+    env: node
+    rootDir: functions
+    buildCommand: npm install && npm run build
+    startCommand: npm run listener
+    envVars:
+      - key: SOROBAN_RPC_URL
+        value: https://soroban-testnet.stellar.org
+      - key: CONTRACT_ID
+        value: CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH
+      - key: SUPABASE_URL
+        value: https://dkprrplswejxdsjmvsox.supabase.co
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: ORACLE_SECRET_KEY
+        sync: false
