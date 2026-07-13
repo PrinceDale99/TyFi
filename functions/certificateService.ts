@@ -45,7 +45,7 @@ export async function generateCertificate(data: {
             await logEvent('INFO', 'Certificate pinned to IPFS via Pinata', { ipfsHash: pinataRes.data.IpfsHash });
           } catch (pinataErr: any) {
             await logEvent('WARNING', 'Pinata upload failed, using fallback URL', { error: pinataErr.message });
-            url = `https://tyfi.app/certificate-fallback/${txHash}.pdf`;
+            url = `https://tyfi.vercel.app/certificate-fallback/${txHash}.pdf`;
           }
           
           // Save metadata to Firestore
