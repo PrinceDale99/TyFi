@@ -27,6 +27,7 @@ export interface NetworkConfig {
   horizonUrl: string;
   sorobanRpcUrl: string;
   passphrase: string;
+  daoContractId: string;
 }
 
 export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
@@ -38,6 +39,7 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
     horizonUrl: 'https://horizon-testnet.stellar.org',
     sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
     passphrase: Networks.TESTNET,
+    daoContractId: 'CCNOLKFAVVGPI665RM2OHOFOTRKAGF572IILENIIVXJK37RKNFPX4KKN', // Deployed testnet DAO
   },
   mainnet: {
     name: 'Mainnet',
@@ -46,6 +48,7 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
     horizonUrl: 'https://horizon.stellar.org',
     sorobanRpcUrl: 'https://soroban-rpc.stellar.org',
     passphrase: Networks.PUBLIC,
+    daoContractId: 'CDMYX2V5Y6J34U4GTRU32O65XQ64R7PXZ4E4X7C2WYYU5ZQGQJ3F6E2V', // Will be replaced on mainnet
   }
 };
 
@@ -357,7 +360,11 @@ export const getContractTvl = async (network: 'testnet' | 'mainnet' = 'testnet')
     if (rpc.Api.isSimulationSuccess(result)) {
       const val = result.result?.retval;
       if (val) {
-        return Number(scValToNative(val)) / 10000000;
+        const nativeVal = scValToNative(val);
+        const strVal = typeof nativeVal === 'bigint' ? nativeVal.toString() : 
+                      (nativeVal && typeof nativeVal === 'object') ? (nativeVal.low !== undefined ? nativeVal.low.toString() : nativeVal.toString()) : 
+                      String(nativeVal);
+        return Number(strVal) / 10000000;
       }
     }
     return 0;
@@ -389,7 +396,11 @@ export const getContractSubsidy = async (network: 'testnet' | 'mainnet' = 'testn
     if (rpc.Api.isSimulationSuccess(result)) {
       const val = result.result?.retval;
       if (val) {
-        return Number(scValToNative(val)) / 10000000;
+        const nativeVal = scValToNative(val);
+        const strVal = typeof nativeVal === 'bigint' ? nativeVal.toString() : 
+                      (nativeVal && typeof nativeVal === 'object') ? (nativeVal.low !== undefined ? nativeVal.low.toString() : nativeVal.toString()) : 
+                      String(nativeVal);
+        return Number(strVal) / 10000000;
       }
     }
     return 0;
@@ -442,13 +453,173 @@ export const getUserLpBalance = async (user: string, network: 'testnet' | 'mainn
 
       // amount = (shares * total_deposited) / total_shares
       const amountStroops = (shares * totalDeposited) / totalShares;
-      return Number(amountStroops) / 10000000;
+      const val = amountStroops;
+      let rawVal: string;
+      if (val !== undefined) {
+        rawVal = val.toString();
+      } else {
+        rawVal = "0";
+      }
+      return Number(rawVal) / 10000000;
     }
     return 0;
   } catch (error) {
     console.error("Error fetching user LP balance:", error);
     return 0;
   }
+};
+
+// ---------------------------------------------------------------------------
+// DAO Governance Integration
+// ---------------------------------------------------------------------------
+
+export interface DaoProposal {
+  id: number;
+  creator: string;
+  description: string;
+  votesFor: number;
+  votesAgainst: number;
+  executed: boolean;
+  deadline: number;
+}
+
+/**
+ * Fetch all active proposals from the DAO contract.
+ * Note: Real Soroban apps might use an indexer. This is pure Web3.
+ */
+export async function getDaoProposals(network: 'testnet' | 'mainnet'): Promise<DaoProposal[]> {
+  try {
+    const config = NETWORK_CONFIGS[network];
+    const server = new rpc.Server(config.sorobanRpcUrl);
+    const contract = new Contract(config.daoContractId);
+
+    const countTx = await server.simulateTransaction(
+      new TransactionBuilder(
+        new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '1'),
+        { fee: '100', networkPassphrase: config.passphrase }
+      )
+      .addOperation(contract.call('get_proposal_count'))
+      .setTimeout(30)
+      .build()
+    );
+
+    if (countTx.result?.retval?.switch()?.name !== 'scvU64') {
+      return []; // Return empty if count fails or is missing
+    }
+
+    // Safely parse u64 from XDR
+    const countVal = countTx.result.retval.u64();
+    const countStr = typeof countVal === 'bigint' ? countVal.toString() : 
+                     (countVal && typeof countVal === 'object' && countVal.low !== undefined) ? countVal.low.toString() : 
+                     countVal.toString();
+    const count = parseInt(countStr, 10);
+    const proposals: DaoProposal[] = [];
+
+    // Fetch each proposal individually (Option A: Pure Web3 approach)
+    for (let i = 1; i <= count; i++) {
+      try {
+        const propTx = await server.simulateTransaction(
+          new TransactionBuilder(
+            new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '1'),
+            { fee: '100', networkPassphrase: config.passphrase }
+          )
+          .addOperation(contract.call('get_proposal', nativeToScVal(i, { type: 'u64' })))
+          .setTimeout(30)
+          .build()
+        );
+
+        if (propTx.result && propTx.result.retval) {
+          const pMap = propTx.result.retval.value() as any[];
+          if (pMap && pMap.length) {
+            // Unpack struct fields based on TyfiDaoContract DataKey::Proposal order
+            let id = i;
+            let creator = '';
+            let description = '';
+            let votesFor = 0;
+            let votesAgainst = 0;
+            let executed = false;
+            let deadline = 0;
+
+            for (const field of pMap) {
+              const key = field.key().sym().toString();
+              const val = field.val();
+              
+              if (key === 'id') id = parseInt(val.u64().toString(), 10);
+              if (key === 'creator') creator = scValToNative(val);
+              if (key === 'description') description = scValToNative(val);
+              if (key === 'votes_for') votesFor = parseInt(val.i128().lo().toString(), 10);
+              if (key === 'votes_against') votesAgainst = parseInt(val.i128().lo().toString(), 10);
+              if (key === 'executed') executed = val.b();
+              if (key === 'deadline') deadline = parseInt(val.u64().toString(), 10);
+            }
+
+            proposals.push({
+              id, creator, description, votesFor, votesAgainst, executed, deadline
+            });
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to fetch proposal ${i}:`, err);
+      }
+    }
+
+    return proposals;
+  } catch (error) {
+    console.error('Error fetching DAO proposals:', error);
+    return [];
+  }
+}
+
+/**
+ * Submit a vote for a DAO proposal using Freighter.
+ */
+export async function voteOnDaoProposal(
+  proposalId: number,
+  support: boolean,
+  network: 'testnet' | 'mainnet'
+): Promise<string> {
+  const isConnected = await isFreighterConnected();
+  if (!isConnected) throw new Error('Freighter not connected');
+
+  const pubKey = await getFreighterPublicKey();
+  const config = NETWORK_CONFIGS[network];
+  const server = new rpc.Server(config.sorobanRpcUrl);
+
+  const accountResp = await server.getAccount(pubKey);
+  const account = new Account(pubKey, accountResp.sequence);
+
+  const contract = new Contract(config.daoContractId);
+  const operation = contract.call(
+    'vote',
+    new Address(pubKey).toScVal(),
+    nativeToScVal(proposalId, { type: 'u64' }),
+    nativeToScVal(support, { type: 'bool' })
+  );
+
+  let tx = new TransactionBuilder(account, {
+    fee: '1000', // Baseline fee
+    networkPassphrase: config.passphrase,
+  })
+    .addOperation(operation)
+    .setTimeout(30)
+    .build();
+
+  const simulated = await server.simulateTransaction(tx);
+  if (simulated.error) {
+    throw new Error(`Simulation failed: ${simulated.error}`);
+  }
+
+  tx = rpc.assembleTransaction(tx, config.passphrase, simulated).build();
+
+  const signedTxXdr = await signTransaction(tx.toXDR(), { network: config.name.toUpperCase() as any });
+  const signedTx = TransactionBuilder.fromXDR(signedTxXdr, config.passphrase);
+
+  const sendResponse = await server.sendTransaction(signedTx as any);
+  if (sendResponse.status === 'ERROR') {
+    throw new Error('Transaction submission failed');
+  }
+
+  return sendResponse.hash;
 };
 
 export interface LedgerTx {
