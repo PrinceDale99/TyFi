@@ -72,7 +72,7 @@ import UnifiedCopilot from './components/UnifiedCopilot';
 import LedgerStream from './components/LedgerStream';
 import { fetchWeather } from './services/weatherService';
 import type { WeatherData, FarmData, Claim } from "./types";
-import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance, NETWORK_CONFIGS } from './lib/stellar';
+import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance, NETWORK_CONFIGS, initKit, StellarWalletsKit } from './lib/stellar';
 import { calculateCombinedDamage } from './utils/DamageCalculator';
 import { useXlmToPhp } from './hooks/useXlmToPhp';
 import { useXlmRates } from './hooks/useXlmRates';
