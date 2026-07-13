@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, Smartphone, Building, CheckCircle2, ChevronRight, Save } from 'lucide-react';
+import { Wallet, Smartphone, Building, CheckCircle2, ChevronRight, Save, Zap, AlertTriangle, X } from 'lucide-react';
+import axios from 'axios';
 
 interface PaymentSetupProps {
   isMainnet: boolean;
@@ -11,36 +12,138 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
   const [fiatProvider, setFiatProvider] = useState<'gcash' | 'paymaya'>('gcash');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
+  const [isAutoCollectEnabled, setIsAutoCollectEnabled] = useState(false);
+  const [showAutoCollectModal, setShowAutoCollectModal] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load saved preferences if any
-    const saved = localStorage.getItem(`typhoon_vault_payment_${walletAddress}`);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setPaymentMethod(parsed.method || 'wallet');
-      if (parsed.method === 'fiat') {
-        setFiatProvider(parsed.provider || 'gcash');
-        setAccountNumber(parsed.accountNumber || '');
-        setAccountName(parsed.accountName || '');
+    const loadPreferences = async () => {
+      setIsLoading(true);
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/preferences/${walletAddress}`);
+        const prefs = response.data;
+        if (prefs && Object.keys(prefs).length > 0) {
+          setPaymentMethod(prefs.payment_method || 'wallet');
+          if (prefs.payment_method === 'fiat') {
+            setFiatProvider(prefs.fiat_provider || 'gcash');
+            setAccountNumber(prefs.account_number || '');
+            setAccountName(prefs.account_name || '');
+          }
+          setIsAutoCollectEnabled(prefs.is_auto_collect_enabled || false);
+        } else {
+          // Fallback to local storage if not found in DB
+          const saved = localStorage.getItem(`typhoon_vault_payment_${walletAddress}`);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            setPaymentMethod(parsed.method || 'wallet');
+            if (parsed.method === 'fiat') {
+              setFiatProvider(parsed.provider || 'gcash');
+              setAccountNumber(parsed.accountNumber || '');
+              setAccountName(parsed.accountName || '');
+            }
+            setIsAutoCollectEnabled(parsed.autoCollect || false);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load preferences from backend, falling back to local storage", error);
+        const saved = localStorage.getItem(`typhoon_vault_payment_${walletAddress}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setPaymentMethod(parsed.method || 'wallet');
+          if (parsed.method === 'fiat') {
+            setFiatProvider(parsed.provider || 'gcash');
+            setAccountNumber(parsed.accountNumber || '');
+            setAccountName(parsed.accountName || '');
+          }
+          setIsAutoCollectEnabled(parsed.autoCollect || false);
+        }
+      } finally {
+        setIsLoading(false);
       }
+    };
+    
+    if (walletAddress) {
+      loadPreferences();
     }
   }, [walletAddress]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const config = {
       method: paymentMethod,
       provider: paymentMethod === 'fiat' ? fiatProvider : null,
       accountNumber: paymentMethod === 'fiat' ? accountNumber : null,
       accountName: paymentMethod === 'fiat' ? accountName : null,
+      autoCollect: isAutoCollectEnabled
     };
+    
+    // Save to LocalStorage fallback
     localStorage.setItem(`typhoon_vault_payment_${walletAddress}`, JSON.stringify(config));
+    
+    try {
+      // Save to Supabase via Backend API
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/preferences`, {
+        walletAddress,
+        paymentMethod,
+        fiatProvider: paymentMethod === 'fiat' ? fiatProvider : null,
+        accountNumber: paymentMethod === 'fiat' ? accountNumber : null,
+        accountName: paymentMethod === 'fiat' ? accountName : null,
+        isAutoCollectEnabled
+      });
+    } catch (error) {
+      console.error("Failed to save to backend", error);
+    }
+
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
   };
 
+  const handleToggleAutoCollect = () => {
+    if (!isAutoCollectEnabled) {
+      setShowAutoCollectModal(true);
+    } else {
+      setIsAutoCollectEnabled(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="text-slate-400 p-8 text-center animate-pulse">Loading preferences...</div>;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Auto Collect Modal */}
+      {showAutoCollectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center gap-3 mb-4 text-amber-500">
+              <AlertTriangle size={24} />
+              <h3 className="text-lg font-black uppercase tracking-wider">Enable Auto Collect?</h3>
+            </div>
+            <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+              By enabling Auto Collect, you authorize the protocol to automatically process your claim and withdraw funds to your selected payment method the moment a typhoon trigger is met. You will not need to manually claim it.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowAutoCollectModal(false)}
+                className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 font-bold hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  setIsAutoCollectEnabled(true);
+                  setShowAutoCollectModal(false);
+                }}
+                className={`flex-1 py-3 rounded-xl font-bold transition-colors ${isMainnet ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950' : 'bg-sky-500 hover:bg-sky-400 text-slate-950'}`}
+              >
+                Authorize
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
         <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Payout Configuration</h2>
         <p className="text-sm text-slate-400">Configure how you receive your parametric payouts when a weather trigger executes.</p>
@@ -99,7 +202,7 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
       </div>
 
       {paymentMethod === 'fiat' && (
-        <div className="glass-panel p-6 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-500 mt-6 space-y-6">
+        <div className="glass-panel p-6 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-500 space-y-6">
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
             <h3 className="text-md font-bold text-white uppercase tracking-widest">Fiat Routing Details</h3>
             <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">
@@ -171,6 +274,25 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
           </div>
         </div>
       )}
+
+      {/* Automation Settings */}
+      <div className="glass-panel p-6 border border-white/10 rounded-2xl flex items-center justify-between gap-6">
+        <div>
+          <h3 className="text-md font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-1">
+            <Zap size={16} className={isAutoCollectEnabled ? 'text-amber-400' : 'text-slate-500'} />
+            Auto Collect Payouts
+          </h3>
+          <p className="text-sm text-slate-400 max-w-xl">
+            Automatically claim and route funds to your preferred payment method when a parametric weather trigger is met.
+          </p>
+        </div>
+        <button 
+          onClick={handleToggleAutoCollect}
+          className={`relative w-14 h-8 rounded-full transition-colors flex items-center px-1 shrink-0 ${isAutoCollectEnabled ? (isMainnet ? 'bg-emerald-500' : 'bg-sky-500') : 'bg-slate-700'}`}
+        >
+          <div className={`w-6 h-6 rounded-full bg-white transition-transform duration-300 ${isAutoCollectEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+        </button>
+      </div>
 
       <div className="flex justify-end pt-4">
         <button
