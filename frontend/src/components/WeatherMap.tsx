@@ -107,9 +107,37 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ regionName, farmName, weather, 
 
   if (isLoading || !weather) {
     return (
-      <div className="w-full h-[460px] bg-slate-900/50 rounded-2xl flex flex-col items-center justify-center border border-white/5 animate-pulse">
-        <Navigation className="text-sky-500 mb-4 animate-bounce" size={40} />
-        <p className="text-slate-400 font-medium">Initializing Satellite Weather Feed...</p>
+      <div className="w-full h-[460px] bg-slate-950 rounded-2xl flex flex-col items-center justify-center border border-white/10 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sky-900/20 via-slate-950 to-slate-950" />
+        
+        {/* Radar Scanning Effect */}
+        <div className="absolute w-[800px] h-[800px] rounded-full border border-sky-500/10 flex items-center justify-center opacity-50">
+          <div className="w-[600px] h-[600px] rounded-full border border-sky-500/10 flex items-center justify-center">
+            <div className="w-[400px] h-[400px] rounded-full border border-sky-500/20 flex items-center justify-center">
+              <div className="w-[200px] h-[200px] rounded-full border border-sky-500/30 relative animate-[spin_4s_linear_infinite]">
+                 <div className="absolute top-0 right-1/2 w-1/2 h-1/2 bg-gradient-to-tr from-transparent to-sky-500/40 origin-bottom-right rounded-tr-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center glass-panel p-8 rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(14,165,233,0.1)]">
+          <div className="relative mb-6">
+            <div className="absolute inset-0 bg-sky-500 blur-xl opacity-30 animate-pulse" />
+            <div className="w-16 h-16 rounded-full border-2 border-sky-500/30 border-t-sky-400 animate-spin flex items-center justify-center">
+              <Navigation className="text-sky-400" size={24} />
+            </div>
+          </div>
+          <h3 className="text-lg font-black text-white uppercase tracking-widest mb-2 animate-pulse">Initializing Global Oracle Feed</h3>
+          <p className="text-xs text-sky-200/60 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-ping" />
+            Syncing Satellite Data
+          </p>
+          
+          <div className="w-48 h-1 bg-white/5 rounded-full mt-6 overflow-hidden">
+             <div className="h-full bg-sky-500/50 w-full origin-left animate-[pulse_1.5s_ease-in-out_infinite]" />
+          </div>
+        </div>
       </div>
     );
   }
