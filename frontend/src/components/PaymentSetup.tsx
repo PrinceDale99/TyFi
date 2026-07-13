@@ -21,7 +21,8 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
     const loadPreferences = async () => {
       setIsLoading(true);
       try {
-        const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/preferences/${walletAddress}`);
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
+        const response = await axios.get(`${backendUrl}/api/preferences/${walletAddress}`);
         const prefs = response.data;
         if (prefs && Object.keys(prefs).length > 0) {
           setPaymentMethod(prefs.payment_method || 'wallet');
@@ -81,8 +82,9 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
     localStorage.setItem(`typhoon_vault_payment_${walletAddress}`, JSON.stringify(config));
     
     try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
       // Save to Supabase via Backend API
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/preferences`, {
+      await axios.post(`${backendUrl}/api/preferences`, {
         walletAddress,
         paymentMethod,
         fiatProvider: paymentMethod === 'fiat' ? fiatProvider : null,
