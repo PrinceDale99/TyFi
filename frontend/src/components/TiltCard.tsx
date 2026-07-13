@@ -30,7 +30,7 @@ const TiltCard: React.FC<TiltCardProps> = ({
       ref={ref}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
-      className={`relative ${className}`}
+      className={`relative overflow-hidden ${className}`}
       style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}
     >
       {/* Moving highlight shine */}
