@@ -116,7 +116,7 @@ export async function processImageClaim(mediaUrl: string): Promise<AssessmentRes
     } else {
         const response = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
         imageBuffer = Buffer.from(response.data, 'binary');
-        mimeType = response.headers['content-type'] || 'image/jpeg';
+        mimeType = (response.headers['content-type'] as string) || 'image/jpeg';
         base64Image = imageBuffer.toString('base64');
     }
     

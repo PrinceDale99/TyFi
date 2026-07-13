@@ -155,7 +155,7 @@ export async function processPayoutOfframp(cryptoAmount: number, paymentMethod: 
         return { trade, withdrawal };
     } catch (error: any) {
         if (error.response?.status === 403 || process.env.RENDER) {
-            await logEvent('WARN', 'PDAX request blocked (403) or running on Render. Falling back to simulation.', { 
+            await logEvent('WARNING', 'PDAX request blocked (403) or running on Render. Falling back to simulation.', { 
                 message: error.message 
             });
             
