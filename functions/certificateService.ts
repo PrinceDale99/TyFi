@@ -4,6 +4,7 @@ import admin from 'firebase-admin';
 import axios from 'axios';
 import FormData from 'form-data';
 import { logEvent } from './logger';
+import { supabase } from './supabase';
 
 export async function generateCertificate(data: {
   address: string;
@@ -29,22 +30,28 @@ export async function generateCertificate(data: {
         try {
           const buffer = Buffer.concat(chunks);
           
-          // Upload to Pinata IPFS
+          // Upload to Supabase Storage
           let url = '';
           try {
-            const formData = new FormData();
-            formData.append('file', buffer, { filename: `${txHash}.pdf` });
-            
-            const pinataRes = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', formData, {
-              headers: {
-                'Authorization': `Bearer ${process.env.PINATA_JWT}`,
-                ...formData.getHeaders()
-              }
-            });
-            url = `https://gateway.pinata.cloud/ipfs/${pinataRes.data.IpfsHash}`;
-            await logEvent('INFO', 'Certificate pinned to IPFS via Pinata', { ipfsHash: pinataRes.data.IpfsHash });
-          } catch (pinataErr: any) {
-            await logEvent('WARNING', 'Pinata upload failed, using fallback URL', { error: pinataErr.message });
+            // Upload to Supabase bucket 'certificates'
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('certificates')
+              .upload(`${txHash}.pdf`, buffer, {
+                contentType: 'application/pdf',
+                upsert: true
+              });
+
+            if (uploadError) throw uploadError;
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+              .from('certificates')
+              .getPublicUrl(`${txHash}.pdf`);
+              
+            url = publicUrl;
+            await logEvent('INFO', 'Certificate uploaded to Supabase Storage', { path: uploadData?.path });
+          } catch (uploadErr: any) {
+            await logEvent('WARNING', 'Supabase upload failed, using fallback URL', { error: uploadErr.message });
             url = `https://tyfi.vercel.app/certificate-fallback/${txHash}.pdf`;
           }
           
