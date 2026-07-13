@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { handleIncomingSms } from './smsHandler';
-import { pdaxRouter } from './pdaxService';
+import { processPayoutOfframp } from './pdaxService';
 import { oracleRouter } from './oracle';
 import { calculateBondYield } from './bondService';
 import { flushOfflineQueue } from './offlineQueue';
