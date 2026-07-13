@@ -73,8 +73,8 @@ export const initKit = (network: 'testnet' | 'mainnet' = 'testnet') => {
             metadata: {
               name: "TyFi Vault",
               description: "Parametric Agricultural Insurance Protocol",
-              url: "https://tyfi.app",
-              icons: ["https://tyfi.app/logo.png"]
+              url: "https://tyfi.vercel.app",
+              icons: ["https://tyfi.vercel.app/logo.png"]
             }
           })
         ] : [])
