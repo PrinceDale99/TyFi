@@ -1,9 +1,7 @@
 import express from 'express';
 import { Keypair, TransactionBuilder, Networks, xdr, rpc, Contract, Address } from '@stellar/stellar-sdk';
 import { logEvent } from './logger';
-import { getDb } from './logger';
 import { supabase } from './supabase';
-import { initiateFiatSweep } from './pdaxService';
 import admin from 'firebase-admin';
 
 export const oracleRouter = express.Router();
