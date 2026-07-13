@@ -21,7 +21,7 @@
 TyFi is a decentralized insurance and microloan platform built on the Stellar network (Soroban) designed to provide instant relief for farmers impacted by typhoons.
 
 ## Notice for Live Deployment (Render)
-> **PDAX Institutional API Integration:** Due to IP Allowlisting restrictions enforced by the PDAX Institutional API firewall, the live deployment hosted on Render (`https://tyfi-backend.onrender.com`) is physically blocked from reaching the PDAX endpoints (`403 Forbidden`). 
+> **PDAX Institutional API Integration:** Due to IP Allowlisting restrictions enforced by the PDAX Institutional API firewall, the live deployment hosted on Render (`https://tyfi-yzbn.onrender.com`) is physically blocked from reaching the PDAX endpoints (`403 Forbidden`). 
 > As a workaround for the deployed version, the fiat off-ramp step via PDAX is **simulated** when running on Render.
 > To test the full end-to-end integration with the real PDAX Sandbox, you must run the backend locally, as local IP addresses are currently not blocked by the PDAX sandbox firewall.
 
