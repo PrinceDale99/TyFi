@@ -1,5 +1,5 @@
 services:
-  # Main Backend Web Service
+  # Main Backend + Scraper (Running concurrently)
   - type: web
     name: tyfi-backend
     env: node
@@ -9,6 +9,10 @@ services:
     envVars:
       - key: PORT
         value: 3001
+      - key: SOROBAN_RPC_URL
+        value: https://soroban-testnet.stellar.org
+      - key: CONTRACT_ID
+        value: CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH
       - key: SUPABASE_URL
         value: https://dkprrplswejxdsjmvsox.supabase.co
       - key: SUPABASE_SECRET_KEY
@@ -28,29 +32,4 @@ services:
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
-        sync: false
-
-  # Oracle Scraper Background Worker
-  - type: worker
-    name: tyfi-oracle-scraper
-    env: node
-    rootDir: functions
-    buildCommand: npm install && npm run build
-    startCommand: npm run listener
-    envVars:
-      - key: SOROBAN_RPC_URL
-        value: https://soroban-testnet.stellar.org
-      - key: CONTRACT_ID
-        value: CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH
-      - key: SUPABASE_URL
-        value: https://dkprrplswejxdsjmvsox.supabase.co
-      - key: SUPABASE_SECRET_KEY
-        sync: false
-      - key: FIREBASE_PROJECT_ID
-        sync: false
-      - key: FIREBASE_CLIENT_EMAIL
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY
-        sync: false
-      - key: ORACLE_SECRET_KEY
         sync: false
