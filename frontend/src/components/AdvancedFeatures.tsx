@@ -39,8 +39,10 @@ export const AdvancedFeatures: React.FC<AdvancedFeaturesProps> = ({ walletAddres
       setResult(res.data || res);
       addLog(`Success: ${name} completed.`, 'success');
     } catch (e: any) {
-      setResult({ error: e.response?.data || e.message });
-      addLog(`Error: ${name} failed - ${e.message}`, 'error');
+      const errorData = e.response?.data || e.message;
+      const errorDetail = typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData);
+      setResult({ error: errorData });
+      addLog(`Error: ${name} failed - ${e.message} | Details: ${errorDetail}`, 'error');
     }
     setLoading(false);
   };
@@ -154,10 +156,22 @@ export const AdvancedFeatures: React.FC<AdvancedFeaturesProps> = ({ walletAddres
                   <Terminal size={14} className="text-slate-400" />
                   <span className="text-xs font-mono font-bold text-slate-300">tyfi-console ~ /debug</span>
                 </div>
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+                <div className="flex gap-3 items-center">
+                  <button 
+                    onClick={() => {
+                      const logString = logs.map(l => `[${l.timestamp}] [${l.type.toUpperCase()}] ${l.message}`).join('\n');
+                      navigator.clipboard.writeText(logString);
+                      addLog('Terminal logs copied to clipboard', 'success');
+                    }}
+                    className="text-[10px] text-slate-500 hover:text-sky-400 font-bold tracking-widest uppercase transition-colors"
+                  >
+                    Copy Logs
+                  </button>
+                  <div className="flex gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+                  </div>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 font-mono text-xs custom-scrollbar">
