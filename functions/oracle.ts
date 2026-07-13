@@ -1,6 +1,9 @@
 import express from 'express';
 import { Keypair, TransactionBuilder, Networks, xdr, rpc, Contract, Address } from '@stellar/stellar-sdk';
 import { logEvent } from './logger';
+import { getDb } from './logger';
+import { supabase } from './supabase';
+import { initiateFiatSweep } from './pdaxService';
 import admin from 'firebase-admin';
 
 export const oracleRouter = express.Router();
@@ -126,6 +129,50 @@ oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
         } catch (stellarErr: any) {
           await logEvent('ERROR', 'Stellar keypair load error', { error: stellarErr.message });
         }
+      }
+
+      // PRODUCTION AUTO-COLLECT LOGIC:
+      // Fetch all users who have opted into Auto Collect
+      try {
+        await logEvent('INFO', 'Scanning Supabase for Auto Collect subscribers...');
+        const { data: users, error } = await supabase
+          .from('user_preferences')
+          .select('*')
+          .eq('is_auto_collect_enabled', true);
+
+        if (error) {
+          await logEvent('ERROR', 'Failed to fetch Auto Collect subscribers', { error: error.message });
+        } else if (users && users.length > 0) {
+          await logEvent('INFO', `Found ${users.length} users with Auto Collect enabled. Initiating sweeps...`);
+          
+          for (const user of users) {
+            try {
+              // Format the payment prefs for the PDAX sweep
+              const prefs = {
+                method: user.payment_method || 'fiat',
+                provider: user.fiat_provider || 'gcash',
+                accountNumber: user.account_number || '09000000000',
+                accountName: user.account_name || 'Typhoon Survivor',
+                autoCollect: true
+              };
+
+              // Assume a standard payout of 15,000 PHP for parametric triggers
+              const amountPHP = 15000;
+              
+              await logEvent('INFO', `Triggering Auto Collect Fiat Sweep for ${user.wallet_address}`, { amountPHP, provider: prefs.provider });
+              
+              const pdaxTxId = await initiateFiatSweep(amountPHP, prefs);
+              
+              await logEvent('INFO', `Auto Collect Sweep Success for ${user.wallet_address}`, { pdaxTxId });
+            } catch (sweepErr: any) {
+              await logEvent('ERROR', `Auto Collect Sweep Failed for ${user.wallet_address}`, { error: sweepErr.message });
+            }
+          }
+        } else {
+          await logEvent('INFO', 'No users currently opted into Auto Collect.');
+        }
+      } catch (err: any) {
+        await logEvent('ERROR', 'Auto Collect execution failed', { error: err.message });
       }
     }
 
