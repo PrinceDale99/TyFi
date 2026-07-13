@@ -364,8 +364,8 @@ export const getContractTvl = async (network: 'testnet' | 'mainnet' = 'testnet')
         const nativeVal = scValToNative(val);
         const strVal = typeof nativeVal === 'bigint' ? nativeVal.toString() : 
                       (nativeVal && typeof nativeVal === 'object') ? (nativeVal.low !== undefined ? nativeVal.low.toString() : nativeVal.toString()) : 
-                      String(nativeVal);
-        return Number(strVal) / 10000000;
+        const numVal = Number(strVal) / 10000000;
+        return isNaN(numVal) ? 0 : numVal;
       }
     }
     return 0;
