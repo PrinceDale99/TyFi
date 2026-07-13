@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType } from 'lightweight-charts';
+import { createChart, ColorType, CandlestickSeries } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi } from 'lightweight-charts';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Activity, BarChart2, Shield } from 'lucide-react';
@@ -74,7 +74,7 @@ export const VaultAnalytics: React.FC<VaultAnalyticsProps> = ({ currentTvl }) =>
       }
     });
 
-    const candlestickSeries = (chart as any).addCandlestickSeries({
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#10b981',
       downColor: '#f43f5e',
       borderVisible: false,
