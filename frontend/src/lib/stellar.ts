@@ -44,12 +44,12 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
   },
   mainnet: {
     name: 'Mainnet',
-    xlmTokenId: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC', // Placeholder
-    vaultContractId: 'CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH', // Placeholder
+    xlmTokenId: 'CAS3J7AVONGEJ757545DG5TZAT24DQZGX357FBCT6UW674ATCQZ3E367',
+    vaultContractId: 'CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK',
     horizonUrl: 'https://horizon.stellar.org',
     sorobanRpcUrl: 'https://mainnet.sorobanrpc.com',
     passphrase: Networks.PUBLIC,
-    daoContractId: 'CCNOLKFAVVGPI665RM2OHOFOTRKAGF572IILENIIVXJK37RKNFPX4KKN', // Will be replaced on mainnet
+    daoContractId: 'CCNOLKFAVVGPI665RM2OHOFOTRKAGF572IILENIIVXJK37RKNFPX4KKN', // Using testnet DAO placeholder since mainnet DAO isn't in history
   }
 };
 
