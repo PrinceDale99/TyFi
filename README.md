@@ -289,7 +289,7 @@ npm run dev
 - Link: [Stellar Expert Testnet](https://stellar.expert/explorer/testnet/contract/CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH)
 
 ### Main Net Transaction
-- Vault Contract / App Address: `CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK`
+- Vault Contract / App Address: `CAQCA3H4UIGESIJZE3LF7TYKQY6TBQV2OQ7OVBRRRRIARX5JOTXZUNVT`
 - DAO Governance Contract: `CCSOWCGXDJSZJ3TLQOHHIC5YKD6XLF2WOSIZE5FLNDTXB73J76TXLDAO`
 - 📸 Screenshot — Stellar Expert (Mainnet)
   ![Mainnet Screenshot](public/mainnet.png)
