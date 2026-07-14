@@ -1,10 +1,5 @@
-import { Server } from '@stellar/stellar-sdk/rpc';
-import { Contract, TransactionBuilder, Networks, nativeToScVal } from '@stellar/stellar-sdk';
-
-const RPC_URL = process.env.SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org';
-const VAULT_CONTRACT_ID = process.env.VAULT_CONTRACT_ID || 'CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH';
-
-const server = new Server(RPC_URL);
+import { Contract, TransactionBuilder, Networks, nativeToScVal, rpc } from '@stellar/stellar-sdk';
+import { NETWORK_CONFIGS } from './config';
 
 export interface BondPortfolio {
     shares: number;
@@ -16,13 +11,17 @@ export interface BondPortfolio {
  * Fetches the user's bond portfolio and calculates the real-time yield
  * based on the Soroban smart contract state.
  */
-export async function calculateBondYield(userAddress: string): Promise<BondPortfolio> {
-    if (!VAULT_CONTRACT_ID) {
-        throw new Error('VAULT_CONTRACT_ID is not configured');
+export async function calculateBondYield(userAddress: string, network: 'testnet' | 'mainnet' = 'testnet'): Promise<BondPortfolio> {
+    const config = NETWORK_CONFIGS[network];
+    const server = new rpc.Server(config.rpcUrl);
+    const vaultContractId = config.vaultContractId;
+
+    if (!vaultContractId) {
+        throw new Error(`vaultContractId is not configured for ${network}`);
     }
 
     try {
-        const contract = new Contract(VAULT_CONTRACT_ID);
+        const contract = new Contract(vaultContractId);
 
         const account = await server.getAccount(userAddress).catch(() => null);
         
@@ -35,7 +34,7 @@ export async function calculateBondYield(userAddress: string): Promise<BondPortf
         const buildSimTx = (operation: any) => {
             return new TransactionBuilder(account, {
                 fee: "100",
-                networkPassphrase: Networks.TESTNET
+                networkPassphrase: config.passphrase
             })
             .addOperation(operation)
             .setTimeout(30)
