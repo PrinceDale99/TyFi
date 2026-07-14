@@ -208,6 +208,7 @@ export const submitWeatherReportOnChain = async (
   typhoonId: string,
   region: string,
   damagePercentage: number,
+  windSpeed: number = 0,
   network: 'testnet' | 'mainnet' = 'testnet'
 ) => {
   try {
@@ -224,7 +225,8 @@ export const submitWeatherReportOnChain = async (
             Address.fromString(oracle).toScVal(),
             nativeToScVal(sanitizeSymbol(typhoonId), { type: 'symbol' }),
             nativeToScVal(sanitizeSymbol(region), { type: 'symbol' }),
-            nativeToScVal(damagePercentage, { type: 'u32' })
+            nativeToScVal(damagePercentage, { type: 'u32' }),
+            nativeToScVal(windSpeed, { type: 'u32' })
           ]
         )
       )

@@ -657,8 +657,8 @@ impl TyphoonVault {
     }
     // --- Weather Reporting and Multi-Oracle Consensus ---
 
-    /// Oracles submit damage estimation reports (Combined Oracle + AI) for a typhoon in a region
-    pub fn submit_weather_report(env: Env, oracle: Address, typhoon_id: Symbol, region: Symbol, damage_percentage: u32) -> Result<(), Error> {
+    /// Oracles submit damage estimation reports (Combined Oracle + AI) for a typhoon in a region, along with raw wind speed
+    pub fn submit_weather_report(env: Env, oracle: Address, typhoon_id: Symbol, region: Symbol, damage_percentage: u32, wind_speed: u32) -> Result<(), Error> {
         oracle.require_auth();
         
         let is_mainnet = env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false);
@@ -673,6 +673,8 @@ impl TyphoonVault {
             // Single authorized oracle immediately establishes absolute consensus
             env.storage().persistent().set(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), region.clone()), &damage_percentage);
             env.storage().persistent().set(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone()), &true);
+            env.storage().persistent().set(&DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()), &wind_speed);
+            bump_persistent(&env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
             
             env.events().publish(
                 (Symbol::new(&env, "consensus_reached"), typhoon_id, region),
@@ -719,6 +721,8 @@ impl TyphoonVault {
                 
                 env.storage().persistent().set(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), region.clone()), &avg_damage);
                 env.storage().persistent().set(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone()), &true);
+                env.storage().persistent().set(&DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()), &wind_speed);
+                bump_persistent(&env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
                 
                 env.events().publish(
                     (Symbol::new(&env, "consensus_reached"), typhoon_id, region),
@@ -739,6 +743,7 @@ impl TyphoonVault {
         typhoon_id: Symbol,
         region: Symbol,
         damage_percentage: u32,
+        wind_speed: u32,
         zk_proof: soroban_sdk::Bytes,
         public_inputs: Vec<soroban_sdk::Val>
     ) -> Result<(), Error> {
@@ -751,7 +756,7 @@ impl TyphoonVault {
 
         // If the proof is valid, we trust the off-chain ZK circuit that the threshold was met.
         // We can then proceed with the normal reporting/consensus logic.
-        Self::submit_weather_report(env, oracle.clone(), typhoon_id.clone(), region.clone(), damage_percentage)
+        Self::submit_weather_report(env, oracle.clone(), typhoon_id.clone(), region.clone(), damage_percentage, wind_speed)
     }
 
     /// Claim payout based on dynamic network-configured parametric curves for a specific farm and season
@@ -856,18 +861,6 @@ impl TyphoonVault {
         require_multisig_auth(&env, payload, signatures)?;
         env.storage().persistent().set(&DataKey::ParametricBands(region.clone()), &bands);
         bump_persistent(&env, &DataKey::ParametricBands(region.clone()));
-        Ok(())
-    }
-
-    /// Oracle: Report raw wind speed for a region
-    pub fn report_wind_speed(env: Env, oracle: Address, typhoon_id: Symbol, region: Symbol, wind_speed: u32) -> Result<(), Error> {
-        oracle.require_auth();
-        let is_authorized = env.storage().instance().get(&DataKey::Oracle(oracle.clone())).unwrap_or(false);
-        if !is_authorized {
-            return Err(Error::Unauthorized);
-        }
-        env.storage().persistent().set(&DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()), &wind_speed);
-        bump_persistent(&env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
         Ok(())
     }
 }
