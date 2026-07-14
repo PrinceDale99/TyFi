@@ -2140,7 +2140,7 @@ function App() {
                     <TiltCard>
                     <div 
                       className={`glass-panel animated-border border transition-all duration-700 cursor-pointer ${isMainnet ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-500/50' : isTestnet ? 'border-sky-500/20 shadow-[0_0_20px_rgba(14,165,233,0.05)] hover:border-sky-500/50' : 'border-indigo-500/20 shadow-[0_0_20px_rgba(99,102,241,0.05)] hover:border-indigo-500/50'}`}
-                      onClick={() => window.open(`https://stellar.expert/explorer/${network}/contract/${NETWORK_CONFIGS[network as 'testnet' | 'mainnet'].vaultContractId}`, '_blank')}
+                      onClick={() => window.open(`https://stellar.expert/explorer/${network === 'mainnet' ? 'public' : 'testnet'}/contract/${NETWORK_CONFIGS[network as 'testnet' | 'mainnet'].vaultContractId}`, '_blank')}
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
