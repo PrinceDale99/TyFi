@@ -109,9 +109,14 @@ async function pollEvents(network: 'testnet' | 'mainnet') {
       }
 
     } catch (error: any) {
-      await logEvent('ERROR', `Exception occurred during ledger polling cycle on ${network}`, {
-        errorMessage: error.message
-      });
+      if (error.message && error.message.includes('startLedger must be within the ledger range')) {
+        // This just means we are caught up and waiting for the next ledger to close.
+        // We can safely ignore this error and wait for the next polling cycle.
+      } else {
+        await logEvent('ERROR', `Exception occurred during ledger polling cycle on ${network}`, {
+          errorMessage: error.message
+        });
+      }
     }
 
     await new Promise(r => setTimeout(r, 5000));
