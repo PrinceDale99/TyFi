@@ -180,7 +180,6 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       const preparedTx = await server.prepareTransaction(tx) as Transaction;
       
       const signResult = await signTransaction(preparedTx.toXDR(), { 
-        network: network === 'mainnet' ? 'PUBLIC' : 'TESTNET',
         networkPassphrase: config.passphrase 
       });
       const signedXdrStr = typeof signResult === 'string' ? signResult : (signResult as any).signedTxXdr;
@@ -461,7 +460,6 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     const preparedTx = await server.prepareTransaction(tx) as Transaction;
                     
                     const signResult = await signTransaction(preparedTx.toXDR(), {
-                      network: network === 'mainnet' ? 'PUBLIC' : 'TESTNET',
                       networkPassphrase: config.passphrase
                     });
                     
