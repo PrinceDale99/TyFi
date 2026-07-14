@@ -200,7 +200,12 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           return p;
         }));
       } else {
-        showToast("Transaction failed to submit.", "error");
+        console.error("Vote submission rejected by network:", sendResult);
+        let errorReason = sendResult.status;
+        if ((sendResult as any).errorResultXdr) {
+          errorReason += " - Check console for XDR";
+        }
+        showToast(`Failed to submit vote: ${errorReason}`, "error");
       }
     } catch (e) {
       console.error("Voting failed", e);
@@ -471,7 +476,12 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                       showToast("Proposal submitted! Please refresh after a few seconds.", "success");
                       setShowCreateModal(false);
                     } else {
-                      showToast("Failed to submit proposal.", "error");
+                      console.error("Proposal submission rejected by network:", sendResult);
+                      let errorReason = sendResult.status;
+                      if ((sendResult as any).errorResultXdr) {
+                        errorReason += " - Check console for XDR";
+                      }
+                      showToast(`Failed to submit: ${errorReason}`, "error");
                     }
                   } catch (e) {
                     console.error("Create proposal failed", e);
