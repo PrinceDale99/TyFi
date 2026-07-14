@@ -1251,7 +1251,7 @@ function App() {
             // 2. If Fiat, trigger the backend bridge to push InstaPay
             addNotification('Smart contract executed. Bridging to Fiat via PDAX...', 'info');
             const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-            const res = await fetch(`${BACKEND_URL}/api/v1/weather-trigger`, {
+            const res = await fetch(`${BACKEND_URL}/oracle/api/v1/weather-trigger`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
