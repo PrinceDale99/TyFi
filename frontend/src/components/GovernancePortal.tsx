@@ -165,7 +165,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       
       const tx = new TransactionBuilder(
         new Account(walletAddress, '0'), // Freighter will fetch real sequence
-        { fee: '1000', networkPassphrase: config.passphrase }
+        { fee: '1000000', networkPassphrase: config.passphrase }
       )
       .addOperation(
         daoContract.call('vote', 
@@ -174,12 +174,15 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           nativeToScVal(support, { type: 'bool' })
         )
       )
-      .setTimeout(30)
+      .setTimeout(300)
       .build();
 
       const preparedTx = await server.prepareTransaction(tx) as Transaction;
       
-      const signResult = await signTransaction(preparedTx.toXDR(), { networkPassphrase: config.passphrase });
+      const signResult = await signTransaction(preparedTx.toXDR(), { 
+        network: network === 'mainnet' ? 'PUBLIC' : 'TESTNET',
+        networkPassphrase: config.passphrase 
+      });
       const signedXdrStr = typeof signResult === 'string' ? signResult : (signResult as any).signedTxXdr;
       const signedTx = TransactionBuilder.fromXDR(signedXdrStr, config.passphrase) as Transaction;
       const sendResult = await server.sendTransaction(signedTx);
@@ -452,12 +455,13 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                         nativeToScVal(86400, { type: 'u64' }) // ~5 days duration in ledgers
                       )
                     )
-                    .setTimeout(30)
+                    .setTimeout(300)
                     .build();
 
                     const preparedTx = await server.prepareTransaction(tx) as Transaction;
                     
                     const signResult = await signTransaction(preparedTx.toXDR(), {
+                      network: network === 'mainnet' ? 'PUBLIC' : 'TESTNET',
                       networkPassphrase: config.passphrase
                     });
                     
