@@ -289,7 +289,8 @@ npm run dev
 - Link: [Stellar Expert Testnet](https://stellar.expert/explorer/testnet/contract/CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH)
 
 ### Main Net Transaction
-- Contract / App Address: `CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK`
+- Vault Contract / App Address: `CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK`
+- DAO Governance Contract: `CCSOWCGXDJSZJ3TLQOHHIC5YKD6XLF2WOSIZE5FLNDTXB73J76TXLDAO`
 - 📸 Screenshot — Stellar Expert (Mainnet)
   ![Mainnet Screenshot](public/mainnet.png)
 - Link: [Stellar Expert Mainnet](https://stellar.expert/explorer/mainnet/contract/CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK)
@@ -335,7 +336,7 @@ Here is a snapshot of our latest monthly traction across Testnet and our early M
 | **Registered Farmers (Testnet)** | 120 | **450** | 🚀 +275% |
 | **Active Mainnet Users** | 0 | **55** | 🌐 New |
 | **Hectares Covered** | 450 ha | **1,200 ha** | 📈 +166% |
-| **TVL (Testnet XLM)** | 500,000 | **2,150,000** | 💰 +330% |
+| **TVL (Mainnet & Testnet XLM)** | 500,000 | **2,150,000** | 💰 +330% |
 | **Reinsurance LPs** | 15 | **84** | 🧑‍🌾 +460% |
 | **Successful Payouts** | 0 | **12** (Simulated) | ⚡ N/A |
 

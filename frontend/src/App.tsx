@@ -138,7 +138,7 @@ function App() {
     return (localStorage.getItem('typhoon_vault_activeTab') as any) || 'monitor';
   });
   const [network, setNetwork] = useState<'testnet' | 'mainnet'>(() => {
-    return (localStorage.getItem('typhoon_vault_network') as any) || 'testnet';
+    return (localStorage.getItem('typhoon_vault_network') as any) || 'mainnet';
   });
   const [isWalletConnected, setIsWalletConnected] = useState(() => {
     return localStorage.getItem('typhoon_vault_isWalletConnected') === 'true';
