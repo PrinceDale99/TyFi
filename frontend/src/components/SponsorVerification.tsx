@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Globe, Upload, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import { registerSponsor } from '../services/firebaseService';
+import { DiditSdk } from '@didit-protocol/sdk-web';
 
 interface SponsorVerificationProps {
   onVerificationComplete: (sponsorInfo: {name: string, email: string, sponsorType: string, birthDate: string}) => void;
@@ -19,7 +20,7 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
     sponsorType: 'Donor'
   });
 
-import { DiditSdk } from '@didit-protocol/sdk-web';
+  
 
   const [isDiditVerified, setIsDiditVerified] = useState(false);
   const [diditSessionId, setDiditSessionId] = useState<string | null>(null);
@@ -53,7 +54,7 @@ import { DiditSdk } from '@didit-protocol/sdk-web';
       console.warn("Didit API fetch failed (likely CORS or missing workflow_id), falling back to mock session", e);
     }
 
-    sdk.onComplete = (result) => {
+    sdk.onComplete = (result: any) => {
       if (result.type === 'completed' && result.session) {
         setIsDiditVerified(true);
         setDiditSessionId(result.session.sessionId);
@@ -61,13 +62,13 @@ import { DiditSdk } from '@didit-protocol/sdk-web';
       setIsDiditLoading(false);
     };
     
-    sdk.onEvent = (event) => {
+    sdk.onEvent = (event: any) => {
       if (event.type === 'didit:error' || event.type === 'didit:cancelled' || event.type === 'didit:close_request') {
         setIsDiditLoading(false);
       }
     };
 
-    sdk.startVerification({ url: sessionUrl }).catch((e) => {
+    sdk.startVerification({ url: sessionUrl }).catch((e: any) => {
       console.error('Failed to start Didit SDK', e);
       setIsDiditLoading(false);
     });
