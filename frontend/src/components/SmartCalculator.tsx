@@ -3,13 +3,15 @@ import { Calculator, AlertTriangle, CheckCircle2, Sprout, BarChart3, RefreshCw }
 import type { CalculatorData, WeatherData } from '../types';
 import { analyzeWeatherImpact } from '../services/aiService';
 import { useXlmToPhp } from '../hooks/useXlmToPhp';
+import { calculateDamage } from '../utils/DamageCalculator';
 
 interface SmartCalculatorProps {
   farms: any[];
   weather: WeatherData | null;
+  onNavigate?: (tab: string) => void;
 }
 
-const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => {
+const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather, onNavigate }) => {
   const { formatPhp } = useXlmToPhp();
   const [data, setData] = useState<CalculatorData>({
     cropType: 'Rice',
@@ -17,6 +19,9 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
     stage: 'Vegetative',
     destructionLevel: 0,
     marketPrice: 5, // XLM per kg
+    windSpeed: 0,
+    floodDepth: 0,
+    rainfall: 0,
   });
 
   const [selectedFarmId, setSelectedFarmId] = useState<string>('');
@@ -64,8 +69,15 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
   const destructionFactor = data.destructionLevel / 100;
   const estimatedLoss = currentAssetValue * destructionFactor;
 
-  // 6. Calculate Recommended Vault Payout (Parametric trigger based on destruction of principal/seedline)
-  const recommendedPayout = initialInvestment;
+  // 6. Calculate Recommended Vault Payout (Parametric trigger)
+  let recommendedPayout = 0;
+  if (data.destructionLevel >= 60) {
+    recommendedPayout = initialInvestment; // 100% payout
+  } else if (data.destructionLevel >= 30) {
+    recommendedPayout = initialInvestment * 0.5; // 50% payout
+  } else {
+    recommendedPayout = 0;
+  }
 
   // 7. Calculate Recovery Potential
   const recoveryPotential = Math.max(0, 100 - (data.destructionLevel * 0.8));
@@ -75,6 +87,26 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
     recommendedPayout,
     recoveryPotential
   };
+
+  // Recalculate destruction level when environmental sliders change
+  useEffect(() => {
+    // Only recalculate if the user has touched the env variables
+    if (data.windSpeed > 0 || data.floodDepth > 0 || data.rainfall > 0) {
+      const damageRes = calculateDamage(
+        data.cropType,
+        farm?.plantingDate || new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+        data.windSpeed,
+        data.floodDepth,
+        data.rainfall,
+        initialInvestment,
+        expectedHarvestValue
+      );
+      setData(prev => ({
+        ...prev,
+        destructionLevel: Math.round(damageRes.damagePercentage)
+      }));
+    }
+  }, [data.windSpeed, data.floodDepth, data.rainfall, data.cropType, farm]);
 
   const handleAiEstimate = async () => {
     if (!weather) return;
@@ -207,7 +239,57 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
               </div>
             </div>
 
-            <div>
+            <div className="space-y-4 border-t border-white/5 pt-4">
+              <label className="block text-sm text-slate-400">Environmental Factors</label>
+              
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-slate-500">Wind Speed</span>
+                  <span className="text-xs font-mono text-sky-400">{data.windSpeed} km/h</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="250"
+                  value={data.windSpeed}
+                  onChange={(e) => setData({ ...data, windSpeed: parseInt(e.target.value) })}
+                  className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-slate-500">Flood Depth</span>
+                  <span className="text-xs font-mono text-sky-400">{data.floodDepth.toFixed(1)} m</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={data.floodDepth}
+                  onChange={(e) => setData({ ...data, floodDepth: parseFloat(e.target.value) })}
+                  className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-slate-500">Rainfall</span>
+                  <span className="text-xs font-mono text-sky-400">{data.rainfall} mm</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="600"
+                  value={data.rainfall}
+                  onChange={(e) => setData({ ...data, rainfall: parseInt(e.target.value) })}
+                  className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2">
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm text-slate-400">Destruction Estimation</label>
                 <span className={`text-sm font-bold ${data.destructionLevel > 70 ? 'text-red-400' : data.destructionLevel > 30 ? 'text-orange-400' : 'text-emerald-400'}`}>
@@ -313,17 +395,29 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ farms, weather }) => 
             </div>
           </div>
 
-          <div className={`p-4 rounded-2xl border flex items-start gap-3 transition-all ${data.destructionLevel > 50
+          <div className={`p-4 rounded-2xl border flex items-start gap-3 transition-all ${data.destructionLevel >= 30
               ? 'bg-red-500/10 border-red-500/20 text-red-400'
               : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
             }`}>
-            {data.destructionLevel > 50 ? <AlertTriangle className="shrink-0 mt-0.5" size={18} /> : <CheckCircle2 className="shrink-0 mt-0.5" size={18} />}
+            {data.destructionLevel >= 30 ? <AlertTriangle className="shrink-0 mt-0.5" size={18} /> : <CheckCircle2 className="shrink-0 mt-0.5" size={18} />}
             <div className="text-sm">
-              {data.destructionLevel > 50
-                ? "Severe damage detected. We recommend filing an immediate payout claim through the Vault."
-                : "Damage levels are within manageable limits. Continue monitoring weather conditions."}
+              {data.destructionLevel >= 60
+                ? "Severe damage detected. You are eligible for a 100% payout claim."
+                : data.destructionLevel >= 30 
+                ? "Moderate damage detected. You are eligible for a 50% payout claim."
+                : "Damage levels are below the deductible threshold. Continue monitoring conditions."}
             </div>
           </div>
+
+          {result.recommendedPayout > 0 && onNavigate && (
+            <button 
+              onClick={() => onNavigate('vault')}
+              className="mt-2 w-full flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-white font-bold py-4 rounded-xl transition-all uppercase tracking-wider text-sm shadow-lg shadow-sky-500/25 animate-in fade-in slide-in-from-bottom-4"
+            >
+              <CheckCircle2 size={18} />
+              Proceed to File Claim
+            </button>
+          )}
         </div>
       </div>
     </div>

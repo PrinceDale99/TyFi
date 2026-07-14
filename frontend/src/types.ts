@@ -1,4 +1,4 @@
-﻿export interface FarmData {
+export interface FarmData {
   id: string;
   farmerName: string;
   rsbsaNumber: string;
@@ -43,6 +43,9 @@ export interface CalculatorData {
   stage: 'Seedling' | 'Vegetative' | 'Reproductive' | 'Maturity';
   destructionLevel: number; // 0 to 100 percentage
   marketPrice: number;
+  windSpeed: number;
+  floodDepth: number;
+  rainfall: number;
 }
 
 export interface WeatherData {
