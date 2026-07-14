@@ -152,7 +152,7 @@ export const registerPolicyOnChain = async (
     const tx = new TransactionBuilder(
       account,
       {
-        fee: BASE_FEE,
+        fee: '1000000',
         networkPassphrase: config.passphrase,
       }
     )
@@ -217,7 +217,7 @@ export const submitWeatherReportOnChain = async (
     const contract = new Contract(config.vaultContractId);
     const account = await server.getAccount(oracle);
 
-    let tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+    let tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
       .addOperation(
         contract.call(
           "submit_weather_report",
@@ -290,7 +290,7 @@ export const claimPayoutOnChain = async (
         ]
       );
       
-      tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+      tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
         .addOperation(op1)
         .setTimeout(300)
         .build();
@@ -305,7 +305,7 @@ export const claimPayoutOnChain = async (
         ]
       );
       
-      tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+      tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
         .addOperation(operation)
         .setTimeout(300)
         .build();
@@ -351,7 +351,7 @@ export const getContractTvl = async (network: 'testnet' | 'mainnet' = 'testnet')
     const tx = new TransactionBuilder(
       dummyAccount,
       {
-        fee: BASE_FEE,
+        fee: '1000000',
         networkPassphrase: config.passphrase,
       }
     )
@@ -388,7 +388,7 @@ export const getContractSubsidy = async (network: 'testnet' | 'mainnet' = 'testn
     const tx = new TransactionBuilder(
       dummyAccount,
       {
-        fee: BASE_FEE,
+        fee: '1000000',
         networkPassphrase: config.passphrase,
       }
     )
@@ -425,17 +425,17 @@ export const getUserLpBalance = async (user: string, network: 'testnet' | 'mainn
     const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
     
     // 1. Get user shares
-    const txShares = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+    const txShares = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
       .addOperation(contract.call("get_lp_shares", userAddr.toScVal()))
       .setTimeout(300).build();
     
     // 2. Get total shares
-    const txTotalShares = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+    const txTotalShares = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
       .addOperation(contract.call("get_total_reinsurance_shares"))
       .setTimeout(300).build();
 
     // 3. Get total deposited (XLM)
-    const txTotalDeposited = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+    const txTotalDeposited = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
       .addOperation(contract.call("get_total_reinsurance_deposited"))
       .setTimeout(300).build();
 
@@ -500,7 +500,7 @@ export async function getDaoProposals(network: 'testnet' | 'mainnet'): Promise<D
     const countTx = await server.simulateTransaction(
       new TransactionBuilder(
         new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '1'),
-        { fee: '100', networkPassphrase: config.passphrase }
+        { fee: '1000000', networkPassphrase: config.passphrase }
       )
       .addOperation(contract.call('get_proposal_count'))
       .setTimeout(30)
@@ -526,7 +526,7 @@ export async function getDaoProposals(network: 'testnet' | 'mainnet'): Promise<D
         const propTx = await server.simulateTransaction(
           new TransactionBuilder(
             new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '1'),
-            { fee: '100', networkPassphrase: config.passphrase }
+            { fee: '1000000', networkPassphrase: config.passphrase }
           )
           .addOperation(contract.call('get_proposal', nativeToScVal(i, { type: 'u64' })))
           .setTimeout(30)
@@ -686,10 +686,10 @@ export const contributeLiquidityOnChain = async (
 
     if (methodName === 'withdraw_reinsurance') {
       const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
-      const txShares = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+      const txShares = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
         .addOperation(contract.call("get_total_reinsurance_shares"))
         .setTimeout(300).build();
-      const txDep = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+      const txDep = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
         .addOperation(contract.call("get_total_reinsurance_deposited"))
         .setTimeout(300).build();
 
@@ -712,7 +712,7 @@ export const contributeLiquidityOnChain = async (
     const tx = new TransactionBuilder(
       account,
       {
-        fee: BASE_FEE,
+        fee: '1000000',
         networkPassphrase: config.passphrase,
       }
     )
