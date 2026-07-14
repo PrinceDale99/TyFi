@@ -92,7 +92,7 @@ export async function initiateFiatSweep(amountPHP: number, paymentPrefs?: any): 
         purpose: "Donation of Financial Aid",
         relationship_of_sender_to_beneficiary: "Business",
         currency: "PHP",
-        amount: amountPHP.toString(),
+        amount: Number(amountPHP).toFixed(2),
         method: "PAY-TO-ACCOUNT-REAL-TIME"
       },
       { 
@@ -146,7 +146,7 @@ export const initiateFiatDeposit = async (amountPHP: number, paymentMethod: stri
       const response = await axios.post(
         `${PDAX_API_BASE}/pdax-institution/v1/fiat/deposit`,
         {
-          amount: chunkAmount.toString(),
+          amount: Number(chunkAmount).toFixed(2),
           method: paymentMethod,
           identifier: uuidv4(),
           sender_first_name: "Juan",
