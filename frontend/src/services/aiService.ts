@@ -118,7 +118,8 @@ Return the JSON block.`;
       throw new Error(`Gemini API Error: ${data.error.message || 'Unknown error'}`);
     }
 
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const rawData = data.raw || data;
+    const rawText = rawData.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) {
       console.warn('[AI Service] No text response from Gemini candidates:', data);
       throw new Error('AI service returned an empty or malformed response');
@@ -262,7 +263,8 @@ Respond with concise, actionable text. Use markdown for lists or emphasis.`;
     }
 
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm having trouble connecting to my knowledge base. Please try again in a moment.";
+    const rawData = data.raw || data;
+    return rawData.candidates?.[0]?.content?.parts?.[0]?.text || "I'm having trouble connecting to my knowledge base. Please try again in a moment.";
   } catch (error: any) {
     console.error('Chat error:', error);
     if (error.message.includes('Failed to fetch')) {
@@ -350,7 +352,8 @@ Return strictly a JSON object with no markdown tags or text, following this exac
       throw new Error(`Gemini API Error: ${data.error.message || 'Unknown error'}`);
     }
 
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const rawData = data.raw || data;
+    const rawText = rawData.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) {
       console.warn('[AI Service] No text response from Gemini candidates for crop metrics:', data);
       throw new Error('AI service returned an empty or malformed response');
