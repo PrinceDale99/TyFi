@@ -47,7 +47,7 @@ TyFi doesn't just digitize insurance; it completely reinvents the trust model of
 - **Elimination of the Claims Adjuster**: By utilizing purely mathematical bounds (`ParametricBands`) and cryptographic weather oracles, human bias and deliberate claim stalling are entirely removed.
 - **Micro-Insurance Made Viable**: Traditional insurance companies cannot afford the administrative overhead of underwriting a $10 policy for a remote farmer. TyFi automates 100% of the lifecycle, making it economically viable to protect the most vulnerable populations on earth.
 - **Offline Resilience**: In severe typhoons, cell towers go down and internet access is lost. TyFi's SMS Offline Mesh allows farmers to trigger claims gaslessly via 2G text messaging, a lifeline when digital infrastructure collapses.
-- **AI-Powered Underwriting**: Gemini 1.5 Pro instantly analyzes satellite imagery and farm documentation via OCR, onboarding farmers in seconds rather than weeks.
+- **AI-Powered Underwriting**: Gemini 2.5 Pro instantly analyzes satellite imagery and farm documentation via OCR, onboarding farmers in seconds rather than weeks.
 
 ## 🏆 Why TyFi is Better Than Existing Parametric Systems
 While parametric insurance exists in traditional finance (TradFi), it suffers from central points of failure. 
@@ -78,7 +78,7 @@ TyFi pushes the Stellar network to its absolute limits, showcasing why Soroban i
 ## ✨ Features
 - **🚀 Layer 1 Parameterized Payouts** — Automated payouts triggered by strict mathematical bounds. The contract holds a DAO-configurable `PayoutBand` array (e.g. `>150km/h = 90% payout`) within the blockchain state. No hardcoded logic, entirely dynamic and governed via Multi-Sig.
 - **🛰️ Live Typhoon Tracking** — Interactive dashboard tracking storm paths in real-time within the Philippine Area of Responsibility (PAR), featuring multi-farm proximity detection.
-- **🌾 Farmer Verification & Gemini Vision OCR** — RSBSA and land title verification gate to ensure legitimate policy registration. Automated document processing via Google Cloud Vision API and Gemini 1.5 Flash with strict NPC (Data Privacy) compliance and PII purging.
+- **🌾 Farmer Verification & Gemini Vision OCR** — RSBSA and land title verification gate to ensure legitimate policy registration. Automated document processing via Google Cloud Vision API and Gemini 2.5 Flash with strict NPC (Data Privacy) compliance and PII purging.
 - **🏦 LP Reinsurance Pool** — Yield-bearing liquidity pool (8.4% APY) lets DeFi users back agricultural risk. Premiums paid by farmers flow directly to LPs as yield.
 - **⚡ Oracle Consensus Simulator** — A built-in testnet sandbox to simulate the full end-to-end oracle → consensus → disbursal pipeline for demonstration and testing.
 - **💸 PDAX Fiat Sweep & AML Compliance** — Direct, real-time PHP fiat disbursements via the PDAX CaaS API, including compliant AML/KYC handling for large payouts.
@@ -109,7 +109,7 @@ The smart contract executes payouts based on objective wind speed data. This eli
 - **Frontend**: React 19, TypeScript, Vite, Vanilla CSS, Leaflet.js
 - **Backend**: Node.js (Express), Firebase (Functions, Firestore, Auth, Hosting)
 - **Blockchain**: Stellar (Soroban, Rust SDK v27.0.0-rc.1, XLM native asset, Fee Bump, Multi-Sig, Account Abstraction)
-- **AI/ML**: Gemini 1.5 Flash API & Google Cloud Vision API for parametric damage estimation, AI Copilot assistance, and OCR-based document verification.
+- **AI/ML**: Gemini 2.5 Flash API & Google Cloud Vision API for parametric damage estimation, AI Copilot assistance, and OCR-based document verification.
 - **Fiat Rails**: PDAX Institutional API (CaaS + Public Market Tickers) for KYC/AML-compliant InstaPay sweeps and live pricing.
 
 ## 🏗️ Architecture
@@ -125,7 +125,7 @@ graph TD
 
     subgraph L2 ["Layer 2: Off-Chain & Oracles"]
         BE["Node.js / Firebase Functions Backend"]
-        AI["Gemini 1.5 Pro (Vision/Loan Actuary)"]
+        AI["Gemini 2.5 Pro (Vision/Loan Actuary)"]
         IPFS["Pinata IPFS (Image Storage)"]
         Oracle["PAGASA, NOAA, & OpenWeather APIs"]
         
@@ -185,8 +185,8 @@ graph TD
 Our backend bridges enterprise DeFi, zero-knowledge cryptography, and Philippine banking rails:
 
 *   **Zero-Knowledge Oracle (NoirJS)**: Generates proofs for weather data thresholds seamlessly aggregating from PAGASA and NASA EONET.
-*   **Gemini Vision & IPFS Image Oracles**: MMS claims received via the **Offline SMS Mesh (Twilio)** are uploaded to Pinata IPFS and assessed for damage using Gemini 1.5 Pro.
-*   **AI Loan Actuary**: Gemini 1.5 Flash models crop yield predictions to instantly underwrite Soroban micro-loans.
+*   **Gemini Vision & IPFS Image Oracles**: MMS claims received via the **Offline SMS Mesh (Twilio)** are uploaded to Pinata IPFS and assessed for damage using Gemini 2.5 Pro.
+*   **AI Loan Actuary**: Gemini 2.5 Flash models crop yield predictions to instantly underwrite Soroban micro-loans.
 *   **Multi-Chain USDC Ingestion (PDAX Cross-Chain Bridge)**: Settles USDC natively.
 *   **Institutional Yield Generation (PDAX Securities API)**: Purchases Treasury Bonds for fixed-yield generation.
 *   **Zero-Slippage Liquidation (PDAX Prime OTC API)**: Bypasses retail order books during massive province-wide ZK-triggered payouts.
@@ -371,7 +371,7 @@ Based directly on the feedback collected in the sheet above, we have evolved the
 - **Live Weather Radar**: [8224406](https://github.com/PrinceDale99/TyFi/commit/8224406)
 - **Cooperative & Shared Accounts**: [45cb144](https://github.com/PrinceDale99/TyFi/commit/45cb144)
 - **PDAX InstaPay Offramps (Direct to GCash/Maya)**: Enables real-time crypto-to-fiat conversion scaling for instant disaster relief straight to local e-wallets.
-- **Gemini Vision IPFS Oracles (Image-based Claims)**: Pinata IPFS & Gemini 1.5 Pro multimodal processing for decentralized, undeniable visual crop damage reporting via MMS.
+- **Gemini Vision IPFS Oracles (Image-based Claims)**: Pinata IPFS & Gemini 2.5 Pro multimodal processing for decentralized, undeniable visual crop damage reporting via MMS.
 - **Tokenized Disaster Relief Bonds (Tradable Soroban Yield)**: Allows LPs to trade yield-bearing disaster relief Vault shares via `transfer_shares` natively on Stellar.
 - **Offline Mesh-Network Claim Filing (No-Internet Fallback)**: Built-in local SMS queues and autonomous cron flushers for maximum resilience when network/power grids fail.
 - **Instant PDAX Rebuilding Micro-Loans (AI Crop Prediction)**: Automated Gemini AI crop-yield projections that autonomously underwrite and originate uncollateralized on-chain rebuilding loans during crisis events.
@@ -458,7 +458,7 @@ Unlike traditional indemnity insurance or centralized parametric funds, TyFi is 
 1. **Fully Decentralized Zero-Knowledge Parametric Engine**: Utilizes RISC Zero (zkVM) and Soroban native host functions to cryptographically prove weather oracle data without exposing API keys.
 2. **Zero-Claim Auto-Disbursal**: The smart contract acts as the ultimate claims adjuster, executing payouts instantly based on un-tamperable `ParametricBands`.
 3. **Yield-Bearing Disaster Relief (DeFi LP)**: Donor and investor liquidity actively generates yield (8.4% APY) on Stellar while waiting to cover a disaster event.
-4. **AI-Driven Actuarial Assessment**: Integrates Gemini 1.5 Pro to dynamically evaluate localized weather risks and underwrite policies instantly.
+4. **AI-Driven Actuarial Assessment**: Integrates Gemini 2.5 Pro to dynamically evaluate localized weather risks and underwrite policies instantly.
 5. **On-Chain DAO Governance**: Disaster payout thresholds are governed transparently by a community DAO where liquidity providers possess proportional voting power.
 6. **Environment Data Isolation**: Innovative strict separation of Mainnet and Testnet logic inside the DAO Governance Portal to prevent cross-contamination.
 7. **Automated Hyperframes Promo Engine**: Dynamically generates cinematic teaser videos and marketing compositions using the `brag` toolkit right from the codebase.
