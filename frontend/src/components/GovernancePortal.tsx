@@ -165,7 +165,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       
       const accountResp = await server.getAccount(walletAddress);
       const tx = new TransactionBuilder(
-        new Account(walletAddress, (accountResp as any).sequence),
+        new Account(walletAddress, (accountResp as any).sequence.toString()),
         { fee: '1000000', networkPassphrase: config.passphrase }
       )
       .addOperation(
@@ -450,7 +450,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     
                     const accountResp = await server.getAccount(walletAddress);
                     const tx = new TransactionBuilder(
-                      new Account(walletAddress, (accountResp as any).sequence),
+                      new Account(walletAddress, (accountResp as any).sequence.toString()),
                       { fee: '1000000', networkPassphrase: config.passphrase }
                     )
                     .addOperation(
