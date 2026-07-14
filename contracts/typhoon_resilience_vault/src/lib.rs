@@ -408,40 +408,7 @@ impl TyphoonVault {
         Ok(amount)
     }
 
-    /// TESTNET ONLY: Claim payout without policy or oracle checks
-    pub fn testnet_claim_payout(env: Env, farmer: Address, amount: i128) -> Result<i128, Error> {
-        farmer.require_auth();
-        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
-        let client = token::Client::new(&env, &xlm_token_addr);
-        
-        let contract_balance = client.balance(&env.current_contract_address());
-        if contract_balance < amount {
-            return Err(Error::InsufficientLiquidity);
-        }
-        
-        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
-        total_deposited = total_deposited.checked_sub(amount).ok_or(Error::Overflow)?;
-        if total_deposited < 0 {
-            total_deposited = 0;
-        }
-        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
 
-        client.transfer(&env.current_contract_address(), &farmer, &amount);
-        Ok(amount)
-    }
-
-    /// TESTNET ONLY: Artificially inflate the TVL for demo purposes
-    pub fn testnet_fund_tvl(env: Env, amount: i128) -> Result<i128, Error> {
-        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
-        total_deposited = total_deposited.checked_add(amount).ok_or(Error::Overflow)?;
-        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
-        
-        let mut total_shares: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0);
-        total_shares = total_shares.checked_add(amount).ok_or(Error::Overflow)?;
-        env.storage().instance().set(&DataKey::TotalReinsuranceShares, &total_shares);
-        
-        Ok(total_deposited)
-    }
 
     /// Get details of LP shares
     pub fn get_lp_shares(env: Env, lp: Address) -> i128 {
@@ -734,30 +701,7 @@ impl TyphoonVault {
         Ok(())
     }
 
-    /// Submit a Zero-Knowledge proof that the weather threshold was met.
-    /// This utilizes the Noir Verifier to ensure the wind speed exceeded the threshold
-    /// without revealing the actual wind speed on-chain.
-    pub fn submit_zk_weather_report(
-        env: Env,
-        oracle: Address,
-        typhoon_id: Symbol,
-        region: Symbol,
-        damage_percentage: u32,
-        wind_speed: u32,
-        zk_proof: soroban_sdk::Bytes,
-        public_inputs: Vec<soroban_sdk::Val>
-    ) -> Result<(), Error> {
-        oracle.require_auth();
 
-        // Verify the ZK proof using our verifier module
-        if !verifier::verify_zk_proof(&env, &zk_proof, &public_inputs) {
-            return Err(Error::NotVerified);
-        }
-
-        // If the proof is valid, we trust the off-chain ZK circuit that the threshold was met.
-        // We can then proceed with the normal reporting/consensus logic.
-        Self::submit_weather_report(env, oracle.clone(), typhoon_id.clone(), region.clone(), damage_percentage, wind_speed)
-    }
 
     /// Claim payout based on dynamic network-configured parametric curves for a specific farm and season
     pub fn claim_payout(env: Env, farmer: Address, farm_id: Symbol, season: Symbol, typhoon_id: Symbol) -> Result<i128, Error> {
@@ -824,37 +768,7 @@ impl TyphoonVault {
         Ok(payout_amount)
     }
 
-    // --- Getters ---
-
-    /// Get all farms registered for a farmer
-    pub fn get_farmer_farms(env: Env, farmer: Address) -> Vec<Symbol> {
-        env.storage().persistent().get(&DataKey::FarmList(farmer)).unwrap_or(Vec::new(&env))
-    }
-
-    /// Get details of a policy for a specific farm and season
-    pub fn get_farm_policy(env: Env, farmer: Address, farm_id: Symbol, season: Symbol) -> Option<Policy> {
-        env.storage().persistent().get(&DataKey::Policy(farmer, farm_id, season))
-    }
-
-    /// Get weather report submitted by specific oracle
-    pub fn get_weather_report(env: Env, typhoon_id: Symbol, region: Symbol, oracle: Address) -> u32 {
-        env.storage().persistent().get(&DataKey::Report(typhoon_id, region, oracle)).unwrap_or(0)
-    }
-
-    /// Get consensus damage percentage if consensus is reached
-    pub fn get_consensus_damage_percentage(env: Env, typhoon_id: Symbol, region: Symbol) -> Option<u32> {
-        let reached = env.storage().persistent().get(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone())).unwrap_or(false);
-        if reached {
-            Some(env.storage().persistent().get(&DataKey::ConsensusDamagePercentage(typhoon_id, region)).unwrap_or(0))
-        } else {
-            None
-        }
-    }
-
-    /// Get whether farmer is RSBSA verified
-    pub fn is_farmer_verified(env: Env, farmer: Address) -> bool {
-        env.storage().persistent().get(&DataKey::Verified(farmer)).unwrap_or(false)
-    }
+    // --- Getters removed to save space ---
 
     /// Admin Multi-sig: Update parametric payout bands for a region
     pub fn update_parametric_bands(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, region: Symbol, bands: Vec<PayoutBand>) -> Result<(), Error> {
@@ -867,8 +781,6 @@ impl TyphoonVault {
 
 #[cfg(test)]
 mod test;
-pub mod smart_wallet;
-pub mod verifier;
 
 #[cfg(test)]
 mod test_auth;
