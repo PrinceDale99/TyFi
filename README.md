@@ -1,4 +1,4 @@
-# 🌀 TyFi — Parametric Typhoon Insurance on Stellar
+﻿# 🌀 TyFi — Parametric Typhoon Insurance on Stellar
 
 [![Stellar](https://img.shields.io/badge/Stellar-Soroban-blue.svg)](https://stellar.org)
 [![Testnet](https://img.shields.io/badge/Testnet-Live-brightgreen.svg)](https://lab.stellar.org/r/testnet/contract/CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH)
@@ -297,8 +297,8 @@ npm run dev
 
 ## 🎥 Demo
 - 🔗 Live App: [https://ptrv-22b15.web.app/](https://ptrv-22b15.web.app/)
-- 🎬 Demo Video: [https://youtu.be/dY-zH4tBCQg](https://youtu.be/dY-zH4tBCQg)
-- 🖼️ Pitch Deck: [https://canva.link/md0xjm7hr9p4rgs](https://canva.link/md0xjm7hr9p4rgs)
+- 🎬 Demo Video: [https://youtu.be/hViSMpbMckU](https://youtu.be/hViSMpbMckU)
+- 🖼️ Pitch Deck: [https://canva.link/kb9peaekmd3u50m](https://canva.link/kb9peaekmd3u50m)
 
 ## 👨‍💻 Team
 | Name | Role | GitHub |
