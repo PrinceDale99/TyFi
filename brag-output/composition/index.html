@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: #020617; /* slate-950 */
+        font-family: system-ui, -apple-system, sans-serif;
+        color: white;
+      }
+      .clip { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; opacity: 0; }
+      .title { font-size: 140px; font-weight: 900; letter-spacing: -4px; margin-bottom: 20px; text-transform: uppercase; }
+      .subtitle { font-size: 60px; font-weight: 700; color: #ef4444; letter-spacing: -1px; text-transform: uppercase; }
+      .emerald { color: #10b981; }
+      .sky { color: #0ea5e9; }
+      
+      /* Scene 2 & 3 UI elements */
+      .ui-panel { background: rgba(15, 23, 42, 0.8); border: 2px solid rgba(255,255,255,0.1); border-radius: 40px; padding: 60px 100px; backdrop-filter: blur(20px); box-shadow: 0 40px 100px rgba(0,0,0,0.5); }
+      .ui-data { font-size: 100px; font-weight: 900; font-variant-numeric: tabular-nums; }
+      
+      .glow-red { text-shadow: 0 0 80px rgba(239,68,68,0.5); }
+      .glow-green { text-shadow: 0 0 80px rgba(16,185,129,0.5); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+      
+      <!-- Scene 1: The Hook -->
+      <div id="scene1" class="clip" data-start="0" data-duration="5" data-track-index="1">
+        <div id="s1-t1" class="title glow-red">20 TYPHOONS A YEAR.</div>
+        <div id="s1-t2" class="subtitle">ZERO TIME TO WAIT.</div>
+      </div>
+
+      <!-- Scene 2: The Solution -->
+      <div id="scene2" class="clip" data-start="4.5" data-duration="5" data-track-index="2">
+        <div id="s2-t1" class="subtitle sky" style="margin-bottom: 40px;">ENTER TYFI</div>
+        <div id="s2-panel" class="ui-panel">
+          <div style="font-size: 40px; color: #94a3b8; font-weight: bold; letter-spacing: 4px;">TOTAL INSURED VALUE</div>
+          <div class="ui-data emerald">14,250,000 <span style="font-size: 60px">XLM</span></div>
+        </div>
+      </div>
+
+      <!-- Scene 3: The Tech -->
+      <div id="scene3" class="clip" data-start="9" data-duration="6" data-track-index="3">
+        <div id="s3-t1" class="subtitle" style="margin-bottom: 40px; color: #f59e0b;">PARAMETRIC ORACLE</div>
+        <div id="s3-panel" class="ui-panel" style="border-color: rgba(245, 158, 11, 0.3);">
+          <div style="font-size: 40px; color: #94a3b8; font-weight: bold; letter-spacing: 4px;">WIND SPEED</div>
+          <div class="ui-data" style="color: #f59e0b;"><span id="wind-counter">0</span> <span style="font-size: 60px">KM/H</span></div>
+        </div>
+        <div id="s3-trigger" class="title" style="color: #ef4444; margin-top: 60px; font-size: 100px;">TRIGGER MET</div>
+      </div>
+
+      <!-- Scene 4: The Payoff -->
+      <div id="scene4" class="clip" data-start="14" data-duration="6" data-track-index="4">
+        <div id="s4-t1" class="subtitle emerald" style="margin-bottom: 40px;">INSTANT PAYOUTS</div>
+        <div id="s4-panel" class="ui-panel" style="border-color: rgba(16, 185, 129, 0.3);">
+          <div style="font-size: 40px; color: #94a3b8; font-weight: bold; letter-spacing: 4px;">FUNDS DELIVERED ON STELLAR</div>
+          <div class="ui-data emerald">+ <span id="payout-counter">0</span> <span style="font-size: 60px">XLM</span></div>
+        </div>
+      </div>
+
+      <!-- Scene 5: Outro -->
+      <div id="scene5" class="clip" data-start="18.5" data-duration="5" data-track-index="5">
+        <div id="s5-t1" class="title">TYFI</div>
+        <div id="s5-t2" class="subtitle" style="color: #94a3b8; font-size: 40px;">DECENTRALIZED. IMMUTABLE. RESILIENT.</div>
+      </div>
+
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Scene 1
+      tl.set("#scene1", { opacity: 1 }, 0);
+      tl.from("#s1-t1", { opacity: 0, scale: 1.5, duration: 0.8, ease: "power4.out" }, 0.5);
+      tl.from("#s1-t2", { opacity: 0, y: 50, duration: 0.6, ease: "back.out(1.7)" }, 1.5);
+      tl.to("#scene1", { opacity: 0, scale: 1.2, duration: 0.5, ease: "power2.inOut" }, 4.5);
+
+      // Scene 2
+      tl.set("#scene2", { opacity: 1 }, 4.5);
+      tl.from("#s2-t1", { opacity: 0, y: -50, duration: 0.8, ease: "power3.out" }, 5.0);
+      tl.from("#s2-panel", { opacity: 0, scale: 0.8, rotationX: -20, duration: 1, ease: "power4.out" }, 5.3);
+      tl.to("#scene2", { opacity: 0, y: -100, duration: 0.6, ease: "power2.in" }, 9);
+
+      // Scene 3
+      tl.set("#scene3", { opacity: 1 }, 9);
+      tl.from("#s3-t1", { opacity: 0, y: -50, duration: 0.6, ease: "power3.out" }, 9.5);
+      tl.from("#s3-panel", { opacity: 0, scale: 0.8, duration: 0.8, ease: "back.out(1.2)" }, 9.8);
+      
+      const windObj = { val: 0 };
+      tl.to(windObj, {
+        val: 125,
+        duration: 2,
+        ease: "power2.inOut",
+        onUpdate: function() {
+          document.getElementById("wind-counter").innerText = Math.floor(windObj.val);
+        }
+      }, 10.5);
+      
+      tl.from("#s3-trigger", { opacity: 0, scale: 2, duration: 0.4, ease: "bounce.out" }, 12.5);
+      tl.to("#scene3", { opacity: 0, x: -200, duration: 0.5, ease: "power2.in" }, 14);
+
+      // Scene 4
+      tl.set("#scene4", { opacity: 1 }, 14);
+      tl.from("#s4-t1", { opacity: 0, y: -50, duration: 0.6, ease: "power3.out" }, 14.5);
+      tl.from("#s4-panel", { opacity: 0, scale: 0.8, duration: 0.8, ease: "power4.out" }, 14.8);
+      
+      const payoutObj = { val: 0 };
+      tl.to(payoutObj, {
+        val: 25000,
+        duration: 1.5,
+        ease: "power4.out",
+        onUpdate: function() {
+          document.getElementById("payout-counter").innerText = Math.floor(payoutObj.val).toLocaleString();
+        }
+      }, 15.5);
+      
+      tl.to("#scene4", { opacity: 0, scale: 1.2, duration: 0.6, ease: "power2.in" }, 18.5);
+
+      // Scene 5
+      tl.set("#scene5", { opacity: 1 }, 18.5);
+      tl.from("#s5-t1", { opacity: 0, letterSpacing: "50px", duration: 1.5, ease: "power4.out" }, 18.8);
+      tl.from("#s5-t2", { opacity: 0, y: 30, duration: 1, ease: "power3.out" }, 19.3);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

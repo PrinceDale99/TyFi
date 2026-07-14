@@ -32,26 +32,28 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
     setIsDiditLoading(true);
     const sdk = DiditSdk.shared;
     
-    let sessionUrl = `https://verify.didit.me/session/tyfi-demo-${Date.now()}`;
+    let sessionUrl = '';
+    
     try {
-      const apiKey = import.meta.env.VITE_DIDIT_API_KEY;
-      if (apiKey) {
-        const response = await fetch('https://api.didit.me/v1/session/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${apiKey}`,
-            'x-api-key': apiKey
-          },
-          body: JSON.stringify({ vendor_data: walletAddress || 'sponsor' })
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.url) sessionUrl = data.url;
-        }
+      // Call our backend to securely create the Didit Session
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      const response = await fetch(`${backendUrl}/api/didit/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: walletAddress })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate verification session');
       }
+
+      sessionUrl = data.url;
     } catch (e) {
-      console.warn("Didit API fetch failed (likely CORS or missing workflow_id), falling back to mock session", e);
+      console.error("Failed to generate Didit session from backend", e);
+      // fallback error handling
+      setIsDiditLoading(false);
+      return;
     }
 
     sdk.onComplete = (result: any) => {
