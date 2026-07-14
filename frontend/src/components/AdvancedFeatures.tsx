@@ -136,8 +136,8 @@ export const AdvancedFeatures: React.FC<AdvancedFeaturesProps> = ({ walletAddres
             <div className="space-y-3">
               <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Liquidity & Capital</h3>
               <div className="space-y-2">
-                <ActionBtn icon={<Building size={14}/>} title="PDAX InstaPay Offramp" desc="50 XLM to GCash" onClick={() => handleRequest('PDAX Offramp', () => axios.post(`${API_BASE}/api/execute-offramp`, { address: walletAddress || 'G_TEST', amount: 50 }))} loading={loading} />
-                <ActionBtn icon={<Plus size={14}/>} title="Fetch Relief Bonds" desc="Soroban Yield" onClick={() => handleRequest('Relief Bonds', () => axios.get(`${API_BASE}/api/bond-portfolio?address=${walletAddress || 'G_TEST'}`))} loading={loading} />
+                <ActionBtn icon={<Building size={14}/>} title="PDAX InstaPay Offramp" desc="50 XLM to GCash" onClick={() => handleRequest('PDAX Offramp', () => axios.post(`${API_BASE}/api/execute-offramp`, { address: walletAddress || 'G_TEST', amount: 50, network: localStorage.getItem('typhoon_vault_network') || 'testnet' }))} loading={loading} />
+                <ActionBtn icon={<Plus size={14}/>} title="Fetch Relief Bonds" desc="Soroban Yield" onClick={() => handleRequest('Relief Bonds', () => axios.get(`${API_BASE}/api/bond-portfolio?address=${walletAddress || 'G_TEST'}&network=${localStorage.getItem('typhoon_vault_network') || 'testnet'}`))} loading={loading} />
                 <ActionBtn icon={<HandCoins size={14}/>} title="AI Micro-Loan" desc="Yield Pred & Maya" onClick={() => handleRequest('Micro-Loan', () => axios.post(`${API_BASE}/api/apply-microloan`, { address: walletAddress || 'G_TEST', farmData: { farmSizeHectares: 2, cropType: 'Rice', region: 'Albay', historicalYield: 4.5, damagePercentage: 85 }, paymentMethod: 'MAYA', paymentAccount: '09939702450' }))} loading={loading} />
               </div>
             </div>

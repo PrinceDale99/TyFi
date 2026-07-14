@@ -16,7 +16,13 @@ export const WeatherTrigger: React.FC<{ targetAddress: string, activeYieldBalanc
       const res = await fetch(`${BACKEND_URL}/oracle/api/v1/weather-trigger`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat: 14.5995, lon: 120.9842, severity: "TYPHOON_CATEGORY_5", targetAddress })
+        body: JSON.stringify({ 
+          lat: 14.5995, 
+          lon: 120.9842, 
+          severity: "TYPHOON_CATEGORY_5", 
+          targetAddress,
+          network: localStorage.getItem('typhoon_vault_network') || 'testnet'
+        })
       });
       
       if (!res.ok) throw new Error("Transaction Failed");

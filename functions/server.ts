@@ -287,9 +287,9 @@ app.post('/api/notify-payout', async (req, res) => {
 });
 
 app.post('/api/execute-offramp', async (req, res) => {
-  const { address, amount } = req.body; // amount is in crypto units
+  const { address, amount, network = 'testnet' } = req.body; // amount is in crypto units
 
-  await logEvent('INFO', 'Received request to execute PDAX off-ramp', { address, amount });
+  await logEvent('INFO', `Received request to execute PDAX off-ramp on ${network}`, { address, amount, network });
 
   if (!db) {
     return res.status(500).json({ error: 'Firestore not initialized' });
@@ -336,14 +336,14 @@ app.post('/api/v1/fiat-deposit', async (req, res) => {
 });
 
 app.get('/api/bond-portfolio', async (req, res) => {
-  const { address } = req.query;
+  const { address, network = 'testnet' } = req.query;
 
   if (!address || typeof address !== 'string') {
     return res.status(400).json({ error: 'Missing or invalid address parameter' });
   }
 
   try {
-    const portfolio = await calculateBondYield(address);
+    const portfolio = await calculateBondYield(address, network as 'testnet' | 'mainnet');
     res.json({ success: true, portfolio });
   } catch (error: any) {
     await logEvent('ERROR', 'Error fetching bond portfolio', { errorMessage: error.message, address });
@@ -563,12 +563,12 @@ app.get('/api/pagasa-weather', async (req, res) => {
 });
 
 app.post('/api/generate-certificate', async (req, res) => {
-  const { address, region, season, txHash } = req.body;
+  const { address, region, season, txHash, network = 'testnet' } = req.body;
   // farmId may come in as `farmId` or `crop`; coerce premium to number
   const farmId = req.body.farmId || req.body.crop || 'Unknown Farm';
   const premium = parseFloat(String(req.body.premium)) || 0;
   
-  await logEvent('INFO', 'Received certificate generation request', { address, farmId, txHash });
+  await logEvent('INFO', 'Received certificate generation request', { address, farmId, txHash, network });
 
   try {
     const url = await generateCertificate({

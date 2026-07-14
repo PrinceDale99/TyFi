@@ -191,8 +191,8 @@ oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
 // ==========================================
 oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
   try {
-    const { lat, lon, severity, targetAddress, paymentPrefs } = req.body;
-    await logEvent('INFO', 'Weather trigger received', { lat, lon, severity });
+    const { lat, lon, severity, targetAddress, paymentPrefs, network = 'testnet' } = req.body;
+    await logEvent('INFO', `Weather trigger received on ${network}`, { lat, lon, severity, network });
 
     // Mock the Stellar TX for the hackathon / test flow
     let txHash = "MOCK_TX_" + Math.random().toString(36).substring(7);
