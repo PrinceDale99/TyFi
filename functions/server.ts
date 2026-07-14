@@ -9,6 +9,7 @@ import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { handleIncomingSms } from './smsHandler';
 import { processPayoutOfframp } from './pdaxService';
+import { initiateFiatDeposit } from './pdax';
 import { supabase } from './supabase';
 import { oracleRouter } from './oracle';
 import { calculateBondYield } from './bondService';
@@ -312,7 +313,25 @@ app.post('/api/execute-offramp', async (req, res) => {
     res.json({ success: true, offramp: true, result });
   } catch (error: any) {
     await logEvent('ERROR', 'Error executing PDAX off-ramp', { errorMessage: error.message, address });
-    res.status(500).json({ error: 'Failed to execute off-ramp' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// User initiated Fiat Deposit (On-Ramp to Vault via PDAX)
+app.post('/api/v1/fiat-deposit', async (req, res) => {
+  try {
+    const { amountPHP, paymentMethod } = req.body;
+    if (!amountPHP) {
+      return res.status(400).json({ success: false, error: 'amountPHP is required' });
+    }
+    
+    await logEvent('INFO', 'Initiating PDAX Fiat Deposit', { amountPHP, paymentMethod });
+    const result = await initiateFiatDeposit(amountPHP, paymentMethod || 'grabpay_cashin');
+    
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    await logEvent('ERROR', 'Error executing PDAX fiat deposit', { errorMessage: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

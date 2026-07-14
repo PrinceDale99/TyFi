@@ -69,13 +69,19 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
     }
   }, [walletAddress]);
 
-  const handleSave = async () => {
+  const handleSave = async (override?: any) => {
+    const pMethod = override?.paymentMethod !== undefined ? override.paymentMethod : paymentMethod;
+    const fProv = override?.fiatProvider !== undefined ? override.fiatProvider : fiatProvider;
+    const aNum = override?.accountNumber !== undefined ? override.accountNumber : accountNumber;
+    const aName = override?.accountName !== undefined ? override.accountName : accountName;
+    const autoCol = override?.isAutoCollectEnabled !== undefined ? override.isAutoCollectEnabled : isAutoCollectEnabled;
+
     const config = {
-      method: paymentMethod,
-      provider: paymentMethod === 'fiat' ? fiatProvider : null,
-      accountNumber: paymentMethod === 'fiat' ? accountNumber : null,
-      accountName: paymentMethod === 'fiat' ? accountName : null,
-      autoCollect: isAutoCollectEnabled
+      method: pMethod,
+      provider: pMethod === 'fiat' ? fProv : null,
+      accountNumber: pMethod === 'fiat' ? aNum : null,
+      accountName: pMethod === 'fiat' ? aName : null,
+      autoCollect: autoCol
     };
     
     // Save to LocalStorage fallback
@@ -86,11 +92,11 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
       // Save to Supabase via Backend API
       await axios.post(`${backendUrl}/api/preferences`, {
         walletAddress,
-        paymentMethod,
-        fiatProvider: paymentMethod === 'fiat' ? fiatProvider : null,
-        accountNumber: paymentMethod === 'fiat' ? accountNumber : null,
-        accountName: paymentMethod === 'fiat' ? accountName : null,
-        isAutoCollectEnabled
+        paymentMethod: pMethod,
+        fiatProvider: pMethod === 'fiat' ? fProv : null,
+        accountNumber: pMethod === 'fiat' ? aNum : null,
+        accountName: pMethod === 'fiat' ? aName : null,
+        isAutoCollectEnabled: autoCol
       });
     } catch (error) {
       console.error("Failed to save to backend", error);
@@ -105,6 +111,7 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
       setShowAutoCollectModal(true);
     } else {
       setIsAutoCollectEnabled(false);
+      handleSave({ isAutoCollectEnabled: false });
     }
   };
 
@@ -136,6 +143,7 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
                 onClick={() => {
                   setIsAutoCollectEnabled(true);
                   setShowAutoCollectModal(false);
+                  handleSave({ isAutoCollectEnabled: true });
                 }}
                 className={`flex-1 py-3 rounded-xl font-bold transition-colors ${isMainnet ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950' : 'bg-sky-500 hover:bg-sky-400 text-slate-950'}`}
               >
@@ -154,7 +162,10 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Web3 Native Option */}
         <button
-          onClick={() => setPaymentMethod('wallet')}
+          onClick={() => {
+            setPaymentMethod('wallet');
+            handleSave({ paymentMethod: 'wallet' });
+          }}
           className={`relative p-6 rounded-2xl border text-left transition-all duration-300 ${
             paymentMethod === 'wallet'
               ? isMainnet ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.1)]' : 'bg-sky-500/10 border-sky-500 shadow-[0_0_30px_rgba(14,165,233,0.1)]'
@@ -343,6 +354,7 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
                 onClick={() => {
                   setIsAutoCollectEnabled(true);
                   setShowAutoCollectModal(false);
+                  handleSave({ isAutoCollectEnabled: true });
                 }}
                 className={`flex-1 py-3 rounded-xl font-bold transition-all ${isMainnet ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950' : 'bg-sky-500 hover:bg-sky-400 text-slate-950'}`}
               >
