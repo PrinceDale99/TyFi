@@ -163,8 +163,9 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       const server = new rpc.Server(config.sorobanRpcUrl);
       const daoContract = new Contract(config.daoContractId);
       
+      const accountResp = await server.getAccount(walletAddress);
       const tx = new TransactionBuilder(
-        new Account(walletAddress, '0'), // Freighter will fetch real sequence
+        new Account(walletAddress, (accountResp as any).sequence),
         { fee: '1000000', networkPassphrase: config.passphrase }
       )
       .addOperation(
@@ -447,8 +448,9 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     const server = new rpc.Server(config.sorobanRpcUrl);
                     const daoContract = new Contract(config.daoContractId);
                     
+                    const accountResp = await server.getAccount(walletAddress);
                     const tx = new TransactionBuilder(
-                      new Account(walletAddress, '0'),
+                      new Account(walletAddress, (accountResp as any).sequence),
                       { fee: '1000000', networkPassphrase: config.passphrase }
                     )
                     .addOperation(
