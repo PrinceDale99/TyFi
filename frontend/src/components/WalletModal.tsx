@@ -136,7 +136,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
             {!isMainnet && (
               <button
                 onClick={() => {
-                  onConnect("DEMO_TESTNET_STEL...VAULT");
+                  onConnect(`DEMO_TESTNET_${Math.random().toString(36).substring(7).toUpperCase()}`);
                   onClose();
                 }}
                 className="w-full flex items-center justify-between p-5 rounded-2xl transition-all group border bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20 hover:border-sky-500/60 shadow-[0_0_20px_rgba(14,165,233,0.1)] relative overflow-hidden"

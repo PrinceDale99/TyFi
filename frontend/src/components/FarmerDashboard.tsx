@@ -18,8 +18,8 @@ export const FarmerDashboard = ({
   isSimulatingWeather, handleResetWeather, handleSimulateWeather,
   claims, addNotification, setWeather
 }: any) => {
-  const totalInsuredValue = farms.reduce((acc: any, farm: any) => acc + Number(farm.coverageAmount || 0), 0);
-  const totalAreaValue = farms.reduce((acc: any, farm: any) => acc + Number(farm.size || 0), 0);
+  const totalInsuredValue = farms.reduce((acc: any, farm: any) => acc + Number(farm.totalCropValue || 0), 0);
+  const totalAreaValue = farms.reduce((acc: any, farm: any) => acc + Number(farm.farmSize || 0), 0);
   const activeFarmsCount = farms.length;
 
   const { value: animatedInsuredValue } = useCountUp(totalInsuredValue, 1100, 0);
