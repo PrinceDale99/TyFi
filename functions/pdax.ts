@@ -223,6 +223,7 @@ export const initiateFiatDeposit = async (amountPHP: number, paymentMethod: stri
     if (error.response?.status === 403) {
       console.log(`[PDAX] 403 Forbidden. Is the IP whitelisted?`);
     }
-    throw error;
+    const pdaxErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+    throw new Error(`PDAX Fiat Deposit Failed: ${pdaxErrorMessage}`);
   }
 };
