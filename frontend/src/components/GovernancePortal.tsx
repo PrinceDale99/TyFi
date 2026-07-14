@@ -429,22 +429,13 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Voting Period</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Voting Ends On (Month, Day, Year)</label>
                 <div className="relative">
-                  <select 
-                    id="proposalDuration"
-                    className="w-full appearance-none bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none cursor-pointer"
-                    defaultValue="86400"
-                  >
-                    <option value="17280">1 Day</option>
-                    <option value="51840">3 Days</option>
-                    <option value="86400">5 Days</option>
-                    <option value="120960">1 Week</option>
-                    <option value="241920">2 Weeks</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
-                    <ChevronDown size={16} />
-                  </div>
+                  <input 
+                    type="date"
+                    id="proposalEndDate"
+                    className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
+                  />
                 </div>
               </div>
               <button 
@@ -456,12 +447,23 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                   try {
                     const desc = (document.getElementById('proposalDesc') as HTMLTextAreaElement).value;
                     const action = (document.getElementById('proposalAction') as HTMLSelectElement).value;
-                    const duration = (document.getElementById('proposalDuration') as HTMLSelectElement).value;
+                    const endDateStr = (document.getElementById('proposalEndDate') as HTMLInputElement).value;
                     
-                    if (!desc || !action) {
-                      showToast("Please fill all fields", "error");
+                    if (!desc || !action || !endDateStr) {
+                      showToast("Please fill all fields, including the end date", "error");
                       return;
                     }
+
+                    const endDate = new Date(endDateStr);
+                    const now = new Date();
+                    if (endDate <= now) {
+                      showToast("End date must be in the future", "error");
+                      return;
+                    }
+
+                    // Calculate duration in ledgers (1 ledger ~ 5 seconds)
+                    const diffSeconds = Math.floor((endDate.getTime() - now.getTime()) / 1000);
+                    const durationLedgers = Math.floor(diffSeconds / 5);
 
                     showToast(`Submitting Proposal via Smart Contract... Please check Freighter.`, "info");
                     const config = NETWORK_CONFIGS[network];
@@ -478,7 +480,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                         nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
                         nativeToScVal(desc, { type: 'string' }),
                         nativeToScVal(action, { type: 'symbol' }),
-                        nativeToScVal(parseInt(duration), { type: 'u64' })
+                        nativeToScVal(durationLedgers, { type: 'u64' })
                       )
                     )
                     .setTimeout(300)
