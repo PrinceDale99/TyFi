@@ -428,6 +428,25 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                   </div>
                 </div>
               </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Voting Period</label>
+                <div className="relative">
+                  <select 
+                    id="proposalDuration"
+                    className="w-full appearance-none bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none cursor-pointer"
+                    defaultValue="86400"
+                  >
+                    <option value="17280">1 Day</option>
+                    <option value="51840">3 Days</option>
+                    <option value="86400">5 Days</option>
+                    <option value="120960">1 Week</option>
+                    <option value="241920">2 Weeks</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
+              </div>
               <button 
                 onClick={async () => {
                   if (!walletAddress) {
@@ -437,6 +456,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                   try {
                     const desc = (document.getElementById('proposalDesc') as HTMLTextAreaElement).value;
                     const action = (document.getElementById('proposalAction') as HTMLSelectElement).value;
+                    const duration = (document.getElementById('proposalDuration') as HTMLSelectElement).value;
                     
                     if (!desc || !action) {
                       showToast("Please fill all fields", "error");
@@ -458,7 +478,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                         nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
                         nativeToScVal(desc, { type: 'string' }),
                         nativeToScVal(action, { type: 'symbol' }),
-                        nativeToScVal(86400, { type: 'u64' }) // ~5 days duration in ledgers
+                        nativeToScVal(parseInt(duration), { type: 'u64' })
                       )
                     )
                     .setTimeout(300)
