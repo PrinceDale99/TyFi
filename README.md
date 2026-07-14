@@ -432,3 +432,41 @@ Based directly on the feedback collected in the sheet above, we have evolved the
 | Cloud Ichigo Quero | `GBCRIBOBWZUWKF6HEAGTPJ7NY3BRWUSTLIMCQKUFVWLSCMWA7LI3K3OY` | [06dfa2ec...291ea27f](https://stellar.expert/explorer/testnet/tx/06dfa2ec321059ab9a4138e8c6929163695c8344b53e8ac9e9fba714291ea27f) |
 | Gericho Ivan Avila Ubaldo | `GDSFRDWP7CKKAMVDSTITQXLFWVXRW7VYQVTMMN7FOTYCRQTGG2C3BMHG` | [6e8a9846...3fd51b31](https://stellar.expert/explorer/testnet/tx/6e8a9846b13b3f35d4b6f26f95b2b7f0f77a34cbcfec88b4b5ab2fef3fd51b31) |
 | Brenloyd Quitlong | `GD6H5RE3C36XV7A2IKS74RYV5PUDOUU4BYEO2HV32QLCXP74PZ3VA6O7` | [f6c380c4...2d01b60c](https://stellar.expert/explorer/testnet/tx/f6c380c42c0fd92ff40cb8d00094b2ed5f6406589bd85c4d20f11a762d01b60c) |
+
+---
+
+## 🛠️ Technical Implementation & Stellar Usage
+TyFi leverages the **Stellar Network** for its high throughput, low transaction costs, and fast settlement times—crucial requirements when deploying disaster relief funds at scale. 
+- **Soroban Smart Contracts**: We utilize Soroban to automate the parametric insurance logic. Contracts hold funds securely and only release them when specific oracle conditions (typhoon metrics) are met.
+- **Stellar Assets**: Payouts are facilitated in XLM and stablecoins (e.g., USDC), ensuring immediate value transfer.
+- **Data Oracles**: We integrate off-chain weather data (PAGASA, NASA EONET) via custom oracles that feed verifiable weather metrics directly into the Soroban smart contracts.
+
+## 🌍 Real-world Fit & Use Case
+The Philippines experiences an average of 20 typhoons per year, causing billions in agricultural damage. Traditional insurance is slow, heavily reliant on manual claims assessment, and largely inaccessible to smallholder farmers. 
+**TyFi solves this by:**
+- Eliminating the need for manual claims adjusting.
+- Ensuring instant, transparent payouts to farmers exactly when they need it most to begin recovery efforts.
+- Allowing sponsors, NGOs, and governments to subsidize premiums transparently.
+
+## 🚀 Innovation & Differentiation
+Unlike traditional indemnity insurance or centralized parametric funds, TyFi is **fully decentralized and automated**.
+- **Zero-Claim Processing**: Farmers don't file claims; the smart contract auto-triggers payouts when wind/rain thresholds are breached.
+- **Transparent Sponsorship**: Donors can trace exactly which farmers received their subsidized premiums and view immutable impact metrics.
+- **AI-Driven Assessment**: We integrate Gemini AI to evaluate weather risks dynamically and translate complex meteorological data into actionable alerts.
+
+## 📱 UX & Accessibility
+We understand that smallholder farmers may not be crypto-native. 
+- **Frictionless Onboarding**: Integration with WalletConnect and Didit Web3 KYC provides a seamless, secure onboarding experience.
+- **Fiat Off-Ramps**: Through our PDAX integration, crypto payouts can be directly off-ramped to local fiat (PHP) via mobile wallets (like GCash) or bank accounts.
+- **SMS & Push Notifications**: Farmers receive instant SMS and Push Notifications when a payout is triggered, bridging the digital divide.
+
+## 📈 Viability & Go-to-Market
+TyFi is designed as a sustainable protocol rather than a one-off charity:
+- **Phase 1 (Pilot)**: Partner with local LGUs (Local Government Units) and agricultural cooperatives in high-risk regions (e.g., Bicol, Eastern Visayas) to onboard the first 1,000 farmers.
+- **Phase 2 (Sponsor Acquisition)**: Onboard CSR (Corporate Social Responsibility) programs and international NGOs to fund liquidity pools.
+- **Phase 3 (Expansion)**: Introduce secondary DeFi yield models where idle capital generates yield until a typhoon strikes, reducing premium costs further.
+
+## 👥 Team & Ability to Continue
+We are a dedicated team of blockchain developers, UX designers, and agricultural tech enthusiasts with deep roots in the Philippines. 
+- **Proven Execution**: We have built a fully functional Soroban-powered MVP complete with frontend dashboards, backend oracles, and mobile-responsive interfaces.
+- **Commitment**: Beyond this hackathon, we intend to pilot this on the Stellar Mainnet, working closely with the Stellar Development Foundation, local regulators, and rural banks to make TyFi a compliant and widely adopted standard for climate resilience.
