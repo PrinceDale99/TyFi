@@ -88,7 +88,13 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           const countResult = await server.simulateTransaction(txCount);
 
           if (countResult && rpc.Api.isSimulationSuccess(countResult) && countResult.result) {
-            const count = Number(scValToNative(countResult.result.retval));
+            const countVal = scValToNative(countResult.result.retval);
+            const count = Number(countVal);
+            
+            // Get current ledger for date calculation
+            const latestLedgerResp = await server.getLatestLedger();
+            const currentLedger = latestLedgerResp.sequence;
+            
             const fetchedProposals: Proposal[] = [];
 
             for (let i = 1; i <= count; i++) {
@@ -107,11 +113,8 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                 const descStr = typeof p.description === 'string' ? p.description : String(p.description);
                 
                 // Convert ledger sequence deadline to approximate JS timestamp
-                // Assume current ledger is roughly Date.now(), and each ledger is ~5 seconds
-                // Since we don't have current ledger sequence easily here without an extra call, 
-                // we just use a heuristic or display it as a relative time.
-                // For a proper implementation, we would query the latest ledger sequence.
-                const approximateDeadlineTs = Date.now() + (Number(p.deadline) * 5000) - (Date.now() % 5000); 
+                // Use current network ledger and multiply the difference by ~5 seconds per ledger
+                const approximateDeadlineTs = Date.now() + (Number(p.deadline) - currentLedger) * 5000; 
 
                 fetchedProposals.push({
                   id: Number(p.id || p[0]),
