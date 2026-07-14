@@ -105,6 +105,48 @@ app.post('/api/preferences', async (req, res) => {
 });
 
 // ==========================================
+// GET /api/didit/session
+// Creates a verification session for Didit KYC
+// ==========================================
+app.post('/api/didit/session', async (req, res) => {
+  const { walletAddress } = req.body;
+  
+  if (!walletAddress) {
+    return res.status(400).json({ error: 'walletAddress is required' });
+  }
+
+  const apiKey = process.env.VITE_DIDIT_API_KEY || process.env.DIDIT_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Didit API key not configured on backend' });
+  }
+
+  try {
+    const response = await fetch('https://verification.didit.me/v3/session/', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        workflow_id: '2fd40a46-3ef0-4551-bdbc-e5b81b52f229',
+        vendor_data: walletAddress
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || JSON.stringify(data));
+    }
+    
+    // data.url is the hosted verification URL, data.session_id is the session ID
+    res.json({ success: true, url: data.url, sessionId: data.session_id });
+  } catch (error: any) {
+    await logEvent('ERROR', 'Didit Session Creation Error', { errorMessage: error.message, walletAddress });
+    res.status(500).json({ error: 'Failed to create verification session' });
+  }
+});
+
+// ==========================================
 // GET /api/dao/metrics
 // Fetches DAO statistics from Supabase indexer
 // ==========================================

@@ -92,29 +92,29 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
   const startDiditVerification = async () => {
     setIsDiditLoading(true);
     const sdk = DiditSdk.shared;
-    
-    // In production, this should be done on a secure backend.
-    // For this demo, we are doing the API call from the client using the provided key.
-    let sessionUrl = `https://verify.didit.me/session/tyfi-demo-${Date.now()}`;
+
+    let sessionUrl = '';
+
     try {
-      const apiKey = import.meta.env.VITE_DIDIT_API_KEY;
-      if (apiKey) {
-        const response = await fetch('https://api.didit.me/v1/session/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${apiKey}`,
-            'x-api-key': apiKey
-          },
-          body: JSON.stringify({ vendor_data: walletAddress || 'farmer' })
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.url) sessionUrl = data.url;
-        }
+      // Call our backend to securely create the Didit Session
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      const response = await fetch(`${backendUrl}/api/didit/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: walletAddress })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate verification session');
       }
+
+      sessionUrl = data.url;
     } catch (e) {
-      console.warn("Didit API fetch failed (likely CORS or missing workflow_id), falling back to mock session", e);
+      console.error("Failed to generate Didit session from backend", e);
+      showToast("Verification system is currently unavailable", "error");
+      setIsDiditLoading(false);
+      return;
     }
 
     sdk.onComplete = (result: any) => {
