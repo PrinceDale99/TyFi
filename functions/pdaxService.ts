@@ -154,17 +154,10 @@ export async function processPayoutOfframp(cryptoAmount: number, paymentMethod: 
 
         return { trade, withdrawal };
     } catch (error: any) {
-        if (error.response?.status === 403 || process.env.RENDER) {
-            await logEvent('WARNING', 'PDAX request blocked (403) or running on Render. Falling back to simulation.', { 
+        if (error.response?.status === 403) {
+            await logEvent('WARNING', 'PDAX request blocked (403). Is the IP whitelisted?', { 
                 message: error.message 
             });
-            
-            const simulatedAmountPHP = cryptoAmount * 55; // Approximate 55 PHP per Crypto Unit
-            
-            return {
-                trade: { total_amount: simulatedAmountPHP, status: "simulated_trade_success" },
-                withdrawal: { reference: "sim_" + Math.random().toString(36).substring(7), status: "simulated_withdrawal_success", amount: simulatedAmountPHP }
-            };
         }
         throw error;
     }
