@@ -47,7 +47,7 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
     xlmTokenId: 'CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA',
     vaultContractId: 'CAQCA3H4UIGESIJZE3LF7TYKQY6TBQV2OQ7OVBRRRRIARX5JOTXZUNVT',
     horizonUrl: 'https://horizon.stellar.org',
-    sorobanRpcUrl: 'https://soroban-rpc.stellar.org',
+    sorobanRpcUrl: 'https://mainnet.sorobanrpc.com',
     passphrase: Networks.PUBLIC,
     daoContractId: 'CDMYX2V5Y6J34U4GTRU32O65XQ64R7PXZ4E4X7C2WYYU5ZQGQJ3F6E2V', // Will be replaced on mainnet
   }

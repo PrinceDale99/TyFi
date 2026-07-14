@@ -29,6 +29,8 @@ import { PHILIPPINE_REGIONS } from '../constants';
 import { registerForSubsidy } from '../services/firebaseService';
 
 // Leaflet & React-Leaflet Imports
+import { Globe, Leaf, Wind, Droplets, Droplet, Camera } from 'lucide-react';
+import { DiditSdk } from '@didit-protocol/sdk-web';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -73,8 +75,9 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isUploadingRsbsa, setIsUploadingRsbsa] = useState(false);
   const [uploadedRsbsa, setUploadedRsbsa] = useState<string | null>(null);
-  const [isUploadingValidId, setIsUploadingValidId] = useState(false);
-  const [uploadedValidId, setUploadedValidId] = useState<string | null>(null);
+  const [isDiditVerified, setIsDiditVerified] = useState(false);
+  const [diditSessionId, setDiditSessionId] = useState<string | null>(null);
+  const [isDiditLoading, setIsDiditLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [needsSubsidy, setNeedsSubsidy] = useState(false);
@@ -85,7 +88,56 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
   const [govSubsidyPercent, setGovSubsidyPercent] = useState(0); // e.g. 30% from DA
   const [ngoSubsidyPercent, setNgoSubsidyPercent] = useState(0); // e.g. 20% from Red Cross
 
-  React.useEffect(() => {
+  // Didit KYC Handler
+  const startDiditVerification = async () => {
+    setIsDiditLoading(true);
+    const sdk = DiditSdk.shared;
+    
+    // In production, this should be done on a secure backend.
+    // For this demo, we are doing the API call from the client using the provided key.
+    let sessionUrl = `https://verify.didit.me/session/tyfi-demo-${Date.now()}`;
+    try {
+      const apiKey = import.meta.env.VITE_DIDIT_API_KEY;
+      if (apiKey) {
+        const response = await fetch('https://api.didit.me/v1/session/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${apiKey}`,
+            'x-api-key': apiKey
+          },
+          body: JSON.stringify({ vendor_data: walletAddress || 'farmer' })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.url) sessionUrl = data.url;
+        }
+      }
+    } catch (e) {
+      console.warn("Didit API fetch failed (likely CORS or missing workflow_id), falling back to mock session", e);
+    }
+
+    sdk.onComplete = (result) => {
+      if (result.type === 'completed' && result.session) {
+        setIsDiditVerified(true);
+        setDiditSessionId(result.session.sessionId);
+      }
+      setIsDiditLoading(false);
+    };
+    
+    sdk.onEvent = (event) => {
+      if (event.type === 'didit:error' || event.type === 'didit:cancelled' || event.type === 'didit:close_request') {
+        setIsDiditLoading(false);
+      }
+    };
+
+    sdk.startVerification({ url: sessionUrl }).catch((e) => {
+      console.error('Failed to start Didit SDK', e);
+      setIsDiditLoading(false);
+    });
+  };
+
+  const handleNextStep = () => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
     window.addEventListener('online', handleOnline);
@@ -424,7 +476,8 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                       phoneNumber: '+63 912 345 6789'
                     });
                     setUploadedRsbsa('testnet-rsbsa-form.pdf');
-                    setUploadedValidId('testnet-passport-id.png');
+                    setIsDiditVerified(true);
+                    setDiditSessionId('didit-session-12345');
                     setCurrentFarm({
                       farmName: 'Albay Paradise Farm',
                       cropType: 'Rice',
@@ -548,48 +601,34 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                   </label>
                 </div>
 
-                {/* Valid ID Upload */}
-                <div className="relative">
-                  <input 
-                    type="file" 
-                    id="valid-id-upload" 
-                    className="hidden" 
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setIsUploadingValidId(true);
-                        setTimeout(() => {
-                          setIsUploadingValidId(false);
-                          setUploadedValidId(file.name);
-                        }, 1500);
-                      }
-                    }}
-                    accept=".pdf,.jpg,.png"
-                  />
-                  <label 
-                    htmlFor="valid-id-upload"
-                    className={`file-upload-container group block ${uploadedValidId ? 'active' : ''}`}
+                {/* Didit KYC Verification */}
+                <div className="relative pt-2">
+                  <div 
+                    onClick={!isDiditVerified && !isDiditLoading ? startDiditVerification : undefined}
+                    className={`file-upload-container group block transition-all ${isDiditVerified ? 'active border-emerald-500/50 bg-emerald-500/10 cursor-default' : 'cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5'}`}
                   >
-                    {isUploadingValidId ? (
+                    {isDiditLoading ? (
                       <div className="py-2">
                         <div className="scanner mb-4"></div>
                         <Loader2 className={`animate-spin mx-auto mb-2 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} size={32} />
-                        <p className={`font-bold text-sm animate-pulse ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>Verifying Valid ID...</p>
+                        <p className={`font-bold text-sm animate-pulse ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>Initializing Didit Secure KYC...</p>
                       </div>
-                    ) : uploadedValidId ? (
+                    ) : isDiditVerified ? (
                       <div className="py-2 animate-success">
                         <CheckCircle2 className="text-emerald-500 mx-auto mb-2" size={32} />
-                        <p className="text-white font-bold text-sm truncate max-w-full">{uploadedValidId}</p>
-                        <p className="text-emerald-400 text-xs font-bold">✓ Valid ID Verified</p>
+                        <p className="text-emerald-400 text-sm font-bold truncate max-w-full">Identity Verified</p>
+                        <p className="text-emerald-500/70 text-xs font-medium flex items-center justify-center gap-1 mt-1">
+                          <ShieldCheck size={12} /> Secure Web3 KYC by Didit
+                        </p>
                       </div>
                     ) : (
                       <div className="py-4">
-                        <Upload className={`upload-icon mx-auto mb-2 transition-colors ${isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'}`} size={32} />
-                        <p className="text-white font-bold text-sm mb-0.5">Upload Valid ID</p>
-                        <p className="text-slate-500 text-xs">Gov ID: Passport, Driver's, UMID</p>
+                        <ShieldCheck className={`upload-icon mx-auto mb-2 transition-colors ${isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-blue-400'}`} size={32} />
+                        <p className="text-white font-bold text-sm mb-0.5">Verify Identity with Didit</p>
+                        <p className="text-slate-500 text-xs">Secure, fast & decentralized KYC</p>
                       </div>
                     )}
-                  </label>
+                  </div>
                 </div>
               </div>
 
@@ -604,7 +643,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                 )}
                 <button 
                   onClick={() => setStep(2)}
-                  disabled={!farmerInfo.farmerName || !farmerInfo.rsbsaNumber || !uploadedRsbsa || !uploadedValidId || !farmerInfo.phoneNumber}
+                  disabled={!farmerInfo.farmerName || !farmerInfo.rsbsaNumber || !uploadedRsbsa || !isDiditVerified || !farmerInfo.phoneNumber}
                   className={`flex-1 py-3.5 rounded-xl font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer ${
                     isMainnet 
                       ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' 

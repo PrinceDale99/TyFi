@@ -19,9 +19,59 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
     sponsorType: 'Donor'
   });
 
-  const [isUploadingId, setIsUploadingId] = useState(false);
-  const [uploadedId, setUploadedId] = useState<string | null>(null);
+import { DiditSdk } from '@didit-protocol/sdk-web';
+
+  const [isDiditVerified, setIsDiditVerified] = useState(false);
+  const [diditSessionId, setDiditSessionId] = useState<string | null>(null);
+  const [isDiditLoading, setIsDiditLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+
+  // Didit KYC Handler
+  const startDiditVerification = async () => {
+    setIsDiditLoading(true);
+    const sdk = DiditSdk.shared;
+    
+    let sessionUrl = `https://verify.didit.me/session/tyfi-demo-${Date.now()}`;
+    try {
+      const apiKey = import.meta.env.VITE_DIDIT_API_KEY;
+      if (apiKey) {
+        const response = await fetch('https://api.didit.me/v1/session/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${apiKey}`,
+            'x-api-key': apiKey
+          },
+          body: JSON.stringify({ vendor_data: walletAddress || 'sponsor' })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.url) sessionUrl = data.url;
+        }
+      }
+    } catch (e) {
+      console.warn("Didit API fetch failed (likely CORS or missing workflow_id), falling back to mock session", e);
+    }
+
+    sdk.onComplete = (result) => {
+      if (result.type === 'completed' && result.session) {
+        setIsDiditVerified(true);
+        setDiditSessionId(result.session.sessionId);
+      }
+      setIsDiditLoading(false);
+    };
+    
+    sdk.onEvent = (event) => {
+      if (event.type === 'didit:error' || event.type === 'didit:cancelled' || event.type === 'didit:close_request') {
+        setIsDiditLoading(false);
+      }
+    };
+
+    sdk.startVerification({ url: sessionUrl }).catch((e) => {
+      console.error('Failed to start Didit SDK', e);
+      setIsDiditLoading(false);
+    });
+  };
 
   const handleCompleteRegistration = async () => {
     setIsRegistering(true);
@@ -111,48 +161,34 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
               </select>
             </div>
 
-            {/* Valid ID Upload */}
+            {/* Didit KYC Verification */}
             <div className="relative pt-2">
-              <input 
-                type="file" 
-                id="sponsor-id-upload" 
-                className="hidden" 
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setIsUploadingId(true);
-                    setTimeout(() => {
-                      setIsUploadingId(false);
-                      setUploadedId(file.name);
-                    }, 1500);
-                  }
-                }}
-                accept=".pdf,.jpg,.png"
-              />
-              <label 
-                htmlFor="sponsor-id-upload"
-                className={`file-upload-container group block ${uploadedId ? 'active' : ''}`}
+              <div 
+                onClick={!isDiditVerified && !isDiditLoading ? startDiditVerification : undefined}
+                className={`file-upload-container group block transition-all ${isDiditVerified ? 'active border-emerald-500/50 bg-emerald-500/10 cursor-default' : 'cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5'}`}
               >
-                {isUploadingId ? (
+                {isDiditLoading ? (
                   <div className="py-2">
                     <div className="scanner mb-4"></div>
                     <Loader2 className={`animate-spin mx-auto mb-2 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} size={32} />
-                    <p className={`font-bold text-sm animate-pulse ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>Verifying Document...</p>
+                    <p className={`font-bold text-sm animate-pulse ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>Initializing Didit Secure KYC...</p>
                   </div>
-                ) : uploadedId ? (
+                ) : isDiditVerified ? (
                   <div className="py-2 animate-success">
                     <CheckCircle2 className="text-emerald-500 mx-auto mb-2" size={32} />
-                    <p className="text-white font-bold text-sm truncate max-w-full">{uploadedId}</p>
-                    <p className="text-emerald-400 text-xs font-bold">✓ Identity Verified</p>
+                    <p className="text-emerald-400 text-sm font-bold truncate max-w-full">Identity Verified</p>
+                    <p className="text-emerald-500/70 text-xs font-medium flex items-center justify-center gap-1 mt-1">
+                      <ShieldCheck size={12} /> Secure Web3 KYC by Didit
+                    </p>
                   </div>
                 ) : (
                   <div className="py-4">
-                    <Upload className={`upload-icon mx-auto mb-2 transition-colors ${isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-sky-400'}`} size={32} />
-                    <p className="text-white font-bold text-sm mb-0.5">Upload Valid ID / Org Proof</p>
-                    <p className="text-slate-500 text-xs">Gov ID, Passport, or SEC Registration</p>
+                    <ShieldCheck className={`upload-icon mx-auto mb-2 transition-colors ${isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-blue-400'}`} size={32} />
+                    <p className="text-white font-bold text-sm mb-0.5">Verify Identity with Didit</p>
+                    <p className="text-slate-500 text-xs">Secure, fast & decentralized KYC</p>
                   </div>
                 )}
-              </label>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-4">
@@ -166,7 +202,7 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
               )}
               <button 
                 onClick={handleCompleteRegistration}
-                disabled={!sponsorInfo.name || !sponsorInfo.email || !sponsorInfo.birthDate || !uploadedId || isRegistering}
+                disabled={!sponsorInfo.name || !sponsorInfo.email || !sponsorInfo.birthDate || !isDiditVerified || isRegistering}
                 className={`flex-1 py-3.5 rounded-xl font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   isMainnet 
                     ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
