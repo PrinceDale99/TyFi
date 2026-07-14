@@ -190,7 +190,7 @@ const CertificateList: React.FC<CertificateListProps> = ({ address, network = 't
                   <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">PDF</span>
                 </a>
                 <a 
-                  href={`https://stellar.expert/explorer/${network}/tx/${cert.txHash}`} 
+                  href={`https://stellar.expert/explorer/${network === 'mainnet' ? 'public' : 'testnet'}/tx/${cert.txHash}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"

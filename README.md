@@ -293,7 +293,7 @@ npm run dev
 - DAO Governance Contract: `CCSOWCGXDJSZJ3TLQOHHIC5YKD6XLF2WOSIZE5FLNDTXB73J76TXLDAO`
 - 📸 Screenshot — Stellar Expert (Mainnet)
   ![Mainnet Screenshot](public/mainnet.png)
-- Link: [Stellar Expert Mainnet](https://stellar.expert/explorer/mainnet/contract/CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK)
+- Link: [Stellar Expert Mainnet](https://stellar.expert/explorer/public/contract/CAAQCLJ7SF5IP3BHD4OKPLMCDQTEVTRYWEXYBQIGNL6U6ZYIK7HNCHEK)
 
 ## 🎥 Demo
 - 🔗 Live App: [https://ptrv-22b15.web.app/](https://ptrv-22b15.web.app/)
