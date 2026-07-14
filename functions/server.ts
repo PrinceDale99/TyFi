@@ -9,7 +9,7 @@ import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { handleIncomingSms } from './smsHandler';
 import { processPayoutOfframp } from './pdaxService';
-import { initiateFiatDeposit } from './pdax';
+import { initiateFiatDeposit, getXlmRates } from './pdax';
 import { supabase } from './supabase';
 import { oracleRouter } from './oracle';
 import { calculateBondYield } from './bondService';
@@ -188,14 +188,13 @@ app.get('/api/dao/metrics', async (req, res) => {
 
 app.get('/api/v1/xlm-rate', async (req, res) => {
   try {
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=php,usd');
+    const rates = await getXlmRates();
     res.json({
-      rate: response.data.stellar.php,
-      usd: response.data.stellar.usd
+      rate: rates.php,
+      usd: rates.usd
     });
   } catch (error) {
-    // Fallback if CoinGecko is rate limited
-    res.json({ rate: 9.0, usd: 0.25 });
+    res.json({ rate: 15.0, usd: 0.25 });
   }
 });
 
