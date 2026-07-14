@@ -424,7 +424,7 @@ app.post('/api/notify-alert', async (req, res) => {
 
 app.post('/api/ai/analyze-weather', async (req, res) => {
   // Support both raw `contents` (direct Gemini payload) and structured {location, metrics} payload
-  const { contents, location, metrics } = req.body;
+  const { contents, location, metrics, system_instruction } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY;
 
   if (!API_KEY) {
@@ -454,7 +454,10 @@ Provide: 1) Risk Level (LOW/MEDIUM/HIGH/CRITICAL), 2) Whether the parametric tri
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: geminiContents }),
+      body: JSON.stringify({ 
+        contents: geminiContents,
+        ...(system_instruction ? { system_instruction } : {})
+      }),
     });
 
     const data = await response.json() as any;
