@@ -117,7 +117,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
       console.warn("Didit API fetch failed (likely CORS or missing workflow_id), falling back to mock session", e);
     }
 
-    sdk.onComplete = (result) => {
+    sdk.onComplete = (result: any) => {
       if (result.type === 'completed' && result.session) {
         setIsDiditVerified(true);
         setDiditSessionId(result.session.sessionId);
@@ -125,19 +125,19 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
       setIsDiditLoading(false);
     };
     
-    sdk.onEvent = (event) => {
+    sdk.onEvent = (event: any) => {
       if (event.type === 'didit:error' || event.type === 'didit:cancelled' || event.type === 'didit:close_request') {
         setIsDiditLoading(false);
       }
     };
 
-    sdk.startVerification({ url: sessionUrl }).catch((e) => {
+    sdk.startVerification({ url: sessionUrl }).catch((e: any) => {
       console.error('Failed to start Didit SDK', e);
       setIsDiditLoading(false);
     });
   };
 
-  const handleNextStep = () => {
+  React.useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
     window.addEventListener('online', handleOnline);
