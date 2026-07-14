@@ -2108,7 +2108,11 @@ function App() {
               )}
               {activeTab === 'calc' && (
                 <div className="glass-panel">
-                  <SmartCalculator farms={farms} weather={weather} />
+                  <SmartCalculator 
+                    farms={farms} 
+                    weather={weather} 
+                    onNavigate={(tab) => setActiveTab(tab as any)} 
+                  />
                 </div>
               )}
 
