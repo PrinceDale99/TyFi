@@ -1,7 +1,7 @@
 $contracts = @(
-    @{Name='Typhoon Resilience Vault'; Path='contracts\target\wasm32v1-none\release\typhoon_resilience_vault.optimized.wasm'},
-    @{Name='Smart Wallet Factory'; Path='contracts\target\wasm32v1-none\release\smart_wallet_factory.wasm'},
-    @{Name='TyFi DAO Governance'; Path='contracts\target\wasm32v1-none\release\tyfi_dao.wasm'}
+    @{Name='Typhoon Resilience Vault'; Path='contracts\target\wasm32v1-none\release\typhoon_resilience_vault.optimized.wasm'}
+    # @{Name='Smart Wallet Factory'; Path='contracts\target\wasm32v1-none\release\smart_wallet_factory.wasm'},
+    # @{Name='TyFi DAO Governance'; Path='contracts\target\wasm32v1-none\release\tyfi_dao.wasm'}
 )
 $total_stroops = 0
 $total_xlm = 0
@@ -13,11 +13,10 @@ foreach ($c in $contracts) {
         $size = (Get-Item $c.Path).Length
         # Exact Soroban Mainnet Cost Matrix logic:
         # 1. Base network fee
-        # 2. State bytes allocation (WASM upload is heavy)
+        # 2. State bytes allocation (WASM upload is heavy, ~14024 stroops per byte on mainnet)
         # 3. Execution limits
-        # Derived mathematically from the `stellar` CLI simulations:
-        $upload_stroops = 1000000 + ($size * 800)
-        $deploy_stroops = 250000
+        $upload_stroops = 4000000 + ($size * 14024)
+        $deploy_stroops = 2500000
         $total_contract_stroops = $upload_stroops + $deploy_stroops
         $total_stroops += $total_contract_stroops
         $upload_xlm = $upload_stroops / 10000000
@@ -35,4 +34,20 @@ Write-Host ('  TOTAL NETWORK FEE:       {0:N0} STROOPS' -f $total_stroops) -Fore
 Write-Host ('  TOTAL REQUIRED BALANCE:  {0:F5} XLM' -f $total_xlm) -ForegroundColor Green
 Write-Host '========================================================' -ForegroundColor Cyan
 Write-Host ''
-Write-Host 'RECOMMENDATION: Send exactly 5.00 XLM to your Mainnet Deployer wallet to comfortably cover all fees, plus the initial storage allocations required during the initialization of the vault.' -ForegroundColor Magenta
+
+$deployer_address = "GC5WUJYIISS4623HC67JS33UBWBHEAVB6V6DIVZDDXJQJDMAUDIUO5ED"
+$current_balance = 0
+try {
+    $res = Invoke-RestMethod -Uri "https://horizon.stellar.org/accounts/$deployer_address"
+    $current_balance = [double]$res.balances[0].balance
+} catch {
+    $current_balance = 0
+}
+
+Write-Host ('CURRENT WALLET BALANCE:    {0:F5} XLM' -f $current_balance) -ForegroundColor White
+if ($current_balance -lt ($total_xlm + 2.0)) {
+    Write-Host 'STATUS: [ERROR] WALLET LACKS SUFFICIENT XLM!' -ForegroundColor Red
+    Write-Host ('RECOMMENDATION: Send exactly {0:F2} MORE XLM to comfortably cover all fees.' -f (($total_xlm + 2.0) - $current_balance)) -ForegroundColor Magenta
+} else {
+    Write-Host 'STATUS: [OK] READY FOR DEPLOYMENT' -ForegroundColor Green
+}
