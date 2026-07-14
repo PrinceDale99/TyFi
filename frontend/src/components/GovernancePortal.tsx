@@ -13,7 +13,7 @@ interface GovernancePortalProps {
   network: 'testnet' | 'mainnet';
 }
 
-import { NETWORK_CONFIGS } from '../lib/stellar';
+import { NETWORK_CONFIGS, BASE_FEE } from '../lib/stellar';
 
 export function GovernancePortal({ walletAddress, network }: GovernancePortalProps) {
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -62,7 +62,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           try {
             const args = [nativeToScVal(Address.fromString(walletAddress), { type: 'address' })];
             
-            const tx = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
+            const tx = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
               .addOperation(vaultContract.call('get_lp_shares', ...args))
               .setTimeout(30)
               .build();
@@ -442,7 +442,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     
                     const tx = new TransactionBuilder(
                       new Account(walletAddress, '0'),
-                      { fee: '1000', networkPassphrase: config.passphrase }
+                      { fee: BASE_FEE, networkPassphrase: config.passphrase }
                     )
                     .addOperation(
                       daoContract.call('create_proposal',
@@ -458,10 +458,11 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     const preparedTx = await server.prepareTransaction(tx) as Transaction;
                     
                     const signResult = await signTransaction(preparedTx.toXDR(), {
-                      networkPassphrase: 'Test SDF Network ; September 2015'
+                      networkPassphrase: config.passphrase
                     });
                     
-                    const signedTx = TransactionBuilder.fromXDR(signResult.signedTxXdr, 'Test SDF Network ; September 2015');
+                    const signedXdrStr = typeof signResult === 'string' ? signResult : (signResult as any).signedTxXdr;
+                    const signedTx = TransactionBuilder.fromXDR(signedXdrStr, config.passphrase);
                     const sendResult = await server.sendTransaction(signedTx as Transaction);
                     
                     if (sendResult.status === 'PENDING') {
