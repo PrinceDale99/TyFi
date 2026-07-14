@@ -13,9 +13,7 @@ interface GovernancePortalProps {
   network: 'testnet' | 'mainnet';
 }
 
-const DAO_CONTRACT_ID = 'CC7C3BOK226Q6D2O6LFHPNP7ENSNUZ4QBLUC4ZIOUO6PQHZHZETVP37F';
-const VAULT_CONTRACT_ID = 'CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH';
-const RPC_URL = 'https://soroban-testnet.stellar.org';
+import { NETWORK_CONFIGS } from '../lib/stellar';
 
 export function GovernancePortal({ walletAddress, network }: GovernancePortalProps) {
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -51,19 +49,20 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           console.error("Failed to fetch DAO metrics", e);
         }
 
-        const server = new rpc.Server(RPC_URL);
-        const vaultContract = new Contract(VAULT_CONTRACT_ID);
-        const daoContract = new Contract(DAO_CONTRACT_ID);
+        const config = NETWORK_CONFIGS[network];
+        const server = new rpc.Server(config.sorobanRpcUrl);
+        const vaultContract = new Contract(config.vaultContractId);
+        const daoContract = new Contract(config.daoContractId);
         // Always use the zero account for read-only simulations to avoid op_no_source_account errors
         // if the user's connected wallet is unfunded on testnet.
         const dummyAccount = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
 
         // Fetch Voting Power if wallet connected
-        if (walletAddress) {
+        if (walletAddress && !walletAddress.startsWith("DEMO_")) {
           try {
             const args = [nativeToScVal(Address.fromString(walletAddress), { type: 'address' })];
             
-            const tx = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: 'Test SDF Network ; September 2015' })
+            const tx = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
               .addOperation(vaultContract.call('get_lp_shares', ...args))
               .setTimeout(30)
               .build();
@@ -81,7 +80,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
         // Fetch actual Proposals from DAO contract
         try {
-          const txCount = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: 'Test SDF Network ; September 2015' })
+          const txCount = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
             .addOperation(daoContract.call('get_proposal_count'))
             .setTimeout(30)
             .build();
@@ -93,7 +92,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
             const fetchedProposals: Proposal[] = [];
 
             for (let i = 1; i <= count; i++) {
-              const txProp = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: 'Test SDF Network ; September 2015' })
+              const txProp = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
                 .addOperation(daoContract.call('get_proposal', nativeToScVal(i, { type: 'u64' })))
                 .setTimeout(30)
                 .build();
@@ -160,14 +159,14 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     try {
       showToast(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`, "info");
       
-      const server = new rpc.Server(RPC_URL);
-      const account = await server.getAccount(walletAddress);
-      const daoContract = new Contract(DAO_CONTRACT_ID);
+      const config = NETWORK_CONFIGS[network];
+      const server = new rpc.Server(config.sorobanRpcUrl);
+      const daoContract = new Contract(config.daoContractId);
       
-      let tx = new TransactionBuilder(account, {
-        fee: "10000",
-        networkPassphrase: 'Test SDF Network ; September 2015',
-      })
+      const tx = new TransactionBuilder(
+        new Account(walletAddress, '0'), // Freighter will fetch real sequence
+        { fee: '1000', networkPassphrase: config.passphrase }
+      )
       .addOperation(
         daoContract.call('vote', 
           nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
@@ -180,12 +179,10 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
       const preparedTx = await server.prepareTransaction(tx) as Transaction;
       
-      const signResult = await signTransaction(preparedTx.toXDR(), {
-        networkPassphrase: 'Test SDF Network ; September 2015'
-      });
-      
-      const signedTx = TransactionBuilder.fromXDR(signResult.signedTxXdr, 'Test SDF Network ; September 2015');
-      const sendResult = await server.sendTransaction(signedTx as Transaction);
+      const signResult = await signTransaction(preparedTx.toXDR(), { networkPassphrase: config.passphrase });
+      const signedXdrStr = typeof signResult === 'string' ? signResult : (signResult as any).signedTxXdr;
+      const signedTx = TransactionBuilder.fromXDR(signedXdrStr, config.passphrase) as Transaction;
+      const sendResult = await server.sendTransaction(signedTx);
       
       if (sendResult.status === 'PENDING') {
         showToast("Vote transaction submitted! It may take a few seconds to confirm.", "success");
@@ -439,14 +436,14 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     }
 
                     showToast(`Submitting Proposal via Smart Contract... Please check Freighter.`, "info");
-                    const server = new rpc.Server(RPC_URL);
-                    const account = await server.getAccount(walletAddress);
-                    const daoContract = new Contract(DAO_CONTRACT_ID);
+                    const config = NETWORK_CONFIGS[network];
+                    const server = new rpc.Server(config.sorobanRpcUrl);
+                    const daoContract = new Contract(config.daoContractId);
                     
-                    let tx = new TransactionBuilder(account, {
-                      fee: "10000",
-                      networkPassphrase: 'Test SDF Network ; September 2015',
-                    })
+                    const tx = new TransactionBuilder(
+                      new Account(walletAddress, '0'),
+                      { fee: '1000', networkPassphrase: config.passphrase }
+                    )
                     .addOperation(
                       daoContract.call('create_proposal',
                         nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
