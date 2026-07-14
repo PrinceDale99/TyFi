@@ -13,7 +13,7 @@ interface GovernancePortalProps {
   network: 'testnet' | 'mainnet';
 }
 
-import { NETWORK_CONFIGS, BASE_FEE } from '../lib/stellar';
+import { NETWORK_CONFIGS } from '../lib/stellar';
 
 export function GovernancePortal({ walletAddress, network }: GovernancePortalProps) {
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -62,7 +62,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           try {
             const args = [nativeToScVal(Address.fromString(walletAddress), { type: 'address' })];
             
-            const tx = new TransactionBuilder(dummyAccount, { fee: BASE_FEE, networkPassphrase: config.passphrase })
+            const tx = new TransactionBuilder(dummyAccount, { fee: "1000000", networkPassphrase: config.passphrase })
               .addOperation(vaultContract.call('get_lp_shares', ...args))
               .setTimeout(30)
               .build();
@@ -442,7 +442,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     
                     const tx = new TransactionBuilder(
                       new Account(walletAddress, '0'),
-                      { fee: BASE_FEE, networkPassphrase: config.passphrase }
+                      { fee: '1000000', networkPassphrase: config.passphrase }
                     )
                     .addOperation(
                       daoContract.call('create_proposal',
