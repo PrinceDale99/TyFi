@@ -753,8 +753,8 @@ export const contributeLiquidityOnChain = async (
     } else {
       throw new Error(`Transaction failed: ${status}`);
     }
-  } catch (error) {
-    console.error(`[${network.toUpperCase()}] Blockchain liquidity error:`, error);
+  } catch (error: any) {
+    console.error(`[${network.toUpperCase()}] Blockchain liquidity error:`, error?.message || JSON.stringify(error) || error);
     throw error;
   }
 };

@@ -328,7 +328,7 @@ app.post('/api/v1/fiat-deposit', async (req, res) => {
     await logEvent('INFO', 'Initiating PDAX Fiat Deposit', { amountPHP, paymentMethod });
     const result = await initiateFiatDeposit(amountPHP, paymentMethod || 'grabpay_cashin');
     
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (error: any) {
     await logEvent('ERROR', 'Error executing PDAX fiat deposit', { errorMessage: error.message });
     res.status(500).json({ success: false, error: error.message });
