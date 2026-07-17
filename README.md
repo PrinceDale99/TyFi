@@ -506,6 +506,5 @@ TyFi is designed as a sustainable protocol rather than a one-off charity:
 - **Phase 3 (Expansion)**: Introduce secondary DeFi yield models where idle capital generates yield until a typhoon strikes, reducing premium costs further.
 
 ## 👥 Team & Ability to Continue
-We are a dedicated team of blockchain developers, UX designers, and agricultural tech enthusiasts with deep roots in the Philippines. 
 - **Proven Execution**: We have built a fully functional Soroban-powered MVP complete with frontend dashboards, backend oracles, and mobile-responsive interfaces.
-- **Commitment**: Beyond this hackathon, we intend to pilot this on the Stellar Mainnet, working closely with the Stellar Development Foundation, local regulators, and rural banks to make TyFi a compliant and widely adopted standard for climate resilience.
+- **Commitment**: Beyond this hackathon, we intend to work closely with the Stellar Development Foundation, local regulators, and rural banks to make TyFi a compliant and widely adopted standard for climate resilience.
