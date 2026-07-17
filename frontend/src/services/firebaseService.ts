@@ -244,10 +244,22 @@ export const getUserProfile = async (walletAddress: string, network: string = 't
 export const saveUserProfile = async (walletAddress: string, profileData: any, network: string = 'testnet') => {
   try {
     const docRef = doc(db, "user_profiles", `${network}_${walletAddress}`);
-    await setDoc(docRef, {
+    
+    // 1. Merge all intended data
+    const rawData = {
       ...profileData,
       walletAddress,
       network,
+    };
+
+    // 2. Strip out any 'undefined' values to satisfy Firebase constraints
+    const cleanData = Object.fromEntries(
+      Object.entries(rawData).filter(([_, v]) => v !== undefined)
+    );
+
+    // 3. Save the clean payload
+    await setDoc(docRef, {
+      ...cleanData,
       updatedAt: serverTimestamp()
     }, { merge: true });
     return true;
