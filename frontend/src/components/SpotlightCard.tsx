@@ -17,13 +17,35 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [opacity, setOpacity] = useState(0);
 
+  // 3D Parallax Tilt Values
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 30 });
+  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 30 });
+
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["7.5deg", "-7.5deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-7.5deg", "7.5deg"]);
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!divRef.current || isFocused) return;
 
     const div = divRef.current;
     const rect = div.getBoundingClientRect();
+    
+    // Spotlight position
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    setPosition({ x: mouseX, y: mouseY });
 
-    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    // 3D Tilt calculation (-0.5 to 0.5)
+    const width = rect.width;
+    const height = rect.height;
+    const xPct = (mouseX / width) - 0.5;
+    const yPct = (mouseY / height) - 0.5;
+    
+    x.set(xPct);
+    y.set(yPct);
   };
 
   const handleFocus = () => {
@@ -42,6 +64,9 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
 
   const handleMouseLeave = () => {
     setOpacity(0);
+    // Reset 3D Tilt
+    x.set(0);
+    y.set(0);
   };
 
   return (
@@ -52,19 +77,26 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
       onBlur={handleBlur}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`relative overflow-hidden rounded-3xl bg-slate-900/40 border border-slate-800/50 shadow-[0_0_40px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-transform hover:scale-[1.02] duration-300 ${className}`}
       style={{
+        rotateX,
+        rotateY,
+        transformStyle: "preserve-3d",
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 0 40px rgba(0,0,0,0.5)"
       }}
+      className={`relative rounded-3xl bg-slate-900/40 border border-slate-800/50 backdrop-blur-xl transition-all duration-300 ${className}`}
     >
       <div
-        className="pointer-events-none absolute -inset-px opacity-0 transition duration-300 z-0"
+        className="pointer-events-none absolute -inset-px opacity-0 transition duration-300 z-0 rounded-3xl overflow-hidden"
         style={{
           opacity,
           background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 40%)`,
         }}
       />
-      <div className="relative z-10 h-full w-full">
+      {/* 3D Depth Inner Layer */}
+      <div 
+        className="relative z-10 h-full w-full" 
+        style={{ transform: "translateZ(40px)" }}
+      >
         {children}
       </div>
     </motion.div>
