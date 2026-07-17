@@ -1,6 +1,6 @@
 import React, { useState, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import { Shield, Wind, Zap, Activity, ArrowRight, ShieldCheck, Globe, Coins, ShieldAlert, Check, Network, Database, Server, Smartphone, Lock, MapPin, Satellite, Banknote, TerminalSquare, Calculator, Vote, ArrowUpRight, Github, FileText, Video } from 'lucide-react';
-import { motion, useMotionTemplate, useMotionValue } from 'framer-motion';
+import { motion, useMotionTemplate, useMotionValue, useScroll, useTransform } from 'framer-motion';
 import MagneticButton from './MagneticButton';
 
 interface LandingPageProps {
@@ -37,7 +37,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
     return () => clearInterval(interval);
   }, []);
 
+  const { scrollYProgress } = useScroll();
+  const yBg = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
+  const yFg = useTransform(scrollYProgress, [0, 1], ["0%", "-20%"]);
+
   // Animation variants
+  const maskReveal = {
+    hidden: { y: "100%", opacity: 0 },
+    visible: { y: "0%", opacity: 1, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+  };
   const fadeUp = {
     hidden: { opacity: 0, y: 30 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
@@ -58,6 +66,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
       className="min-h-screen bg-[#020617] text-slate-200 overflow-x-hidden font-sans selection:bg-sky-500/30 relative"
       onMouseMove={handleMouseMove}
     >
+      {/* Floating Data Streams Background */}
+      <motion.div style={{ y: yBg }} className="absolute inset-0 z-0 pointer-events-none opacity-20 hidden md:block">
+        <div className="absolute top-20 left-[10%] text-emerald-500 font-mono text-xs opacity-50 blur-[1px]">0x7F2...9A1</div>
+        <div className="absolute top-64 right-[15%] text-sky-500 font-mono text-xs opacity-40 blur-[2px]">VALIDATING...</div>
+        <div className="absolute top-[40%] left-[20%] text-purple-500 font-mono text-xs opacity-30 blur-[1px]">SYNC: 14.599, 120.984</div>
+        <div className="absolute top-[60%] right-[10%] text-amber-500 font-mono text-xs opacity-20 blur-[3px]">BLOCK: 492001</div>
+        <div className="absolute top-[80%] left-[5%] text-emerald-500 font-mono text-xs opacity-40 blur-[1px]">EXECUTE_PAYOUT()</div>
+      </motion.div>
+
       {/* Interactive Global Background Glow */}
       <motion.div
         className="pointer-events-none absolute -inset-px rounded-xl opacity-30 transition duration-300 z-0"
@@ -112,28 +129,32 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
       </motion.nav>
 
       {/* Hero Section */}
-      <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden z-10">
+      <motion.div style={{ y: yFg }} className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden z-10">
         <motion.div 
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
           className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"
         >
-          <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-sm">
+          <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-sm shadow-[0_0_20px_rgba(255,255,255,0.05)] hover:shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all cursor-default">
             <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="text-sm font-medium text-slate-300">Testnet Live: v2.0 Protocol</span>
           </motion.div>
           
-          <motion.h1 variants={fadeUp} className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-white mb-8 display-font leading-tight">
-            Guaranteed Crop Protection.<br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500 drop-shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-              Instant Payouts.
-            </span>
-          </motion.h1>
+          <div className="overflow-hidden">
+            <motion.h1 variants={maskReveal} className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-white mb-8 display-font leading-tight">
+              Guaranteed Crop Protection.<br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500 drop-shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                Instant Payouts.
+              </span>
+            </motion.h1>
+          </div>
           
-          <motion.p variants={fadeUp} className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 mb-10 leading-relaxed px-2">
-            The first autonomous micro-insurance protocol protecting farmers against climate disasters. No middlemen. No claims process. Just instant support when the storm hits.
-          </motion.p>
+          <div className="overflow-hidden mb-10 px-2">
+            <motion.p variants={maskReveal} className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 leading-relaxed">
+              The first autonomous micro-insurance protocol protecting farmers against climate disasters. No middlemen. No claims process. Just instant support when the storm hits.
+            </motion.p>
+          </div>
           
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4">
             <MagneticButton 
@@ -179,9 +200,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
             </div>
           </motion.div>
         </motion.div>
-      </div>
+      </motion.div>
 
-      {/* How Parametric Insurance Works (Visual Journey) */}
+      {/* How Parametric Insurance Works (Visual Journey - Scroll Linked) */}
       <div className="py-24 bg-[#090e1a]/80 relative z-10 border-t border-white/5 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
@@ -189,103 +210,79 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             variants={fadeUp}
-            className="text-center mb-20"
+            className="text-center mb-20 overflow-hidden"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 display-font tracking-tight">How Parametric Insurance Works</h2>
-            <p className="text-slate-400 text-xl max-w-2xl mx-auto">A completely autonomous, trustless system. No claims adjusters, no paperwork, no waiting.</p>
+            <motion.h2 variants={maskReveal} className="text-4xl md:text-5xl font-bold text-white mb-6 display-font tracking-tight">How Parametric Insurance Works</motion.h2>
+            <motion.p variants={maskReveal} className="text-slate-400 text-xl max-w-2xl mx-auto">A completely autonomous, trustless system. No claims adjusters, no paperwork, no waiting.</motion.p>
           </motion.div>
 
-          <div className="relative max-w-4xl mx-auto">
-            {/* Connecting Line */}
-            <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-sky-500/0 via-sky-500/50 to-sky-500/0 hidden md:block"></div>
-            
-            <div className="space-y-24 relative">
-              {/* Step 1 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 relative">
+            {/* Left Side: Scrolling Text Steps */}
+            <div className="space-y-24 py-8">
+              
               <motion.div 
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="flex flex-col md:flex-row items-center gap-8 md:gap-16 group"
+                initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ margin: "-200px" }}
+                className="glass-panel p-8 rounded-2xl border border-sky-500/20 bg-sky-950/10 hover:border-sky-500/40 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(0,0,0,0.5)]"
               >
-                <div className="md:w-1/2 flex justify-end">
-                  <div className="text-right hidden md:block">
-                    <h3 className="text-2xl font-bold text-white mb-2">Step 1: Stake & Subsidize</h3>
-                    <p className="text-slate-400">LPs provide capital to the vault. Farmers register their exact geographic coordinates on-chain.</p>
-                  </div>
+                <div className="w-14 h-14 rounded-xl bg-sky-900 border border-sky-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(56,189,248,0.4)]">
+                  <MapPin className="w-7 h-7 text-sky-400" />
                 </div>
-                <div className="relative z-10 w-16 h-16 rounded-full bg-sky-900 border-2 border-sky-500 flex items-center justify-center shrink-0 shadow-[0_0_30px_rgba(56,189,248,0.4)] group-hover:scale-110 transition-transform duration-300">
-                  <MapPin className="w-8 h-8 text-sky-400" />
-                </div>
-                <div className="md:w-1/2 w-full">
-                  <div className="glass-panel p-6 text-left md:hidden mb-4">
-                    <h3 className="text-2xl font-bold text-white mb-2">Step 1: Stake & Subsidize</h3>
-                    <p className="text-slate-400">LPs provide capital to the vault. Farmers register their exact geographic coordinates on-chain.</p>
-                  </div>
-                  <div className="glass-panel p-6 w-full max-w-sm rounded-2xl border border-sky-500/20 bg-sky-950/20 mx-auto md:mx-0">
-                    <div className="flex justify-between text-sm text-slate-300 mb-2"><span>Farmer ID: 8944</span><span className="text-sky-400">Registered</span></div>
-                    <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-sky-500 w-3/4"></div></div>
-                  </div>
-                </div>
+                <h3 className="text-3xl font-bold text-white mb-4">Step 1: Stake & Subsidize</h3>
+                <p className="text-slate-400 text-lg leading-relaxed">LPs provide capital to the vault, generating yield. Farmers register their exact geographic coordinates on-chain, subsidizing their premiums through the protocol.</p>
               </motion.div>
 
-              {/* Step 2 */}
               <motion.div 
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-                className="flex flex-col md:flex-row-reverse items-center gap-8 md:gap-16 group"
+                initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ margin: "-200px" }}
+                className="glass-panel p-8 rounded-2xl border border-purple-500/20 bg-purple-950/10 hover:border-purple-500/40 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(0,0,0,0.5)]"
               >
-                <div className="md:w-1/2 flex justify-start">
-                  <div className="text-left hidden md:block">
-                    <h3 className="text-2xl font-bold text-white mb-2">Step 2: Oracle Monitoring</h3>
-                    <p className="text-slate-400">Space-grade satellites and Open-Meteo constantly scan the registered coordinates for severe weather data.</p>
-                  </div>
+                <div className="w-14 h-14 rounded-xl bg-purple-900 border border-purple-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(168,85,247,0.4)]">
+                  <Satellite className="w-7 h-7 text-purple-400" />
                 </div>
-                <div className="relative z-10 w-16 h-16 rounded-full bg-purple-900 border-2 border-purple-500 flex items-center justify-center shrink-0 shadow-[0_0_30px_rgba(168,85,247,0.4)] group-hover:scale-110 transition-transform duration-300">
-                  <Satellite className="w-8 h-8 text-purple-400" />
-                </div>
-                <div className="md:w-1/2 flex justify-end w-full">
-                  <div className="glass-panel p-6 text-left md:hidden mb-4 w-full">
-                    <h3 className="text-2xl font-bold text-white mb-2">Step 2: Oracle Monitoring</h3>
-                    <p className="text-slate-400">Space-grade satellites and Open-Meteo constantly scan the registered coordinates for severe weather data.</p>
-                  </div>
-                  <div className="glass-panel p-6 w-full max-w-sm rounded-2xl border border-purple-500/20 bg-purple-950/20 flex flex-col gap-3 mx-auto md:mx-0">
-                     <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-purple-400 animate-ping"></div><span className="text-sm font-mono text-purple-300">Scanning Grid [14.599, 120.984]</span></div>
-                     <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-slate-600"></div><span className="text-sm font-mono text-slate-400">Wind Speed: 84 km/h</span></div>
-                  </div>
-                </div>
+                <h3 className="text-3xl font-bold text-white mb-4">Step 2: Oracle Monitoring</h3>
+                <p className="text-slate-400 text-lg leading-relaxed">Space-grade satellites and decentralized nodes (Open-Meteo, GDACS) constantly scan the registered coordinates. The data is immutable and verifiable.</p>
               </motion.div>
 
-              {/* Step 3 */}
               <motion.div 
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
-                className="flex flex-col md:flex-row items-center gap-8 md:gap-16 group"
+                initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ margin: "-200px" }}
+                className="glass-panel p-8 rounded-2xl border border-emerald-500/20 bg-emerald-950/10 hover:border-emerald-500/40 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(0,0,0,0.5)]"
               >
-                <div className="md:w-1/2 flex justify-end">
-                  <div className="text-right hidden md:block">
-                    <h3 className="text-2xl font-bold text-white mb-2">Step 3: Autonomous Payout</h3>
-                    <p className="text-slate-400">The moment wind speeds breach the Cat 3 threshold, the smart contract triggers an instant XLM transfer directly to the farmer's wallet.</p>
-                  </div>
+                <div className="w-14 h-14 rounded-xl bg-emerald-900 border border-emerald-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+                  <Banknote className="w-7 h-7 text-emerald-400" />
                 </div>
-                <div className="relative z-10 w-16 h-16 rounded-full bg-emerald-900 border-2 border-emerald-500 flex items-center justify-center shrink-0 shadow-[0_0_30px_rgba(16,185,129,0.4)] group-hover:scale-110 transition-transform duration-300">
-                  <Banknote className="w-8 h-8 text-emerald-400" />
-                </div>
-                <div className="md:w-1/2 w-full">
-                  <div className="glass-panel p-6 text-left md:hidden mb-4">
-                    <h3 className="text-2xl font-bold text-white mb-2">Step 3: Autonomous Payout</h3>
-                    <p className="text-slate-400">The moment wind speeds breach the Cat 3 threshold, the smart contract triggers an instant XLM transfer directly to the farmer's wallet.</p>
-                  </div>
-                  <div className="glass-panel p-6 w-full max-w-sm rounded-2xl border border-emerald-500/20 bg-emerald-950/20 text-center mx-auto md:mx-0">
-                     <span className="text-3xl font-bold text-emerald-400 font-mono">+ 5,000 XLM</span>
-                     <p className="text-xs text-emerald-500 mt-2 uppercase tracking-widest">Transaction Confirmed</p>
-                  </div>
-                </div>
+                <h3 className="text-3xl font-bold text-white mb-4">Step 3: Autonomous Payout</h3>
+                <p className="text-slate-400 text-lg leading-relaxed">When wind speeds exceed Cat 3 thresholds, the smart contract executes instantly. Funds are routed directly to the farmer's mobile wallet via SMS rails.</p>
               </motion.div>
+
+            </div>
+
+            {/* Right Side: Sticky Interactive Graphic */}
+            <div className="hidden lg:block relative h-full">
+              <div className="sticky top-1/3 w-full aspect-square glass-panel rounded-3xl border border-white/10 flex items-center justify-center overflow-hidden bg-black/50 hover:shadow-[0_0_80px_rgba(255,255,255,0.05)] transition-shadow duration-700">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_70%)]" />
+                
+                {/* Visual Composite representing all 3 steps merging */}
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 40, repeat: Infinity, ease: "linear" }} className="absolute w-[150%] h-[150%] border border-white/5 rounded-full border-dashed" />
+                  <motion.div animate={{ rotate: -360 }} transition={{ duration: 30, repeat: Infinity, ease: "linear" }} className="absolute w-[100%] h-[100%] border border-sky-500/20 rounded-full" />
+                  
+                  <motion.div 
+                    whileHover={{ scale: 1.1 }}
+                    className="absolute w-40 h-40 bg-black/80 backdrop-blur-md border border-white/20 rounded-2xl flex flex-col items-center justify-center gap-3 z-10 shadow-[0_0_50px_rgba(0,0,0,0.8)] shadow-sky-500/20"
+                  >
+                    <ShieldCheck className="w-12 h-12 text-sky-400" />
+                    <span className="font-mono text-xs text-slate-400">TyFi Contract</span>
+                  </motion.div>
+
+                  <motion.div initial={{ y: -50, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 0.5 }} className="absolute -top-10 left-10 p-4 glass-panel rounded-xl border border-purple-500/30 bg-purple-900/20 shadow-[0_0_30px_rgba(168,85,247,0.3)]">
+                    <Satellite className="w-8 h-8 text-purple-400" />
+                  </motion.div>
+
+                  <motion.div initial={{ y: 50, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="absolute -bottom-10 right-10 p-4 glass-panel rounded-xl border border-emerald-500/30 bg-emerald-900/20 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                    <Banknote className="w-8 h-8 text-emerald-400" />
+                  </motion.div>
+                </div>
+
+              </div>
             </div>
           </div>
         </div>
