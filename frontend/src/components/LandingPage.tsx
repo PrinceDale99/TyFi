@@ -316,91 +316,103 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             
             {/* 1. Consensus Layer */}
-            <motion.div variants={fadeUp} className="glass-panel group p-8 relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_50px_rgba(56,189,248,0.15)] hover:-translate-y-2">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-[50px] group-hover:bg-sky-500/20 transition-colors duration-500" />
-              <div className="w-14 h-14 bg-sky-500/10 rounded-2xl flex items-center justify-center border border-sky-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Network className="w-7 h-7 text-sky-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">The Consensus Layer</h3>
+            <motion.div variants={fadeUp} className="h-full">
+              <SpotlightCard className="group p-8 h-full" spotlightColor="rgba(56, 189, 248, 0.15)">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-[50px] group-hover:bg-sky-500/20 transition-colors duration-500" />
+                <div className="w-14 h-14 bg-sky-500/10 rounded-2xl flex items-center justify-center border border-sky-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <Network className="w-7 h-7 text-sky-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">The Consensus Layer</h3>
               <p className="text-slate-400 text-sm mb-4 leading-relaxed">Powered by Soroban on the Stellar network for sub-second finality and Byzantine fault tolerance.</p>
               <div className="flex gap-3 text-xs font-mono text-sky-300 bg-sky-950/30 p-2 rounded-lg border border-sky-500/20">
                 <span>1000+ TPS</span>
                 <span>•</span>
                 <span>$0.00001 Fee</span>
               </div>
+              </SpotlightCard>
             </motion.div>
 
             {/* 2. Decentralized Oracle */}
-            <motion.div variants={fadeUp} className="glass-panel group p-8 relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_50px_rgba(16,185,129,0.15)] hover:-translate-y-2">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-[50px] group-hover:bg-emerald-500/20 transition-colors duration-500" />
-              <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Database className="w-7 h-7 text-emerald-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">Oracle Network <span className="text-xs align-top text-emerald-400 font-mono border border-emerald-500/30 bg-emerald-950/30 px-2 py-0.5 rounded-full ml-2">tyfi-oracle</span></h3>
+            <motion.div variants={fadeUp} className="h-full">
+              <SpotlightCard className="group p-8 h-full" spotlightColor="rgba(16, 185, 129, 0.15)">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-[50px] group-hover:bg-emerald-500/20 transition-colors duration-500" />
+                <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <Database className="w-7 h-7 text-emerald-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Oracle Network <span className="text-xs align-top text-emerald-400 font-mono border border-emerald-500/30 bg-emerald-950/30 px-2 py-0.5 rounded-full ml-2">tyfi-oracle</span></h3>
               <p className="text-slate-400 text-sm mb-4 leading-relaxed">An isolated backend dedicated purely to pulling space-grade telemetry from Open-Meteo & GDACS.</p>
               <div className="flex gap-3 text-xs font-mono text-emerald-300 bg-emerald-950/30 p-2 rounded-lg border border-emerald-500/20">
                 <span>10km Res</span>
                 <span>•</span>
                 <span>15min Latency</span>
               </div>
+              </SpotlightCard>
             </motion.div>
 
             {/* 3. Main Engine */}
-            <motion.div variants={fadeUp} className="glass-panel group p-8 relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_50px_rgba(168,85,247,0.15)] hover:-translate-y-2">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[50px] group-hover:bg-purple-500/20 transition-colors duration-500" />
-              <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Server className="w-7 h-7 text-purple-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">Application Engine <span className="text-xs align-top text-purple-400 font-mono border border-purple-500/30 bg-purple-950/30 px-2 py-0.5 rounded-full ml-2">tyfi-yzbn</span></h3>
+            <motion.div variants={fadeUp} className="h-full">
+              <SpotlightCard className="group p-8 h-full" spotlightColor="rgba(168, 85, 247, 0.15)">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[50px] group-hover:bg-purple-500/20 transition-colors duration-500" />
+                <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <Server className="w-7 h-7 text-purple-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Application Engine <span className="text-xs align-top text-purple-400 font-mono border border-purple-500/30 bg-purple-950/30 px-2 py-0.5 rounded-full ml-2">tyfi-yzbn</span></h3>
               <p className="text-slate-400 text-sm mb-4 leading-relaxed">The core backend handling UI routing, profiles, and logic, kept safely separate from oracle operations.</p>
               <div className="flex gap-3 text-xs font-mono text-purple-300 bg-purple-950/30 p-2 rounded-lg border border-purple-500/20">
                 <span>99.99% Uptime</span>
                 <span>•</span>
                 <span>Stateless API</span>
               </div>
+              </SpotlightCard>
             </motion.div>
 
             {/* 4. Capital Vaults */}
-            <motion.div variants={fadeUp} className="glass-panel group p-8 relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_50px_rgba(245,158,11,0.15)] hover:-translate-y-2">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-[50px] group-hover:bg-amber-500/20 transition-colors duration-500" />
-              <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Coins className="w-7 h-7 text-amber-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">Capital Vaults</h3>
+            <motion.div variants={fadeUp} className="h-full">
+              <SpotlightCard className="group p-8 h-full" spotlightColor="rgba(245, 158, 11, 0.15)">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-[50px] group-hover:bg-amber-500/20 transition-colors duration-500" />
+                <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <Coins className="w-7 h-7 text-amber-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Capital Vaults</h3>
               <p className="text-slate-400 text-sm mb-4 leading-relaxed">Algorithmically segments LP capital into Base Reserves, Active Subsidies, and Yield bearing pools.</p>
               <div className="flex gap-3 text-xs font-mono text-amber-300 bg-amber-950/30 p-2 rounded-lg border border-amber-500/20">
                 <span>1:1 Collateralized</span>
                 <span>•</span>
                 <span>Isolated Risk</span>
               </div>
+              </SpotlightCard>
             </motion.div>
 
             {/* 5. Alert Infra */}
-            <motion.div variants={fadeUp} className="glass-panel group p-8 relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_50px_rgba(239,68,68,0.15)] hover:-translate-y-2">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-[50px] group-hover:bg-red-500/20 transition-colors duration-500" />
-              <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center border border-red-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Smartphone className="w-7 h-7 text-red-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">Redundant Alerts</h3>
+            <motion.div variants={fadeUp} className="h-full">
+              <SpotlightCard className="group p-8 h-full" spotlightColor="rgba(239, 68, 68, 0.15)">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-[50px] group-hover:bg-red-500/20 transition-colors duration-500" />
+                <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center border border-red-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <Smartphone className="w-7 h-7 text-red-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Redundant Alerts</h3>
               <p className="text-slate-400 text-sm mb-4 leading-relaxed">Triple-fallback off-chain engine ensuring zero-downtime SMS delivery to rural farmers via PH Gateways.</p>
               <div className="flex gap-3 text-xs font-mono text-red-300 bg-red-950/30 p-2 rounded-lg border border-red-500/20">
                 <span>Twilio ⭢ API PH 1 ⭢ API PH 2</span>
               </div>
+              </SpotlightCard>
             </motion.div>
 
             {/* 6. Governance */}
-            <motion.div variants={fadeUp} className="glass-panel group p-8 relative overflow-hidden transition-all duration-500 hover:shadow-[0_0_50px_rgba(255,255,255,0.15)] hover:-translate-y-2">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/10 rounded-full blur-[50px] group-hover:bg-slate-500/20 transition-colors duration-500" />
-              <div className="w-14 h-14 bg-slate-500/10 rounded-2xl flex items-center justify-center border border-slate-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Lock className="w-7 h-7 text-slate-300" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">Non-Custodial Rules</h3>
+            <motion.div variants={fadeUp} className="h-full">
+              <SpotlightCard className="group p-8 h-full" spotlightColor="rgba(255, 255, 255, 0.15)">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/10 rounded-full blur-[50px] group-hover:bg-slate-500/20 transition-colors duration-500" />
+                <div className="w-14 h-14 bg-slate-500/10 rounded-2xl flex items-center justify-center border border-slate-500/20 mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <Lock className="w-7 h-7 text-slate-300" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Non-Custodial Rules</h3>
               <p className="text-slate-400 text-sm mb-4 leading-relaxed">WASM smart contract constraints. No admin override, no manual claims adjuster, no central pause button.</p>
               <div className="flex gap-3 text-xs font-mono text-slate-300 bg-slate-800/50 p-2 rounded-lg border border-slate-500/20">
                 <span>Code is Law</span>
                 <span>•</span>
                 <span>Zero Admin Keys</span>
               </div>
+              </SpotlightCard>
             </motion.div>
 
           </div>
@@ -417,11 +429,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10"
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <motion.div variants={fadeUp} className="glass-panel text-center p-8 hover:bg-white/[0.04] transition-colors relative overflow-hidden group">
-              <div className="absolute inset-0 bg-sky-500/0 group-hover:bg-sky-500/5 transition-colors duration-500" />
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-sky-500/20 rounded-full mb-4 shadow-[0_0_15px_rgba(56,189,248,0.2)] group-hover:scale-110 transition-transform duration-300">
-                <ShieldAlert className="w-6 h-6 text-sky-400" />
-              </div>
+            <motion.div variants={fadeUp} className="h-full">
+              <SpotlightCard className="text-center p-8 group h-full" spotlightColor="rgba(56, 189, 248, 0.15)">
+                <div className="absolute inset-0 bg-sky-500/0 group-hover:bg-sky-500/5 transition-colors duration-500" />
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-sky-500/20 rounded-full mb-4 shadow-[0_0_15px_rgba(56,189,248,0.2)] group-hover:scale-110 transition-transform duration-300">
+                  <ShieldAlert className="w-6 h-6 text-sky-400" />
+                </div>
               <h4 className="text-slate-400 font-medium mb-2 uppercase tracking-wider text-xs sm:text-sm">Total Value Locked</h4>
               <motion.div 
                 initial={{ scale: 0.5, opacity: 0 }}
@@ -431,13 +444,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
               >
                 {tvl.toLocaleString()} <span className="text-xl sm:text-2xl text-sky-400">XLM</span>
               </motion.div>
+              </SpotlightCard>
             </motion.div>
             
-            <motion.div variants={fadeUp} className="glass-panel text-center p-8 hover:bg-white/[0.04] transition-colors relative overflow-hidden group">
-              <div className="absolute inset-0 bg-amber-500/0 group-hover:bg-amber-500/5 transition-colors duration-500" />
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-amber-500/20 rounded-full mb-4 shadow-[0_0_15px_rgba(245,158,11,0.2)] group-hover:scale-110 transition-transform duration-300">
-                <Activity className="w-6 h-6 text-amber-400" />
-              </div>
+            <motion.div variants={fadeUp} className="h-full">
+              <SpotlightCard className="text-center p-8 group h-full" spotlightColor="rgba(245, 158, 11, 0.15)">
+                <div className="absolute inset-0 bg-amber-500/0 group-hover:bg-amber-500/5 transition-colors duration-500" />
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-amber-500/20 rounded-full mb-4 shadow-[0_0_15px_rgba(245,158,11,0.2)] group-hover:scale-110 transition-transform duration-300">
+                  <Activity className="w-6 h-6 text-amber-400" />
+                </div>
               <h4 className="text-slate-400 font-medium mb-2 uppercase tracking-wider text-xs sm:text-sm">Available Subsidy</h4>
               <motion.div 
                 initial={{ scale: 0.5, opacity: 0 }}
@@ -447,13 +462,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
               >
                 {subsidy.toLocaleString()} <span className="text-xl sm:text-2xl text-amber-400">XLM</span>
               </motion.div>
+              </SpotlightCard>
             </motion.div>
 
-            <motion.div variants={fadeUp} className="glass-panel text-center p-8 hover:bg-white/[0.04] transition-colors relative overflow-hidden group">
-              <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/5 transition-colors duration-500" />
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-500/20 rounded-full mb-4 shadow-[0_0_15px_rgba(16,185,129,0.2)] group-hover:scale-110 transition-transform duration-300">
-                <Check className="w-6 h-6 text-emerald-400" />
-              </div>
+            <motion.div variants={fadeUp} className="h-full">
+              <SpotlightCard className="text-center p-8 group h-full" spotlightColor="rgba(16, 185, 129, 0.15)">
+                <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/5 transition-colors duration-500" />
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-500/20 rounded-full mb-4 shadow-[0_0_15px_rgba(16,185,129,0.2)] group-hover:scale-110 transition-transform duration-300">
+                  <Check className="w-6 h-6 text-emerald-400" />
+                </div>
               <h4 className="text-slate-400 font-medium mb-2 uppercase tracking-wider text-xs sm:text-sm">Active Oracles</h4>
               <motion.div 
                 initial={{ scale: 0.5, opacity: 0 }}
@@ -463,6 +480,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
               >
                 2 <span className="text-xl sm:text-2xl text-emerald-400">Syncs</span>
               </motion.div>
+              </SpotlightCard>
             </motion.div>
           </div>
         </motion.div>
@@ -473,12 +491,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             
             {/* ROI Calculator Teaser */}
-            <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="glass-panel p-8 md:p-12 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] group-hover:bg-amber-500/20 transition-colors duration-700" />
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center border border-amber-500/30">
-                  <Calculator className="w-6 h-6 text-amber-400" />
-                </div>
+            <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+              <SpotlightCard className="p-8 md:p-12 group h-full" spotlightColor="rgba(245, 158, 11, 0.15)">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] group-hover:bg-amber-500/20 transition-colors duration-700" />
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center border border-amber-500/30">
+                    <Calculator className="w-6 h-6 text-amber-400" />
+                  </div>
                 <h3 className="text-3xl font-bold text-white display-font">Impact Calculator</h3>
               </div>
               
@@ -512,13 +531,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
                   Provide Liquidity Now
                 </button>
               </div>
+              </SpotlightCard>
             </motion.div>
 
             {/* DAO Governance */}
-            <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="glass-panel p-8 md:p-12 relative overflow-hidden group flex flex-col">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] group-hover:bg-purple-500/20 transition-colors duration-700" />
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
+            <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+              <SpotlightCard className="p-8 md:p-12 group flex flex-col h-full" spotlightColor="rgba(168, 85, 247, 0.15)">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] group-hover:bg-purple-500/20 transition-colors duration-700" />
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center border border-purple-500/30">
                     <Vote className="w-6 h-6 text-purple-400" />
                   </div>
@@ -549,6 +570,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
               <button className="mt-6 w-full py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl border border-white/10 transition-all flex items-center justify-center gap-2">
                 View All Proposals <ArrowUpRight className="w-4 h-4" />
               </button>
+              </SpotlightCard>
             </motion.div>
 
           </div>
