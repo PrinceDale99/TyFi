@@ -129,6 +129,39 @@ interface Farm extends FarmData {
   isInsured: boolean;
 }
 
+// Global state to cache the PDAX base URL to avoid pinging repeatedly
+let cachedPdaxUrl: string | null = null;
+let lastPingTime = 0;
+
+async function getPDAXBaseUrl(): Promise<string> {
+  const prodUrl = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
+  const localUrl = 'http://localhost:3001';
+  
+  // Cache for 10 seconds
+  if (cachedPdaxUrl && Date.now() - lastPingTime < 10000) {
+    return cachedPdaxUrl;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 500); // Strict 500ms timeout
+    const response = await fetch(`${localUrl}/api/health`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      cachedPdaxUrl = localUrl;
+      lastPingTime = Date.now();
+      return localUrl;
+    }
+  } catch (error) {
+    // Timeout or connection refused
+  }
+  
+  cachedPdaxUrl = prodUrl;
+  lastPingTime = Date.now();
+  return prodUrl;
+}
+
 function App() {
   const { t, i18n } = useTranslation();
   const [stakingMode, setStakingMode] = useState<'deposit' | 'withdraw'>('deposit');
@@ -745,8 +778,8 @@ function App() {
     addNotification(`Initiating fiat deposit via PDAX API for PHP ${liveAmountPhp}...`, 'info');
     
     try {
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-      const response = await fetch(`${BACKEND_URL}/api/v1/fiat-deposit`, {
+      const pdaBaseUrl = await getPDAXBaseUrl();
+      const response = await fetch(`${pdaBaseUrl}/api/v1/fiat-deposit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amountPHP: liveAmountPhp, paymentMethod: 'grabpay_cashin' })
