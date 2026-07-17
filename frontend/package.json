@@ -27,11 +27,13 @@
     "openmeteo": "^1.1.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-globe.gl": "^2.38.0",
     "react-i18next": "^17.0.8",
     "react-leaflet": "^4.2.1",
     "react-markdown": "^10.1.0",
     "recharts": "^3.9.2",
-    "tailwind-merge": "^2.2.1"
+    "tailwind-merge": "^2.2.1",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
