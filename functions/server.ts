@@ -24,6 +24,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/oracle', oracleRouter);
 
+// Health check endpoint for frontend smart-routing
+app.get('/api/health', (req, res) => res.status(200).send('OK'));
+
 const PORT = process.env.PORT || 3001;
 
 // Initialize Firebase Admin
