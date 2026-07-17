@@ -104,10 +104,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-500 p-0.5 shadow-lg shadow-sky-500/20">
-                <div className="w-full h-full bg-[#0f172a] rounded-[10px] flex items-center justify-center">
-                  <Wind className="w-6 h-6 text-sky-400" />
-                </div>
+              <div className="w-10 h-10 rounded-xl shadow-lg shadow-sky-500/20 overflow-hidden flex items-center justify-center bg-transparent">
+                <img src="/logo.svg" alt="TyFi Logo" className="w-full h-full object-contain" />
               </div>
               <span className="text-2xl font-bold tracking-tight text-white display-font">TyFi Vault</span>
             </div>
@@ -590,7 +588,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
                 The decentralized parametric insurance protocol protecting the world's most vulnerable farmers against climate disaster.
               </p>
               <div className="flex gap-4">
-                <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                <a href="https://github.com/PrinceDale99/TyFi" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
                   <Github className="w-5 h-5" />
                 </a>
               </div>
@@ -599,16 +597,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
             <div>
               <h4 className="text-white font-bold mb-6">Resources</h4>
               <ul className="space-y-4">
-                <li><a href="#" className="text-slate-400 hover:text-sky-400 transition-colors flex items-center gap-2"><FileText className="w-4 h-4" /> Documentation</a></li>
-                <li><a href="#" className="text-slate-400 hover:text-sky-400 transition-colors flex items-center gap-2"><FileText className="w-4 h-4" /> Whitepaper</a></li>
-                <li><a href="#" className="text-slate-400 hover:text-sky-400 transition-colors flex items-center gap-2"><Video className="w-4 h-4" /> Demo Video</a></li>
+                <li><a href="https://github.com/PrinceDale99/TyFi/blob/master/README.md" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-sky-400 transition-colors flex items-center gap-2"><FileText className="w-4 h-4" /> Documentation</a></li>
+                <li><a href="https://canva.link/kb9peaekmd3u50m" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-sky-400 transition-colors flex items-center gap-2"><FileText className="w-4 h-4" /> Pitch Deck</a></li>
+                <li><a href="https://youtu.be/hViSMpbMckU" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-sky-400 transition-colors flex items-center gap-2"><Video className="w-4 h-4" /> Demo Video</a></li>
               </ul>
             </div>
             
             <div>
               <h4 className="text-white font-bold mb-6">Protocol</h4>
               <ul className="space-y-4">
-                <li><a href="#" className="text-slate-400 hover:text-sky-400 transition-colors">Smart Contracts (GitHub)</a></li>
+                <li><a href="https://github.com/PrinceDale99/TyFi/tree/master/contracts/typhoon_resilience_vault" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-sky-400 transition-colors">Smart Contracts (GitHub)</a></li>
                 <li><a href="#" className="text-slate-400 hover:text-sky-400 transition-colors">DAO Governance</a></li>
                 <li><a href="#" className="text-slate-400 hover:text-sky-400 transition-colors">Oracle Status</a></li>
               </ul>
