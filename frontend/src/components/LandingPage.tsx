@@ -2,6 +2,8 @@ import React, { useState, useEffect, type MouseEvent as ReactMouseEvent } from '
 import { Shield, Wind, Zap, Activity, ArrowRight, ShieldCheck, Globe, Coins, ShieldAlert, Check, Network, Database, Server, Smartphone, Lock, MapPin, Satellite, Banknote, TerminalSquare, Calculator, Vote, ArrowUpRight, Github, FileText, Video } from 'lucide-react';
 import { motion, useMotionTemplate, useMotionValue, useScroll, useTransform } from 'framer-motion';
 import MagneticButton from './MagneticButton';
+import SpotlightCard from './SpotlightCard';
+import GlobeHero from './GlobeHero';
 
 interface LandingPageProps {
   onConnect: () => void;
@@ -40,6 +42,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
   const { scrollYProgress } = useScroll();
   const yBg = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
   const yFg = useTransform(scrollYProgress, [0, 1], ["0%", "-20%"]);
+  const scaleZ = useTransform(scrollYProgress, [0, 0.5, 1], [0.95, 1, 1.05]);
 
   // Animation variants
   const maskReveal = {
@@ -129,7 +132,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
       </motion.nav>
 
       {/* Hero Section */}
-      <motion.div style={{ y: yFg }} className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden z-10">
+      <motion.div style={{ y: yFg, scale: scaleZ }} className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden z-10 min-h-[90vh] flex items-center justify-center">
+        <GlobeHero />
+        
         <motion.div 
           variants={staggerContainer}
           initial="hidden"
@@ -221,36 +226,39 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
             <div className="space-y-24 py-8">
               
               <motion.div 
-                initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ margin: "-200px" }}
-                className="glass-panel p-8 rounded-2xl border border-sky-500/20 bg-sky-950/10 hover:border-sky-500/40 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+                initial={{ opacity: 0, x: -50, scale: 0.9 }} whileInView={{ opacity: 1, x: 0, scale: 1 }} viewport={{ margin: "-200px" }} transition={{ type: "spring", stiffness: 100 }}
               >
-                <div className="w-14 h-14 rounded-xl bg-sky-900 border border-sky-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(56,189,248,0.4)]">
-                  <MapPin className="w-7 h-7 text-sky-400" />
-                </div>
-                <h3 className="text-3xl font-bold text-white mb-4">Step 1: Stake & Subsidize</h3>
-                <p className="text-slate-400 text-lg leading-relaxed">LPs provide capital to the vault, generating yield. Farmers register their exact geographic coordinates on-chain, subsidizing their premiums through the protocol.</p>
+                <SpotlightCard className="p-8" spotlightColor="rgba(56, 189, 248, 0.15)">
+                  <div className="w-14 h-14 rounded-xl bg-sky-900 border border-sky-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(56,189,248,0.4)]">
+                    <MapPin className="w-7 h-7 text-sky-400" />
+                  </div>
+                  <h3 className="text-3xl font-bold text-white mb-4">Step 1: Stake & Subsidize</h3>
+                  <p className="text-slate-400 text-lg leading-relaxed">LPs provide capital to the vault, generating yield. Farmers register their exact geographic coordinates on-chain, subsidizing their premiums through the protocol.</p>
+                </SpotlightCard>
               </motion.div>
 
               <motion.div 
-                initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ margin: "-200px" }}
-                className="glass-panel p-8 rounded-2xl border border-purple-500/20 bg-purple-950/10 hover:border-purple-500/40 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+                initial={{ opacity: 0, x: -50, scale: 0.9 }} whileInView={{ opacity: 1, x: 0, scale: 1 }} viewport={{ margin: "-200px" }} transition={{ type: "spring", stiffness: 100, delay: 0.1 }}
               >
-                <div className="w-14 h-14 rounded-xl bg-purple-900 border border-purple-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(168,85,247,0.4)]">
-                  <Satellite className="w-7 h-7 text-purple-400" />
-                </div>
-                <h3 className="text-3xl font-bold text-white mb-4">Step 2: Oracle Monitoring</h3>
-                <p className="text-slate-400 text-lg leading-relaxed">Space-grade satellites and decentralized nodes (Open-Meteo, GDACS) constantly scan the registered coordinates. The data is immutable and verifiable.</p>
+                <SpotlightCard className="p-8" spotlightColor="rgba(168, 85, 247, 0.15)">
+                  <div className="w-14 h-14 rounded-xl bg-purple-900 border border-purple-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(168,85,247,0.4)]">
+                    <Satellite className="w-7 h-7 text-purple-400" />
+                  </div>
+                  <h3 className="text-3xl font-bold text-white mb-4">Step 2: Oracle Monitoring</h3>
+                  <p className="text-slate-400 text-lg leading-relaxed">Space-grade satellites and decentralized nodes (Open-Meteo, GDACS) constantly scan the registered coordinates. The data is immutable and verifiable.</p>
+                </SpotlightCard>
               </motion.div>
 
               <motion.div 
-                initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ margin: "-200px" }}
-                className="glass-panel p-8 rounded-2xl border border-emerald-500/20 bg-emerald-950/10 hover:border-emerald-500/40 transition-all hover:scale-[1.02] shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+                initial={{ opacity: 0, x: -50, scale: 0.9 }} whileInView={{ opacity: 1, x: 0, scale: 1 }} viewport={{ margin: "-200px" }} transition={{ type: "spring", stiffness: 100, delay: 0.2 }}
               >
-                <div className="w-14 h-14 rounded-xl bg-emerald-900 border border-emerald-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-                  <Banknote className="w-7 h-7 text-emerald-400" />
-                </div>
-                <h3 className="text-3xl font-bold text-white mb-4">Step 3: Autonomous Payout</h3>
-                <p className="text-slate-400 text-lg leading-relaxed">When wind speeds exceed Cat 3 thresholds, the smart contract executes instantly. Funds are routed directly to the farmer's mobile wallet via SMS rails.</p>
+                <SpotlightCard className="p-8" spotlightColor="rgba(16, 185, 129, 0.15)">
+                  <div className="w-14 h-14 rounded-xl bg-emerald-900 border border-emerald-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+                    <Banknote className="w-7 h-7 text-emerald-400" />
+                  </div>
+                  <h3 className="text-3xl font-bold text-white mb-4">Step 3: Autonomous Payout</h3>
+                  <p className="text-slate-400 text-lg leading-relaxed">When wind speeds exceed Cat 3 thresholds, the smart contract executes instantly. Funds are routed directly to the farmer's mobile wallet via SMS rails.</p>
+                </SpotlightCard>
               </motion.div>
 
             </div>
