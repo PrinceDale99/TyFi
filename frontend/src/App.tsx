@@ -779,6 +779,7 @@ function App() {
     
     try {
       const pdaBaseUrl = await getPDAXBaseUrl();
+      console.log(`[PDAX Router] Routing deposit request to: ${pdaBaseUrl === 'http://localhost:3001' ? 'LOCAL (Development)' : 'RENDER (Production)'}`);
       const response = await fetch(`${pdaBaseUrl}/api/v1/fiat-deposit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
