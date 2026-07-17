@@ -8,6 +8,8 @@ const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '+14176702344';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const SMSAPIPH_API_KEY_1 = process.env.SMSAPIPH_API_KEY_1 || 'sk-2b10gae3brwm1sfusc6kjalevokaileq';
+const SMSAPIPH_API_KEY_2 = process.env.SMSAPIPH_API_KEY_2 || 'sk-2b10fnnauqecwrkpdfxf9nbtaopsag8j';
 
 const SYSTEM_PROMPT = `You are the TyFi Emergency SMS Assistant. You must be direct, extremely concise, and get straight to the point. No small talk.
 Your ONLY goal is to instantly collect the information required for their insurance claim:
@@ -24,32 +26,80 @@ Immediately ask for any missing information in a single, direct sentence (e.g. "
 Completion Protocol:
 Once you have the location, damage, payout method, and account number, do NOT send any more messages. Reply with EXACTLY this text and nothing else: [CLAIM_COMPLETE]`;
 
-// Helper to send SMS via Twilio
+// Helper to send SMS concurrently via Twilio and dual SMS API PH endpoints
 async function sendSms(to: string, text: string) {
-  try {
-    const response = await axios.post(
-      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
-      new URLSearchParams({
-        To: to,
-        From: TWILIO_PHONE_NUMBER,
-        Body: text
-      }),
-      {
-        auth: {
-          username: TWILIO_ACCOUNT_SID,
-          password: TWILIO_AUTH_TOKEN
-        },
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
+  const promises = [];
+
+  // 1. Send via Twilio
+  const twilioPromise = axios.post(
+    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
+    new URLSearchParams({
+      To: to,
+      From: TWILIO_PHONE_NUMBER,
+      Body: text
+    }),
+    {
+      auth: {
+        username: TWILIO_ACCOUNT_SID,
+        password: TWILIO_AUTH_TOKEN
+      },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
       }
-    );
-    await logEvent('INFO', 'Sent SMS via Twilio', { to });
+    }
+  ).then(response => {
+    logEvent('INFO', 'Sent SMS via Twilio', { to });
     return response.data;
-  } catch (error: any) {
-    await logEvent('ERROR', 'Failed to send SMS via Twilio', { errorMessage: error.message });
-    throw error;
-  }
+  }).catch(error => {
+    logEvent('ERROR', 'Failed to send SMS via Twilio', { errorMessage: error.message });
+  });
+  promises.push(twilioPromise);
+
+  // 2. Send via SMS API PH (Primary Key)
+  const smsApiPhPromise1 = axios.post(
+    'https://smsapiph.onrender.com/api/v1/send/sms',
+    {
+      recipient: to,
+      message: text
+    },
+    {
+      headers: {
+        'x-api-key': SMSAPIPH_API_KEY_1,
+        'Content-Type': 'application/json'
+      }
+    }
+  ).then(response => {
+    logEvent('INFO', 'Sent SMS via SMS API PH (Key 1)', { to });
+    return response.data;
+  }).catch(error => {
+    logEvent('ERROR', 'Failed to send SMS via SMS API PH (Key 1)', { errorMessage: error.message });
+  });
+  promises.push(smsApiPhPromise1);
+
+  // 3. Send via SMS API PH (Secondary Key)
+  const smsApiPhPromise2 = axios.post(
+    'https://smsapiph.onrender.com/api/v1/send/sms',
+    {
+      recipient: to,
+      message: text
+    },
+    {
+      headers: {
+        'x-api-key': SMSAPIPH_API_KEY_2,
+        'Content-Type': 'application/json'
+      }
+    }
+  ).then(response => {
+    logEvent('INFO', 'Sent SMS via SMS API PH (Key 2)', { to });
+    return response.data;
+  }).catch(error => {
+    logEvent('ERROR', 'Failed to send SMS via SMS API PH (Key 2)', { errorMessage: error.message });
+  });
+  promises.push(smsApiPhPromise2);
+
+  // Wait for all three to complete
+  await Promise.all(promises);
+  return { success: true };
 }
 
 // Call Gemini
