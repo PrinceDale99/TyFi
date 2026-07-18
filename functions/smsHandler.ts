@@ -3,6 +3,7 @@ import admin from 'firebase-admin';
 import { logEvent } from './logger';
 import { processImageClaim } from './imageAssessor';
 import { enqueueSms, dequeueSms } from './offlineQueue';
+import { initiateFiatSweep } from './pdax';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
@@ -28,7 +29,7 @@ Completion Protocol:
 Once you have the location, damage, payout method, and account number, do NOT send any more messages. Reply with EXACTLY this text and nothing else: [CLAIM_COMPLETE]`;
 
 // Helper to send SMS concurrently via Twilio and dual SMS API PH endpoints
-async function sendSms(to: string, text: string) {
+export async function sendSms(to: string, text: string) {
   const promises = [];
 
   // 1. Send via Twilio
@@ -197,14 +198,16 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
     if (!isRetry) res.status(200).send('OK');
     if (!db) return;
     
-    // Check if farmer is registered
-    const farmerRef = db.collection('farmers').doc(fromNumber);
-    const farmerDoc = await farmerRef.get();
+    // Check if farmer is registered securely by phone number
+    const farmersQuery = await db.collection('farmers').where('phoneNumber', '==', fromNumber).limit(1).get();
     
-    if (!farmerDoc.exists) {
+    if (farmersQuery.empty) {
       await sendSms(fromNumber, "AUTO CLAIM DENIED: Your phone number is not registered to a farm in the TyFi system. Please register first.");
       return;
     }
+    
+    const farmerDoc = farmersQuery.docs[0];
+    const farmerData = farmerDoc.data();
     
     // Check oracle
     let oracleData = "PAGASA Oracle Data: Unavailable.";
@@ -218,13 +221,34 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
     if (oracleData.toLowerCase().includes("no active") || oracleData.toLowerCase().includes("unavailable")) {
       await sendSms(fromNumber, "AUTO CLAIM DENIED: The weather oracle does not detect an active severe typhoon at your registered coordinates.");
     } else {
-      await db.collection('claims').add({
-        phoneNumber: fromNumber,
-        source: 'AUTO_CLAIM_SMS',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        status: 'PENDING_PAYOUT'
-      });
-      await sendSms(fromNumber, "AUTO CLAIM APPROVED: The weather oracle confirmed severe typhoon conditions at your registered farm. Your payout will be sent to your registered account shortly.");
+      const prefs = {
+        provider: farmerData.paymentMethod || 'gcash',
+        accountNumber: farmerData.paymentAccount || '09000000000',
+        accountName: farmerData.name || 'Typhoon Survivor',
+        method: 'fiat'
+      };
+
+      const payoutAmount = farmerData.insuredValue || 15000;
+
+      try {
+        await sendSms(fromNumber, `Processing... We are routing your AUTO CLAIM payout of PHP ${payoutAmount} to ${prefs.provider}. Please wait.`);
+
+        const txId = await initiateFiatSweep(payoutAmount, prefs);
+        
+        await db.collection('claims').add({
+          phoneNumber: fromNumber,
+          walletAddress: farmerDoc.id,
+          source: 'AUTO_CLAIM_SMS',
+          pdaxTxId: txId,
+          status: 'PAID',
+          amount: payoutAmount,
+          timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        await sendSms(fromNumber, `✅ AUTO CLAIM APPROVED: Typhoon conditions confirmed. PHP ${payoutAmount} has been sent to your ${prefs.provider}. Ref: ${txId}`);
+      } catch (e: any) {
+        await sendSms(fromNumber, `⚠️ AUTO CLAIM ERROR: Approved, but payout failed. Error: ${e.message}`);
+      }
     }
     return;
   }
@@ -262,14 +286,14 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
     if (!isRetry) res.status(200).send('OK');
     if (!db) return;
     
-    const method = editPaymentMatch[1];
+    const method = editPaymentMatch[1].toLowerCase();
     const account = editPaymentMatch[2];
     
-    // Update user profile in Firestore if they exist
-    const farmerRef = db.collection('farmers').doc(fromNumber);
-    const farmerDoc = await farmerRef.get();
-    if (farmerDoc.exists) {
-      await farmerRef.update({ paymentMethod: method, paymentAccount: account });
+    // Update user profile in Firestore securely by phone number
+    const farmersQuery = await db.collection('farmers').where('phoneNumber', '==', fromNumber).limit(1).get();
+    if (!farmersQuery.empty) {
+      const farmerDoc = farmersQuery.docs[0];
+      await db.collection('farmers').doc(farmerDoc.id).update({ paymentMethod: method, paymentAccount: account });
     }
     
     // Also update any active session so the AI knows
@@ -279,7 +303,7 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
       await sessionRef.set({ paymentMethod: method, paymentAccount: account }, { merge: true });
     }
     
-    await sendSms(fromNumber, `Success: Your payout preference has been updated to ${method} (${account}). Future payouts will be routed here.`);
+    await sendSms(fromNumber, `Success: Your payout preference has been updated to ${method.toUpperCase()} (${account}). Future payouts will be routed here.`);
     return;
   }
 
@@ -330,21 +354,45 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
       // Claim is done, extract data
       const claimData = await extractClaimData(messages);
       
-      // Save claim
-      await db.collection('claims').add({
-        phoneNumber: fromNumber,
-        ...claimData,
-        ipfs_hash: imageAnalysisData?.ipfs_hash || null,
-        damage_score: imageAnalysisData?.damage_score || null,
-        repair_estimate_php: imageAnalysisData?.repair_estimate_php || null,
-        source: 'SMS_WITH_VISION',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        status: 'PENDING_PAYOUT'
-      });
+      const farmersQuery = await db.collection('farmers').where('phoneNumber', '==', fromNumber).limit(1).get();
+      const farmerDoc = !farmersQuery.empty ? farmersQuery.docs[0] : null;
+      const farmerData = farmerDoc ? farmerDoc.data() : {};
+      
+      const payoutAmount = imageAnalysisData?.repair_estimate_php || farmerData?.insuredValue || 15000;
+      
+      const prefs = {
+        provider: claimData.payment_method || 'gcash',
+        accountNumber: claimData.payment_account || '09000000000',
+        accountName: farmerData?.name || 'Typhoon Survivor',
+        method: 'fiat'
+      };
 
-      // Send confirmation
-      const finalMsg = `Thank you. Your claim has been verified by the weather oracle and filed successfully. Your payout will be sent to your ${claimData.payment_method || 'account'} shortly.`;
-      await sendSms(fromNumber, finalMsg);
+      try {
+        await sendSms(fromNumber, `Processing... AI Assessment complete. Routing PHP ${payoutAmount} payout to ${prefs.provider}.`);
+
+        const txId = await initiateFiatSweep(payoutAmount, prefs);
+        
+        // Save claim
+        await db.collection('claims').add({
+          phoneNumber: fromNumber,
+          walletAddress: farmerDoc ? farmerDoc.id : null,
+          ...claimData,
+          ipfs_hash: imageAnalysisData?.ipfs_hash || null,
+          damage_score: imageAnalysisData?.damage_score || null,
+          repair_estimate_php: imageAnalysisData?.repair_estimate_php || null,
+          source: 'SMS_WITH_VISION',
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          status: 'PAID',
+          amount: payoutAmount,
+          pdaxTxId: txId,
+        });
+
+        // Send confirmation
+        const finalMsg = `✅ CLAIM SUCCESS: PHP ${payoutAmount} has been sent to your ${prefs.provider} account. Ref: ${txId}`;
+        await sendSms(fromNumber, finalMsg);
+      } catch (e: any) {
+        await sendSms(fromNumber, `⚠️ Claim filed, but payout routing failed. Error: ${e.message}`);
+      }
       
       // Clear session
       await sessionRef.delete();

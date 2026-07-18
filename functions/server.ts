@@ -7,7 +7,7 @@ import * as cheerio from 'cheerio';
 import jwt from 'jsonwebtoken';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
-import { handleIncomingSms } from './smsHandler';
+import { handleIncomingSms, sendSms } from './smsHandler';
 import { processPayoutOfframp } from './pdaxService';
 import { initiateFiatDeposit, getXlmRates } from './pdax';
 import { supabase } from './supabase';
@@ -771,6 +771,23 @@ app.post('/api/pdax/webhook', async (req, res) => {
         updatedAt: new Date().toISOString(),
         latestEvent: eventType
       }, { merge: true });
+
+      // Trigger SMS Notification
+      try {
+        const claimsSnapshot = await db.collection('claims').where('pdaxTxId', '==', referenceId).limit(1).get();
+        if (!claimsSnapshot.empty) {
+            const claim = claimsSnapshot.docs[0].data();
+            if (claim.phoneNumber) {
+                if (status === 'SUCCESS' || eventType === 'WITHDRAWAL_SUCCESS') {
+                    await sendSms(claim.phoneNumber, `✅ TyFi Payout Success: PHP ${claim.amount || '15000'} has been successfully deposited into your account. Ref: ${referenceId}`);
+                } else if (status === 'FAILED' || eventType === 'WITHDRAWAL_FAILED') {
+                    await sendSms(claim.phoneNumber, `⚠️ TyFi Payout Error: Your payout encountered an issue with the bank. We will automatically retry shortly.`);
+                }
+            }
+        }
+      } catch(e) {
+         console.error("Failed to send webhook SMS", e);
+      }
     }
 
     res.status(200).send('Webhook Received');
