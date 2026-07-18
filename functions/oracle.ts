@@ -8,6 +8,7 @@ export const oracleRouter = express.Router();
 const server = new rpc.Server('https://soroban-testnet.stellar.org');
 
 import { initiateFiatSweep } from './pdax';
+import { sendSms } from './smsHandler';
 
 // Actual ZK dependencies
 // NOTE: For this to run, the circuit must be compiled to JSON first using nargo or a pre-compile script
@@ -115,6 +116,24 @@ oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
     // If a typhoon is active above threshold → trigger Soroban Contract & PDAX sweep
     if (isTyphoonActive && (maxWindSpeed ?? 0) > 100) {
       await logEvent('INFO', 'Wind threshold breached! Preparing Soroban payout pipeline...');
+
+      // PROACTIVE SMS ALERTS
+      const db = getDb();
+      if (db) {
+        try {
+          const farmersSnapshot = await db.collection('farmers').get();
+          for (const doc of farmersSnapshot.docs) {
+            const farmer = doc.data();
+            if (farmer.phoneNumber) {
+              const dynamicPayout = farmer.insuredValue || 15000;
+              const msg = `🚨 TyFi Alert: A severe typhoon has been detected in your registered region. Your estimated farm damage compensation is PHP ${dynamicPayout}. \n\nType CLAIM to begin assessment, or type AUTO CLAIM for instant payout. Stay safe!`;
+              await sendSms(farmer.phoneNumber, msg).catch(e => console.error("Proactive SMS failed", e));
+            }
+          }
+        } catch (e) {
+          console.error("Failed to query farmers for proactive SMS", e);
+        }
+      }
 
       const secretKey = process.env.TREASURY_SECRET_KEY;
       if (secretKey) {
@@ -240,6 +259,24 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
 
     const amountPHP = req.body.amountPHP || 15000;
     
+    // PROACTIVE SMS ALERTS for Sandbox Simulation
+    const db = getDb();
+    if (db) {
+      try {
+        const farmersSnapshot = await db.collection('farmers').get();
+        for (const doc of farmersSnapshot.docs) {
+          const farmer = doc.data();
+          if (farmer.phoneNumber) {
+            const dynamicPayout = farmer.insuredValue || 15000;
+            const msg = `🚨 TyFi Alert: A severe typhoon has been detected in your registered region. Your estimated farm damage compensation is PHP ${dynamicPayout}. \n\nType CLAIM to begin assessment, or type AUTO CLAIM for instant payout. Stay safe!`;
+            await sendSms(farmer.phoneNumber, msg).catch(e => console.error("Proactive SMS failed", e));
+          }
+        }
+      } catch (e) {
+        console.error("Failed to query farmers for proactive SMS", e);
+      }
+    }
+
     let pdaxTxId = "PENDING";
     try {
       await logEvent('INFO', 'Initiating PDAX Fiat Sweep', { amountPHP, paymentPrefs });
