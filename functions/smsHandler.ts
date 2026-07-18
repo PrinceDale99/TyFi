@@ -10,6 +10,7 @@ const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '+14176702344';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SMSAPIPH_API_KEY_1 = process.env.SMSAPIPH_API_KEY_1 || 'sk-2b10gae3brwm1sfusc6kjalevokaileq';
 const SMSAPIPH_API_KEY_2 = process.env.SMSAPIPH_API_KEY_2 || 'sk-2b10fnnauqecwrkpdfxf9nbtaopsag8j';
+const HTTPSMS_API_KEY = process.env.HTTPSMS_API_KEY || 'uk_NhBONIPuV20POXEZ_wzsTma8EoFAjBv_Or1y2p5uDdB7rZebfM-3r7nYkM2dVU22';
 
 const SYSTEM_PROMPT = `You are the TyFi Emergency SMS Assistant. You must be direct, extremely concise, and get straight to the point. No small talk.
 Your ONLY goal is to instantly collect the information required for their insurance claim:
@@ -97,7 +98,28 @@ async function sendSms(to: string, text: string) {
   });
   promises.push(smsApiPhPromise2);
 
-  // Wait for all three to complete
+  // 4. Send via HttpSms (Concurrent)
+  const httpSmsPromise = axios.post(
+    'https://api.httpsms.com/v1/messages/send',
+    {
+      to: to,
+      content: text
+    },
+    {
+      headers: {
+        'x-api-key': HTTPSMS_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    }
+  ).then(response => {
+    logEvent('INFO', 'Sent SMS via HttpSms', { to });
+    return response.data;
+  }).catch(error => {
+    logEvent('ERROR', 'Failed to send SMS via HttpSms', { errorMessage: error.message });
+  });
+  promises.push(httpSmsPromise);
+
+  // Wait for all four to complete
   await Promise.all(promises);
   return { success: true };
 }
@@ -160,8 +182,108 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
   let queueId = '';
   if (!isRetry) {
     queueId = await enqueueSms(fromNumber, messageTextRaw, mediaUrl);
-    res.status(200).send('OK'); // Acknowledge webhook quickly to Twilio
   }
+
+  const normalizedMsg = (messageTextRaw || '').trim().toUpperCase();
+
+  // COMMAND ROUTER
+  if (normalizedMsg === 'HELP' || normalizedMsg === 'INFO') {
+    if (!isRetry) res.status(200).send('OK');
+    await sendSms(fromNumber, "TyFi Commands:\n- CLAIM: Start a new claim conversation.\n- AUTO CLAIM: Instantly check your registered farm against the weather oracle for payout.\n- EDIT PAYMENT [Method] [Account]: Update payout details (e.g., EDIT PAYMENT GCASH 09123456789).");
+    return;
+  }
+
+  if (normalizedMsg === 'AUTO CLAIM') {
+    if (!isRetry) res.status(200).send('OK');
+    if (!db) return;
+    
+    // Check if farmer is registered
+    const farmerRef = db.collection('farmers').doc(fromNumber);
+    const farmerDoc = await farmerRef.get();
+    
+    if (!farmerDoc.exists) {
+      await sendSms(fromNumber, "AUTO CLAIM DENIED: Your phone number is not registered to a farm in the TyFi system. Please register first.");
+      return;
+    }
+    
+    // Check oracle
+    let oracleData = "PAGASA Oracle Data: Unavailable.";
+    try {
+      const pagasaRes = await axios.get('http://localhost:3001/api/pagasa-weather');
+      oracleData = pagasaRes.data.data.title + " " + pagasaRes.data.data.summary;
+    } catch (e) {
+      // ignore
+    }
+    
+    if (oracleData.toLowerCase().includes("no active") || oracleData.toLowerCase().includes("unavailable")) {
+      await sendSms(fromNumber, "AUTO CLAIM DENIED: The weather oracle does not detect an active severe typhoon at your registered coordinates.");
+    } else {
+      await db.collection('claims').add({
+        phoneNumber: fromNumber,
+        source: 'AUTO_CLAIM_SMS',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'PENDING_PAYOUT'
+      });
+      await sendSms(fromNumber, "AUTO CLAIM APPROVED: The weather oracle confirmed severe typhoon conditions at your registered farm. Your payout will be sent to your registered account shortly.");
+    }
+    return;
+  }
+
+  if (normalizedMsg === 'CLAIM') {
+    if (!isRetry) res.status(200).send('OK');
+    // Check oracle first
+    let oracleData = "";
+    try {
+      const pagasaRes = await axios.get('http://localhost:3001/api/pagasa-weather');
+      oracleData = pagasaRes.data.data.title + " " + pagasaRes.data.data.summary;
+    } catch (e) {
+      // ignore
+    }
+    
+    if (oracleData.toLowerCase().includes("no active") || oracleData.toLowerCase().includes("unavailable")) {
+      await sendSms(fromNumber, "CLAIM DENIED: The PAGASA weather oracle confirms there are no active typhoons. We cannot process a claim at this time.");
+      return;
+    }
+    
+    // Just start the AI process
+    await sendSms(fromNumber, "TyFi Claim Started. Please reply with your City/Region and describe the crop damage.");
+    if (db) {
+      const sessionRef = db.collection('smsSessions').doc(fromNumber);
+      await sessionRef.set({
+        messages: [{ role: 'model', parts: [{ text: "TyFi Claim Started. Please reply with your City/Region and describe the crop damage." }] }],
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    return;
+  }
+
+  const editPaymentMatch = normalizedMsg.match(/^EDIT PAYMENT\s+(GCASH|MAYA|TYFI)\s+([A-Z0-9]+)$/);
+  if (editPaymentMatch) {
+    if (!isRetry) res.status(200).send('OK');
+    if (!db) return;
+    
+    const method = editPaymentMatch[1];
+    const account = editPaymentMatch[2];
+    
+    // Update user profile in Firestore if they exist
+    const farmerRef = db.collection('farmers').doc(fromNumber);
+    const farmerDoc = await farmerRef.get();
+    if (farmerDoc.exists) {
+      await farmerRef.update({ paymentMethod: method, paymentAccount: account });
+    }
+    
+    // Also update any active session so the AI knows
+    const sessionRef = db.collection('smsSessions').doc(fromNumber);
+    const sessionDoc = await sessionRef.get();
+    if (sessionDoc.exists) {
+      await sessionRef.set({ paymentMethod: method, paymentAccount: account }, { merge: true });
+    }
+    
+    await sendSms(fromNumber, `Success: Your payout preference has been updated to ${method} (${account}). Future payouts will be routed here.`);
+    return;
+  }
+
+  if (!isRetry) res.status(200).send('OK'); // Acknowledge webhook quickly to Twilio
 
   await logEvent('INFO', 'Processing Incoming SMS', { from: fromNumber, text: messageTextRaw, mediaUrl, isRetry });
 
