@@ -775,7 +775,7 @@ function App() {
     }
 
     setProcessingPayment('fiat');
-    addNotification(`Initiating fiat deposit via PDAX API for PHP ${liveAmountPhp}...`, 'info');
+    addNotification(`Initiating fiat deposit for PHP ${liveAmountPhp}...`, 'info');
     
     try {
       const pdaBaseUrl = await getPDAXBaseUrl();
@@ -1283,7 +1283,7 @@ function App() {
 
           if (prefs.method === 'fiat') {
             // 2. If Fiat, trigger the backend bridge to push InstaPay
-            addNotification('Smart contract executed. Bridging to Fiat via PDAX...', 'info');
+            addNotification('Smart contract executed. Bridging to Fiat via InstaPay...', 'info');
             const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
             const res = await fetch(`${BACKEND_URL}/oracle/api/v1/weather-trigger`, {
               method: 'POST',
@@ -2776,7 +2776,7 @@ function App() {
                 </div>
                 <div className="flex-1">
                   <h4 className="text-white font-black text-sm uppercase tracking-wide">
-                    {processingPayment === 'fiat' ? 'Processing...' : 'Fiat e-Wallet (PDAX)'}
+                    {processingPayment === 'fiat' ? 'Processing...' : 'Fiat e-Wallet (GCash / Maya)'}
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">Pay using GCash, Maya, or InstaPay. Seamless auto-bridge.</p>
                 </div>

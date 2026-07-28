@@ -210,7 +210,7 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
             <Building size={24} />
           </div>
           <h3 className="text-lg font-bold text-white mb-2">InstaPay / E-Wallet</h3>
-          <p className="text-sm text-slate-400">Auto-convert yield to PHP and route directly to GCash or PayMaya via PDAX.</p>
+          <p className="text-sm text-slate-400">Auto-convert yield to PHP and route directly to GCash or PayMaya via InstaPay.</p>
         </button>
       </div>
 
@@ -220,7 +220,7 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
             <h3 className="text-md font-bold text-white uppercase tracking-widest">Fiat Routing Details</h3>
             <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">
               <span className="text-[10px] text-blue-200 uppercase font-bold tracking-widest">Powered by</span>
-              <span className="text-xs font-black text-blue-400 tracking-tighter">PDAX</span>
+              <span className="text-xs font-black text-blue-400 tracking-tighter">InstaPay</span>
             </div>
           </div>
           

@@ -7,7 +7,7 @@ import admin from 'firebase-admin';
 export const oracleRouter = express.Router();
 const server = new rpc.Server('https://soroban-testnet.stellar.org');
 
-import { initiateFiatSweep } from './pdax';
+import { safeInitiatePayout } from './payoutService';
 import { sendSms } from './smsHandler';
 
 // Actual ZK dependencies
@@ -173,14 +173,17 @@ oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
                 autoCollect: true
               };
 
-              // Assume a standard payout of 15,000 PHP for parametric triggers
-              const amountPHP = 15000;
+              const amountPHP = user.insured_value || 15000;
               
-              await logEvent('INFO', `Triggering Auto Collect Fiat Sweep for ${user.wallet_address}`, { amountPHP, provider: prefs.provider });
+              await logEvent('INFO', `Triggering Auto Collect payout for ${user.wallet_address}`, { amountPHP, provider: prefs.provider });
               
-              const pdaxTxId = await initiateFiatSweep(amountPHP, prefs);
+              const result = await safeInitiatePayout(amountPHP, prefs, {
+                phoneNumber: user.phone_number,
+                walletAddress: user.wallet_address,
+                source: 'AUTO_COLLECT_ORACLE'
+              });
               
-              await logEvent('INFO', `Auto Collect Sweep Success for ${user.wallet_address}`, { pdaxTxId });
+              await logEvent('INFO', `Auto Collect payout queued/sent for ${user.wallet_address}`, { txId: result.txId, mode: result.mode });
             } catch (sweepErr: any) {
               await logEvent('ERROR', `Auto Collect Sweep Failed for ${user.wallet_address}`, { error: sweepErr.message });
             }
@@ -279,12 +282,15 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
 
     let pdaxTxId = "PENDING";
     try {
-      await logEvent('INFO', 'Initiating PDAX Fiat Sweep', { amountPHP, paymentPrefs });
-      pdaxTxId = await initiateFiatSweep(amountPHP, paymentPrefs);
-      await logEvent('INFO', 'PDAX Fiat Sweep Success', { pdaxTxId });
+      await logEvent('INFO', 'Initiating payout via safeInitiatePayout', { amountPHP, paymentPrefs });
+      const result = await safeInitiatePayout(amountPHP, paymentPrefs, {
+        source: 'WEATHER_TRIGGER_SANDBOX'
+      });
+      pdaxTxId = result.txId;
+      await logEvent('INFO', `Payout result: ${result.mode}`, { txId: result.txId });
     } catch (pdaxError: any) {
-      await logEvent('ERROR', 'PDAX Fiat Sweep Failed', { error: pdaxError.message });
-      return res.status(502).json({ error: 'PDAX Sweep Failed: ' + pdaxError.message });
+      await logEvent('ERROR', 'Payout failed unexpectedly', { error: pdaxError.message });
+      pdaxTxId = 'FAILED';
     }
 
     res.json({ status: 'success', txHash, pdaxTxId, amountPHP, zkProof: mockZkProof });
