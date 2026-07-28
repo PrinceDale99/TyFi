@@ -16,7 +16,7 @@ export const TermsOfService = () => {
         <section>
           <h2 className="text-xl font-semibold text-gray-800 mb-2">2. Yield and Liquidity Provision</h2>
           <p>
-            All yield generated for Liquidity Providers (LPs) is exclusively sourced from short-term Sovereign Bonds via licensed partners (e.g., PDAX Securities). TyFi does not engage in unregulated DeFi Staking or speculative token lending. By providing liquidity, you acknowledge that your capital is backing weather derivatives.
+            All yield generated for Liquidity Providers (LPs) is exclusively sourced from short-term Sovereign Bonds via licensed securities partners. TyFi does not engage in unregulated DeFi Staking or speculative token lending. By providing liquidity, you acknowledge that your capital is backing weather derivatives.
           </p>
         </section>
 

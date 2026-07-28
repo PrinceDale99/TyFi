@@ -77,7 +77,7 @@ const DocsTab: React.FC = () => {
       id: 4,
       title: "5. Fiat Disbursement",
       icon: <Coins className="w-8 h-8 text-green-400" />,
-      description: "The Soroban contract unwinds the pool. Within seconds, funds are routed via PDAX and disbursed in PHP straight to the farmer's GCash wallet.",
+      description: "The Soroban contract unwinds the pool. Within seconds, funds are routed via InstaPay and disbursed in PHP straight to the farmer's GCash wallet.",
       animation: "up"
     }
   ];

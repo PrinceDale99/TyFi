@@ -3,7 +3,7 @@ import admin from 'firebase-admin';
 import { logEvent } from './logger';
 import { processImageClaim } from './imageAssessor';
 import { enqueueSms, dequeueSms } from './offlineQueue';
-import { initiateFiatSweep } from './pdax';
+import { safeInitiatePayout } from './payoutService';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
@@ -233,21 +233,29 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
       try {
         await sendSms(fromNumber, `Processing... We are routing your AUTO CLAIM payout of PHP ${payoutAmount} to ${prefs.provider}. Please wait.`);
 
-        const txId = await initiateFiatSweep(payoutAmount, prefs);
+        const result = await safeInitiatePayout(payoutAmount, prefs, {
+          phoneNumber: fromNumber,
+          walletAddress: farmerDoc.id,
+          source: 'AUTO_CLAIM_SMS'
+        });
         
         await db.collection('claims').add({
           phoneNumber: fromNumber,
           walletAddress: farmerDoc.id,
           source: 'AUTO_CLAIM_SMS',
-          pdaxTxId: txId,
-          status: 'PAID',
+          pdaxTxId: result.txId,
+          payoutMode: result.mode,
+          status: result.mode === 'PDAX_LIVE' ? 'PAID' : 'PENDING_MANUAL_PAYOUT',
           amount: payoutAmount,
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
         
-        await sendSms(fromNumber, `✅ AUTO CLAIM APPROVED: Typhoon conditions confirmed. PHP ${payoutAmount} has been sent to your ${prefs.provider}. Ref: ${txId}`);
+        if (result.mode === 'PDAX_LIVE') {
+          await sendSms(fromNumber, `✅ AUTO CLAIM APPROVED: Typhoon conditions confirmed. PHP ${payoutAmount} has been sent to your ${prefs.provider}. Ref: ${result.txId}`);
+        }
+        // If MANUAL_QUEUE, safeInitiatePayout already sent the SMS to farmer
       } catch (e: any) {
-        await sendSms(fromNumber, `⚠️ AUTO CLAIM ERROR: Approved, but payout failed. Error: ${e.message}`);
+        await sendSms(fromNumber, `⚠️ AUTO CLAIM ERROR: Something unexpected happened. Please contact support.`);
       }
     }
     return;
@@ -370,7 +378,11 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
       try {
         await sendSms(fromNumber, `Processing... AI Assessment complete. Routing PHP ${payoutAmount} payout to ${prefs.provider}.`);
 
-        const txId = await initiateFiatSweep(payoutAmount, prefs);
+        const result = await safeInitiatePayout(payoutAmount, prefs, {
+          phoneNumber: fromNumber,
+          walletAddress: farmerDoc ? farmerDoc.id : undefined,
+          source: 'CLAIM_SMS_WITH_VISION'
+        });
         
         // Save claim
         await db.collection('claims').add({
@@ -382,16 +394,19 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
           repair_estimate_php: imageAnalysisData?.repair_estimate_php || null,
           source: 'SMS_WITH_VISION',
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          status: 'PAID',
+          status: result.mode === 'PDAX_LIVE' ? 'PAID' : 'PENDING_MANUAL_PAYOUT',
           amount: payoutAmount,
-          pdaxTxId: txId,
+          pdaxTxId: result.txId,
+          payoutMode: result.mode,
         });
 
-        // Send confirmation
-        const finalMsg = `✅ CLAIM SUCCESS: PHP ${payoutAmount} has been sent to your ${prefs.provider} account. Ref: ${txId}`;
-        await sendSms(fromNumber, finalMsg);
+        if (result.mode === 'PDAX_LIVE') {
+          const finalMsg = `✅ CLAIM SUCCESS: PHP ${payoutAmount} has been sent to your ${prefs.provider} account. Ref: ${result.txId}`;
+          await sendSms(fromNumber, finalMsg);
+        }
+        // If MANUAL_QUEUE, safeInitiatePayout already sent the SMS to farmer
       } catch (e: any) {
-        await sendSms(fromNumber, `⚠️ Claim filed, but payout routing failed. Error: ${e.message}`);
+        await sendSms(fromNumber, `⚠️ Claim filed, but something went wrong. Please contact support.`);
       }
       
       // Clear session

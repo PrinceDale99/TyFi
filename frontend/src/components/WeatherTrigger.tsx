@@ -32,7 +32,7 @@ export const WeatherTrigger: React.FC<{ targetAddress: string, activeYieldBalanc
         setZkProof(data.zkProof);
       }
 
-      setLoadingState("Routing through PDAX InstaPay...");
+      setLoadingState("Processing payout...");
       await new Promise(r => setTimeout(r, 800)); 
       
       setLoadingState(null);

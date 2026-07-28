@@ -8,8 +8,8 @@ import jwt from 'jsonwebtoken';
 import { logEvent } from './logger';
 import { generateCertificate } from './certificateService';
 import { handleIncomingSms, sendSms } from './smsHandler';
-import { processPayoutOfframp } from './pdaxService';
-import { initiateFiatDeposit, getXlmRates } from './pdax';
+import { safeInitiatePayout } from './payoutService';
+import { getXlmRates } from './pdax';
 import { supabase } from './supabase';
 import { oracleRouter } from './oracle';
 import { calculateBondYield } from './bondService';
@@ -289,9 +289,9 @@ app.post('/api/notify-payout', async (req, res) => {
 });
 
 app.post('/api/execute-offramp', async (req, res) => {
-  const { address, amount, network = 'testnet' } = req.body; // amount is in crypto units
+  const { address, amount, network = 'testnet' } = req.body;
 
-  await logEvent('INFO', `Received request to execute PDAX off-ramp on ${network}`, { address, amount, network });
+  await logEvent('INFO', `Received request to execute off-ramp on ${network}`, { address, amount, network });
 
   if (!db) {
     return res.status(500).json({ error: 'Firestore not initialized' });
@@ -308,32 +308,51 @@ app.post('/api/execute-offramp', async (req, res) => {
 
     const { payment_method, payment_account } = data;
 
-    // Trigger PDAX pipeline
-    const result = await processPayoutOfframp(amount, payment_method, payment_account);
-    
-    await logEvent('INFO', 'PDAX off-ramp successful', { address, result });
+    const prefs = {
+      provider: payment_method,
+      accountNumber: payment_account,
+      accountName: data.name || 'Typhoon Survivor',
+      method: 'fiat'
+    };
+
+    const result = await safeInitiatePayout(amount, prefs, {
+      phoneNumber: data.phoneNumber,
+      walletAddress: address,
+      source: 'EXECUTE_OFFRAMP_API'
+    });
+
+    await logEvent('INFO', 'Off-ramp payout processed', { address, mode: result.mode, txId: result.txId });
     res.json({ success: true, offramp: true, result });
   } catch (error: any) {
-    await logEvent('ERROR', 'Error executing PDAX off-ramp', { errorMessage: error.message, address });
+    await logEvent('ERROR', 'Error executing off-ramp', { errorMessage: error.message, address });
     res.status(500).json({ error: error.message });
   }
 });
 
-// User initiated Fiat Deposit (On-Ramp to Vault via PDAX)
+// Fiat Deposit (On-Ramp) — returns a graceful queued response
 app.post('/api/v1/fiat-deposit', async (req, res) => {
   try {
-    const { amountPHP, paymentMethod } = req.body;
+    const { amountPHP } = req.body;
     if (!amountPHP) {
       return res.status(400).json({ success: false, error: 'amountPHP is required' });
     }
-    
-    await logEvent('INFO', 'Initiating PDAX Fiat Deposit', { amountPHP, paymentMethod });
-    const result = await initiateFiatDeposit(amountPHP, paymentMethod || 'grabpay_cashin');
-    
-    res.json(result);
+    await logEvent('INFO', 'Fiat deposit request received — queued for manual processing', { amountPHP });
+    // Queue in Firestore for admin action
+    if (db) {
+      await db.collection('pending_deposits').add({
+        amountPHP,
+        status: 'PENDING_MANUAL_DEPOSIT',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    res.json({
+      success: true,
+      status: 'QUEUED',
+      message: 'Your deposit request has been received. Bank transfer instructions will be sent to your registered phone number within the hour.'
+    });
   } catch (error: any) {
-    await logEvent('ERROR', 'Error executing PDAX fiat deposit', { errorMessage: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    await logEvent('ERROR', 'Error queuing fiat deposit', { errorMessage: error.message });
+    res.status(500).json({ success: false, error: 'Failed to queue deposit request' });
   }
 });
 

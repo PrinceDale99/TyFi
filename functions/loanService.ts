@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logEvent } from './logger';
-import { processPayoutOfframp } from './pdaxService';
+import { safeInitiatePayout } from './payoutService';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -87,10 +87,14 @@ export async function executeMicroloanPipeline(
     // Assuming Soroban transaction succeeds...
     await logEvent('INFO', `Soroban origination successful for loan of ${prediction.recommendedAmountXlm} XLM`, { address });
 
-    // 3. Instant PDAX Offramp to fiat
-    const offrampResult = await processPayoutOfframp(prediction.recommendedAmountXlm, paymentMethod, paymentAccount);
+    // 3. Instant payout to fiat via safe abstraction layer
+    const offrampResult = await safeInitiatePayout(
+      prediction.recommendedAmountXlm,
+      { provider: paymentMethod, accountNumber: paymentAccount, method: 'fiat' },
+      { source: 'MICROLOAN_PIPELINE', walletAddress: address }
+    );
     
-    await logEvent('INFO', 'Microloan fiat offramp complete via PDAX', { address, offrampResult });
+    await logEvent('INFO', 'Microloan fiat payout complete', { address, mode: offrampResult.mode, txId: offrampResult.txId });
 
     return { 
         success: true, 
