@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
 import axios from 'axios';
@@ -19,7 +20,61 @@ import { executeMicroloanPipeline } from './loanService';
 dotenv.config();
 
 export const app = express();
-app.use(cors());
+
+// ── CORS: only allow known frontend origins ────────────────────────────────
+const ALLOWED_ORIGINS = [
+  'https://tyfi-yzbn.onrender.com',
+  'https://tyfi.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow no-origin requests (Render health checks, mobile, curl tools)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS: Origin '${origin}' not allowed`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+}));
+
+// ── RATE LIMITERS ─────────────────────────────────────────────────────────
+// SMS webhook: max 10 requests per minute per IP (real Twilio sends ~1 per farmer per event)
+const smsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many SMS webhook requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Login: max 10 attempts per 15 minutes per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts, please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// AI endpoints: max 20 requests per minute per IP (expensive Gemini calls)
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { error: 'Too many AI requests, please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Microloan: max 3 applications per hour per IP
+const microloanLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: { error: 'Too many loan applications submitted. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/oracle', oracleRouter);
@@ -444,7 +499,7 @@ app.post('/api/notify-alert', async (req, res) => {
   }
 });
 
-app.post('/api/ai/analyze-weather', async (req, res) => {
+app.post('/api/ai/analyze-weather', aiLimiter, async (req, res) => {
   // Support both raw `contents` (direct Gemini payload) and structured {location, metrics} payload
   const { contents, location, metrics, system_instruction } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY;
@@ -528,7 +583,7 @@ app.get('/api/pagasa-weather', async (req, res) => {
     // Fetch from both oracles concurrently
     const [pagasaResult, nasaResult] = await Promise.allSettled([
       axios.get('https://bagong.pagasa.dost.gov.ph/', { timeout: 3000 }),
-      axios.get(`https://eonet.gsfc.nasa.gov/api/v3/events?category=severeStorms&status=open&api_key=${process.env.NASA_API_KEY || 'ttZtcju8urEIdB7HfyICZiRj7UfQ3FiuzwGKpvxa'}`, { timeout: 5000 })
+      axios.get(`https://eonet.gsfc.nasa.gov/api/v3/events?category=severeStorms&status=open&api_key=${process.env.NASA_API_KEY || ''}`, { timeout: 5000 })
     ]);
 
     let pagasaData = null;
@@ -660,7 +715,7 @@ app.post('/api/ai/translate', async (req, res) => {
   }
 });
 
-app.post('/api/sms/webhook', async (req, res) => {
+app.post('/api/sms/webhook', smsLimiter, async (req, res) => {
   // Pass db to the handler so it can interact with Firestore
   try {
     await handleIncomingSms(req, res, db);
@@ -678,7 +733,7 @@ app.post('/api/sms/webhook', async (req, res) => {
 const JWT_SECRET = process.env.JWT_SECRET || '***REMOVED***';
 
 // 1. Login or Create Profile using Wallet Address
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   const { address } = req.body;
   if (!address) {
     return res.status(400).json({ error: 'Wallet address required' });
@@ -745,7 +800,7 @@ app.get('/api/users/profile', authenticateToken, async (req: any, res: any) => {
   }
 });
 
-app.post("/api/apply-microloan", async (req, res) => {
+app.post("/api/apply-microloan", microloanLimiter, async (req, res) => {
   const { address, farmData, paymentMethod, paymentAccount } = req.body;
   if (!address || !farmData || !paymentMethod || !paymentAccount) {
     return res.status(400).json({ error: "Missing required fields for loan application" });

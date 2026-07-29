@@ -6,7 +6,7 @@ export const config = {
   cronSchedule: process.env.CRON_SCHEDULE || '*/15 * * * *', // Default: every 15 minutes
   renderExternalUrl: process.env.RENDER_EXTERNAL_URL, // e.g. https://tyfi-scraper.onrender.com
   oracleApiUrl: process.env.ORACLE_API_URL || 'http://localhost:3001/oracle/api/v1/scraper-update', // Where to push the data
-  oracleApiKey: process.env.ORACLE_API_KEY || 'development_secret_key',
+  oracleApiKey: process.env.ORACLE_API_KEY || (() => { throw new Error('ORACLE_API_KEY env var must be set'); })(),
   // Target URLs
   targets: {
     pagasaWeather: 'https://www.pagasa.dost.gov.ph/weather',
