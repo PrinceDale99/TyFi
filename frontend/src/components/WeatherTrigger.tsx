@@ -70,7 +70,7 @@ export const WeatherTrigger: React.FC<{ targetAddress: string, activeYieldBalanc
             </div>
           )}
           <div className="text-center border-2 border-green-500 p-4 rounded-lg bg-green-900/30">
-            <p className="text-green-400 font-bold mb-1">Disbursed to GCash (PHP)</p>
+            <p className="text-green-400 font-bold mb-1">Disbursed to TyFi Vault</p>
             <h2 className="text-3xl font-mono text-white">
               ₱{cashOutSum.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
             </h2>
