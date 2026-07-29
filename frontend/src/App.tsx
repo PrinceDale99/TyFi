@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { FarmerDashboard } from './components/FarmerDashboard';
 import { LPDashboard } from './components/LPDashboard';
 
@@ -129,38 +129,7 @@ interface Farm extends FarmData {
   isInsured: boolean;
 }
 
-// Global state to cache the PDAX base URL to avoid pinging repeatedly
-let cachedPdaxUrl: string | null = null;
-let lastPingTime = 0;
 
-async function getPDAXBaseUrl(): Promise<string> {
-  const prodUrl = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
-  const localUrl = 'http://localhost:3001';
-  
-  // Cache for 10 seconds
-  if (cachedPdaxUrl && Date.now() - lastPingTime < 10000) {
-    return cachedPdaxUrl;
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 500); // Strict 500ms timeout
-    const response = await fetch(`${localUrl}/api/health`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    
-    if (response.ok) {
-      cachedPdaxUrl = localUrl;
-      lastPingTime = Date.now();
-      return localUrl;
-    }
-  } catch (error) {
-    // Timeout or connection refused
-  }
-  
-  cachedPdaxUrl = prodUrl;
-  lastPingTime = Date.now();
-  return prodUrl;
-}
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -316,25 +285,13 @@ function App() {
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [burstCount, setBurstCount] = useState(0);
   
-  // InstaPay Receipt State
-  const [instapayReceipt, setInstapayReceipt] = useState<{
-    amountPHP: number;
-    txHash: string;
-    date: string;
-    method: string;
-    accountName: string;
-    accountNumber: string;
-  } | null>(null);
+
 
   // Add Farm & Edit Profile Modals States
   const [isAddFarmModalOpen, setIsAddFarmModalOpen] = useState(false);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
-  const [isFiatDepositModalOpen, setIsFiatDepositModalOpen] = useState(false);
-  const [fiatDepositAmount, setFiatDepositAmount] = useState<string>('');
-  const [pendingCheckouts, setPendingCheckouts] = useState<any[]>([]);
-  const [isPendingCheckoutsModalOpen, setIsPendingCheckoutsModalOpen] = useState(false);
-  const [activeCheckoutIndex, setActiveCheckoutIndex] = useState(0);
+
 
   const [profileForm, setProfileForm] = useState({
     farmerName: '',
@@ -764,51 +721,6 @@ function App() {
     }
   };
 
-  const executeFiatPayment = async () => {
-    if (!paymentIntent) return;
-    // Calculate live PHP amount using real-time XLM rate
-    const liveAmountPhp = paymentIntent.amountXlm * xlmRate;
-
-    if (isNaN(liveAmountPhp) || liveAmountPhp <= 0) {
-      addNotification('Please enter a valid amount greater than 0', 'warning');
-      return;
-    }
-
-    setProcessingPayment('fiat');
-    addNotification(`Initiating fiat deposit for PHP ${liveAmountPhp}...`, 'info');
-    
-    try {
-      const pdaBaseUrl = await getPDAXBaseUrl();
-      console.log(`[PDAX Router] Routing deposit request to: ${pdaBaseUrl === 'http://localhost:3001' ? 'LOCAL (Development)' : 'RENDER (Production)'}`);
-      const response = await fetch(`${pdaBaseUrl}/api/v1/fiat-deposit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountPHP: liveAmountPhp, paymentMethod: 'grabpay_cashin' })
-      });
-      
-      const data = await response.json();
-      if (data.success && data.data?.checkouts) {
-        const checkouts = data.data.checkouts;
-        if (checkouts.length === 1) {
-          addNotification(`PDAX checkout generated. Opening secure payment gateway...`, 'success');
-          window.open(checkouts[0].checkoutUrl, '_blank');
-        } else {
-          addNotification(`Deposit split into ${checkouts.length} payments due to limits.`, 'info');
-          setPendingCheckouts(checkouts);
-          setActiveCheckoutIndex(0);
-          setIsPendingCheckoutsModalOpen(true);
-        }
-        setPaymentIntent(null);
-      } else {
-        throw new Error(data.error || 'Failed to generate checkout URLs');
-      }
-    } catch (e: any) {
-      addNotification(`Failed to initiate fiat deposit: ${e.message}`, 'warning');
-      console.error(e);
-    } finally {
-      setProcessingPayment(null);
-    }
-  };
 
 
   const addNotification = (text: string, type: 'info' | 'success' | 'warning' = 'info') => {
@@ -1281,41 +1193,7 @@ function App() {
             claimAmount
           );
 
-          if (prefs.method === 'fiat') {
-            // 2. If Fiat, trigger the backend bridge to push InstaPay
-            addNotification('Smart contract executed. Bridging to Fiat via InstaPay...', 'info');
-            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-            const res = await fetch(`${BACKEND_URL}/oracle/api/v1/weather-trigger`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                lat: 14.5995, 
-                lon: 120.9842, 
-                severity: triggerDesc, 
-                targetAddress: pubkey,
-                paymentPrefs: prefs,
-                amountPHP: claimAmount * xlmRate
-              })
-            });
-            
-            if (!res.ok) {
-              const errorData = await res.json().catch(() => ({}));
-              throw new Error(errorData.error || "Backend or PDAX integration failed");
-            }
-            
-            const responseData = await res.json();
-            
-            setInstapayReceipt({
-              amountPHP: responseData.amountPHP || (claimAmount * 4.2),
-              txHash: responseData.pdaxTxId || 'UNKNOWN_TX',
-              date: new Date().toLocaleString(),
-              method: prefs.provider || 'InstaPay',
-              accountName: prefs.accountName || 'Farmer Account',
-              accountNumber: prefs.accountNumber || '09XXXXXXXXX'
-            });
-          } else {
-            addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed via Smart Contract directly to your Web3 Wallet! Tx Hash: ${scTxHash}`, 'success');
-          }
+          addNotification(`Insurance payout of ${claimAmount.toLocaleString()} XLM (${Math.round(payoutRatio * 100)}%) processed via Smart Contract directly to your TyFi Wallet! Tx Hash: ${scTxHash}`, 'success');
 
           // Transaction success: update local states
           setFarms(prev => prev.map(f => f.id === farm.id ? { 
@@ -2765,23 +2643,7 @@ function App() {
                 {!processingPayment && <ArrowRight size={18} className="text-slate-500 group-hover:text-sky-400 group-hover:translate-x-1 transition-all" />}
               </button>
 
-              {/* Fiat e-Wallet Option */}
-              <button 
-                onClick={executeFiatPayment}
-                disabled={processingPayment !== null}
-                className={`w-full bg-white/5 border border-white/10 rounded-2xl p-4 transition-all group text-left flex items-center gap-4 ${processingPayment !== null ? 'opacity-50 cursor-not-allowed' : 'hover:border-emerald-500/50 hover:bg-emerald-500/10'}`}
-              >
-                <div className={`w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center transition-transform ${processingPayment === null ? 'group-hover:scale-110' : ''}`}>
-                  {processingPayment === 'fiat' ? <Loader2 size={24} className="animate-spin" /> : <DollarSign size={24} />}
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-white font-black text-sm uppercase tracking-wide">
-                    {processingPayment === 'fiat' ? 'Processing...' : 'Fiat e-Wallet (GCash / Maya)'}
-                  </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Pay using GCash, Maya, or InstaPay. Seamless auto-bridge.</p>
-                </div>
-                {!processingPayment && <ArrowRight size={18} className="text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />}
-              </button>
+
             </div>
           </div>
         </div>
@@ -3650,69 +3512,7 @@ function App() {
           </div>
         ))}
       </div>
-      {/* InstaPay Receipt Modal */}
-      {instapayReceipt && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" 
-            onClick={() => setInstapayReceipt(null)}
-          ></div>
-          <div className="relative w-full max-w-sm glass-panel border border-emerald-500/30 overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.2)] animate-in zoom-in-95 duration-300 rounded-3xl">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
-            
-            <div className="flex justify-between items-center mb-6">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <CheckCircle2 size={20} />
-              </div>
-              <button 
-                onClick={() => setInstapayReceipt(null)}
-                className="p-2 bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
 
-            <div className="text-center mb-8">
-              <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-2">InstaPay Transfer Successful</h3>
-              <div className="text-4xl font-black text-white display-font tracking-tight">
-                PHP {instapayReceipt.amountPHP.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-            </div>
-
-            <div className="space-y-4 bg-slate-900/50 rounded-2xl p-4 border border-white/5 mb-6">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Date</span>
-                <span className="text-xs text-white font-medium">{instapayReceipt.date}</span>
-              </div>
-              <div className="flex justify-between items-start">
-                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider pt-0.5">Destination</span>
-                <div className="text-right flex flex-col gap-0.5">
-                  <span className="text-xs text-white font-bold">{instapayReceipt.method}</span>
-                  <span className="text-[10px] text-slate-400 font-medium">{instapayReceipt.accountName}</span>
-                  <span className="text-[10px] text-slate-400 font-mono tracking-wide">{instapayReceipt.accountNumber}</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Ref No.</span>
-                <span className="text-xs font-mono text-emerald-400">{instapayReceipt.txHash}</span>
-              </div>
-              <div className="flex justify-between items-center mt-2 pt-4 border-t border-white/5">
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Powered by</span>
-                <span className="text-sm font-black text-blue-400 tracking-tighter">PDAX</span>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setInstapayReceipt(null)}
-                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Visual Gasless Validation Overlay */}
       {userRole === 'farmer' && (
@@ -3721,102 +3521,6 @@ function App() {
           <span className="text-emerald-400 text-[10px] sm:text-xs font-bold whitespace-nowrap">Identity Secured by Biometrics • 100% Gasless (Sponsored by TyFi Treasury)</span>
         </div>
       )}
-
-      {/* PDAX Split Deposit Modal */}
-      {isPendingCheckoutsModalOpen && (
-        <div className="fixed inset-0 bg-[#0C1236]/80 backdrop-blur-xl z-50 flex items-center justify-center p-4">
-          <div className="bg-[#121840]/90 border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative backdrop-blur-md">
-            <button
-              onClick={() => setIsPendingCheckoutsModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/5 transition-colors"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-sky-500/20 p-3 rounded-full text-sky-400 border border-sky-500/30">
-                  <AlertCircle size={24} />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">Split Payment Required</h3>
-                  <p className="text-sm text-slate-400 mt-1">
-                    To comply with provider limits, your deposit has been split into {pendingCheckouts.length} payments.
-                  </p>
-                </div>
-              </div>
-
-              {pendingCheckouts.length > 0 && activeCheckoutIndex < pendingCheckouts.length ? (
-                <div className="space-y-4">
-                  <div className="p-5 border border-sky-500/30 rounded-xl bg-sky-500/10 shadow-[0_0_15px_rgba(14,165,233,0.15)] relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
-                      <div 
-                        className="h-full bg-gradient-to-r from-sky-400 to-indigo-400 transition-all duration-500"
-                        style={{ width: `${((activeCheckoutIndex + 1) / pendingCheckouts.length) * 100}%` }}
-                      ></div>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
-                      <div>
-                        <p className="font-bold text-sky-300">Payment {activeCheckoutIndex + 1} of {pendingCheckouts.length}</p>
-                        <p className="text-2xl font-black text-white mt-1">
-                          ₱{pendingCheckouts[activeCheckoutIndex]?.amount.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">Please complete this payment to proceed.</p>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => window.open(pendingCheckouts[activeCheckoutIndex]?.checkoutUrl, '_blank')}
-                          className="px-5 py-3 bg-gradient-to-r from-sky-500 to-indigo-500 text-white rounded-xl hover:shadow-[0_0_20px_rgba(14,165,233,0.4)] transition-all font-bold text-sm flex items-center justify-center gap-2 w-full sm:w-auto"
-                        >
-                          Pay Now <ArrowUpRight size={16} />
-                        </button>
-                        
-                        {/* Simulation button for demo purposes */}
-                        <button
-                          onClick={() => {
-                            addNotification(`Payment ${activeCheckoutIndex + 1} confirmed successfully!`, 'success');
-                            if (activeCheckoutIndex < pendingCheckouts.length - 1) {
-                              setActiveCheckoutIndex(prev => prev + 1);
-                            } else {
-                              setIsPendingCheckoutsModalOpen(false);
-                              addNotification('All split payments completed. Your vault balance will be updated shortly.', 'success');
-                            }
-                          }}
-                          className="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-xl hover:bg-emerald-500/30 border border-emerald-500/30 transition-all font-medium text-xs flex items-center justify-center gap-2"
-                        >
-                          <Check size={14} /> Simulate Success
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 text-center border border-emerald-500/30 rounded-xl bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                  <div className="mx-auto w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 border border-emerald-500/30">
-                    <Check size={24} className="text-emerald-400" />
-                  </div>
-                  <h4 className="text-lg font-bold text-white mb-2">All Payments Complete!</h4>
-                  <p className="text-slate-400 text-sm">Your deposits are being processed into the smart contract.</p>
-                  <button
-                    onClick={() => setIsPendingCheckoutsModalOpen(false)}
-                    className="mt-6 px-6 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-xl font-medium transition-colors border border-emerald-500/30"
-                  >
-                    Close
-                  </button>
-                </div>
-              )}
-
-              <div className="mt-6 pt-4 border-t border-white/10 flex flex-col items-center">
-                <p className="text-xs text-slate-500 mb-4 text-center">
-                  Payments are processed via our secure EMI partners. Do not close this window until all payments are completed.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
