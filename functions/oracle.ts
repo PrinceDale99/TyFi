@@ -67,7 +67,11 @@ oracleRouter.get('/api/v1/latest', async (req, res) => {
 // ==========================================
 oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
   const authHeader = req.headers.authorization;
-  const expectedKey = process.env.ORACLE_API_KEY || 'development_secret_key';
+  const expectedKey = process.env.ORACLE_API_KEY;
+  if (!expectedKey) {
+    await logEvent('ERROR', 'ORACLE_API_KEY is not set — rejecting all scraper updates for safety');
+    return res.status(503).json({ error: 'Oracle service not configured' });
+  }
 
   if (!authHeader || authHeader !== `Bearer ${expectedKey}`) {
     await logEvent('WARNING', 'Unauthorized scraper update attempt', { ip: req.ip });
