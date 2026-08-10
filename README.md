@@ -25,7 +25,7 @@
 
 <br/>
 
-[🔗 Live App](https://ptrv-22b15.web.app/) • [🎬 Demo Video](https://youtu.be/hViSMpbMckU) • [🖼️ Pitch Deck](https://canva.link/kb9peaekmd3u50m) • [🏆 Community Win](https://x.com/PHI_Stellar/status/2060267796068712797?s=20)
+[🔗 Live App](https://tyfi.vercel.app/) • [🎬 Demo Video](https://youtu.be/hViSMpbMckU) • [🖼️ Pitch Deck](https://canva.link/kb9peaekmd3u50m) • [🏆 Community Win](https://x.com/PHI_Stellar/status/2060267796068712797?s=20)
 
 </div>
 
