@@ -25,7 +25,7 @@
 
 <br/>
 
-[🔗 Live App](https://tyfi.vercel.app/) • [🎬 Demo Video](https://youtu.be/hViSMpbMckU) • [🖼️ Pitch Deck](https://canva.link/kb9peaekmd3u50m) • [🏆 Community Win](https://x.com/PHI_Stellar/status/2060267796068712797?s=20)
+[🔗 Live App](https://www.tyfi.site/) • [🎬 Demo Video](https://youtu.be/hViSMpbMckU) • [🖼️ Pitch Deck](https://canva.link/kb9peaekmd3u50m) • [🏆 Community Win](https://x.com/PHI_Stellar/status/2060267796068712797?s=20)
 
 </div>
 
@@ -332,7 +332,7 @@ An automated static analysis and manual security review was conducted. **No high
 
 | | Link |
 |---|---|
-| 🔗 **Live App** | [https://ptrv-22b15.web.app/](https://ptrv-22b15.web.app/) |
+| 🔗 **Live App** | [https://www.tyfi.site/](https://www.tyfi.site/) |
 | 🎬 **Demo Video** | [https://youtu.be/hViSMpbMckU](https://youtu.be/hViSMpbMckU) |
 | 🖼️ **Pitch Deck** | [https://canva.link/kb9peaekmd3u50m](https://canva.link/kb9peaekmd3u50m) |
 
