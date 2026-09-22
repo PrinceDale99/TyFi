@@ -31,8 +31,6 @@ We utilize standard Rust security and linting tools to ensure the integrity of o
 The Soroban smart contract was analyzed using `cargo clippy` with strict linting rules.
 **Result:** No warnings, vulnerabilities, or unsafe memory patterns detected. The build compiles cleanly.
 
-## Bug Bounty Program
-
 TyFi is committed to the security of our farmers and liquidity providers. We invite the developer community to review our Soroban smart contract.
 
 If you discover a critical vulnerability (e.g., unauthorized fund withdrawal, oracle manipulation), please report it to us immediately.
