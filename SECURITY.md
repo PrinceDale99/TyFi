@@ -35,7 +35,7 @@ The Soroban smart contract was analyzed using `cargo clippy` with strict linting
 
 TyFi is committed to the security of our farmers and liquidity providers. We invite the developer community to review our Soroban smart contract.
 
-If you discover a critical vulnerability (e.g., unauthorized fund withdrawal, oracle manipulation), please report it to us immediately. 
+If you discover a critical vulnerability (e.g., unauthorized fund withdrawal, oracle manipulation), please report it to us immediately.
 
 ### Reporting a Vulnerability
 Please reach out to the core team directly before disclosing any vulnerability publicly. See the main repository for contact information.
