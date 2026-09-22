@@ -82,12 +82,12 @@ fn test_successful_payout_with_subsidy() {
     assert_eq!(policy.payout_amount, 2000);
 
     // 6. Submit damage reports (Combined Oracle + AI Consensus)
-    client.submit_weather_report(&oracle, &typhoon_id, &region, &100);
+    client.submit_weather_report(&oracle, &typhoon_id, &region, &100, &150);
     
     // Quorum is 2, so consensus is not reached yet
     assert_eq!(client.get_consensus_damage_percentage(&typhoon_id, &region), None);
 
-    client.submit_weather_report(&oracle2, &typhoon_id, &region, &100);
+    client.submit_weather_report(&oracle2, &typhoon_id, &region, &100, &150);
 
     // Quorum reached! Average damage = (100 + 100) / 2 = 100%
     assert_eq!(client.get_consensus_damage_percentage(&typhoon_id, &region), Some(100));
@@ -172,7 +172,7 @@ fn test_sliding_scale_damage_curve() {
     client.subscribe(&farmer, &farm_id, &region, &season, &200);
 
     // Report 30% damage -> matches 30% payout
-    client.submit_weather_report(&oracle, &typhoon_id, &region, &30);
+    client.submit_weather_report(&oracle, &typhoon_id, &region, &30, &90);
 
     // Claim payout
     client.claim_payout(&farmer, &farm_id, &season, &typhoon_id);
@@ -226,7 +226,7 @@ fn test_low_wind_speed_no_payout() {
     client.subscribe(&farmer, &farm_id, &region, &season, &200);
 
     // Report 0% damage (below threshold)
-    client.submit_weather_report(&oracle, &typhoon_id, &region, &0);
+    client.submit_weather_report(&oracle, &typhoon_id, &region, &0, &0);
 
     // Claim payout should fail with ThresholdNotMet (Contract error 6)
     client.claim_payout(&farmer, &farm_id, &season, &typhoon_id);
@@ -260,7 +260,7 @@ fn test_double_payout_prevention() {
     token_admin.mint(&farmer, &200);
     client.subscribe(&farmer, &farm_id, &region, &season, &200);
 
-    client.submit_weather_report(&oracle, &typhoon_id, &region, &100);
+    client.submit_weather_report(&oracle, &typhoon_id, &region, &100, &150);
 
     // First payout claim succeeds
     client.claim_payout(&farmer, &farm_id, &season, &typhoon_id);
@@ -298,11 +298,104 @@ fn test_mainnet_mode_strict_threshold() {
     client.subscribe(&farmer, &farm_id, &region, &season, &200);
 
     // Single authorized oracle submits 75% damage report
-    client.submit_weather_report(&oracle, &typhoon_id, &region, &75);
+    client.submit_weather_report(&oracle, &typhoon_id, &region, &75, &130);
 
     // Claim payout
     client.claim_payout(&farmer, &farm_id, &season, &typhoon_id);
 
     // 75% damage = 75% payout = 1500 tokens
     assert_eq!(token.balance(&farmer), 1500);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #7)")]
+fn test_invalid_damage_percentage_rejected() {
+    let (env, client, _admin, oracle, xlm_token, _token, _token_admin) = setup();
+    let typhoon_id = Symbol::new(&env, "SuperTyphoon");
+    let region = Symbol::new(&env, "Luzon");
+
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &true, &oracle);
+    env.mock_all_auths();
+
+    // damage_percentage > 100 must be rejected with InvalidAmount (#7)
+    client.submit_weather_report(&oracle, &typhoon_id, &region, &150, &200);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #1)")]
+fn test_consensus_cannot_be_overwritten() {
+    let (env, client, _admin, oracle, xlm_token, _token, _token_admin) = setup();
+    let typhoon_id = Symbol::new(&env, "TyphoonX");
+    let region = Symbol::new(&env, "Luzon");
+
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &true, &oracle);
+    env.mock_all_auths();
+
+    // First report establishes consensus
+    client.submit_weather_report(&oracle, &typhoon_id, &region, &80, &140);
+    assert_eq!(client.get_consensus_damage_percentage(&typhoon_id, &region), Some(80));
+
+    // Second report must fail with AlreadyInitialized (#1) to prevent consensus overwrite
+    client.submit_weather_report(&oracle, &typhoon_id, &region, &90, &160);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #7)")]
+fn test_invalid_parametric_bands_rejected() {
+    let (env, client, _admin, oracle, xlm_token, _token, _token_admin) = setup();
+    let region = Symbol::new(&env, "Luzon");
+
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &true, &oracle);
+    env.mock_all_auths();
+
+    let mut bands = soroban_sdk::Vec::new(&env);
+    bands.push_back(PayoutBand { min_wind_speed: 100, payout_percentage: 120 }); // Invalid > 100%
+
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.update_parametric_bands(&dummy_bytes, &dummy_sigs, &region, &bands);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #7)")]
+fn test_update_premium_rate_zero_rejected() {
+    let (env, client, _admin, oracle, xlm_token, _token, _token_admin) = setup();
+    let dao = Address::generate(&env);
+    let region = Symbol::new(&env, "Luzon");
+
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &true, &oracle);
+    env.mock_all_auths();
+
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.set_dao_address(&dummy_bytes, &dummy_sigs, &dao);
+
+    // Multiplier 0 must be rejected
+    client.update_premium_rate(&region, &0);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #8)")]
+fn test_microloan_insufficient_solvency_fails() {
+    let (env, client, _admin, oracle, xlm_token, _token, token_admin) = setup();
+    let farmer = Address::generate(&env);
+    let loan_id = Symbol::new(&env, "Loan1");
+
+    let dummy_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&dummy_keys, &1, &xlm_token, &1, &true, &oracle);
+    env.mock_all_auths();
+
+    let dummy_bytes = soroban_sdk::Bytes::new(&env);
+    let dummy_sigs = soroban_sdk::Vec::new(&env);
+    client.verify_farmer(&dummy_bytes, &dummy_sigs, &farmer, &true);
+
+    // Mint tokens to vault directly without depositing through reinsurance (contract has balance, but total_deposited = 0)
+    token_admin.mint(&client.address, &1000);
+
+    // Should fail with InsufficientLiquidity (#8) because pool deposit accounting is 0
+    client.originate_microloan(&farmer, &loan_id, &500, &85);
 }

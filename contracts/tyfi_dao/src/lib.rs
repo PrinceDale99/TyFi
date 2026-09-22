@@ -44,6 +44,7 @@ impl TyfiDaoContract {
         duration_ledgers: u64,
     ) -> u64 {
         creator.require_auth();
+        assert!(duration_ledgers > 0, "Duration must be greater than zero");
 
         let mut count: u64 = env.storage().instance().get(&DataKey::ProposalCount).unwrap_or(0);
         count += 1;
@@ -86,8 +87,6 @@ impl TyfiDaoContract {
             (voter.clone(),).into_val(&env),
         );
 
-        // Basic 1-Farmer-1-Vote hybrid weight addition could go here in a future update
-        // For now, pure stake weight based on LP shares.
         assert!(weight > 0, "No voting power");
 
         if support {
@@ -111,9 +110,6 @@ impl TyfiDaoContract {
         proposal.executed = true;
         env.storage().persistent().set(&DataKey::Proposal(proposal_id), &proposal);
 
-        // Here the DAO would execute specific parameters on the Vault.
-        // For Phase 3, this would involve invoking `update_premium_rate` or similar on `vault_id`.
-        
         log!(&env, "Proposal {} executed", proposal_id);
     }
 
@@ -123,5 +119,59 @@ impl TyfiDaoContract {
 
     pub fn get_proposal_count(env: Env) -> u64 {
         env.storage().instance().get(&DataKey::ProposalCount).unwrap_or(0)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use soroban_sdk::{testutils::Address as _, Address, Env, String, Symbol};
+
+    #[test]
+    fn test_dao_initialization_and_proposal_lifecycle() {
+        let env = Env::default();
+        let contract_id = env.register(TyfiDaoContract, ());
+        let client = TyfiDaoContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let vault = Address::generate(&env);
+        let creator = Address::generate(&env);
+
+        client.initialize(&admin, &vault);
+        assert_eq!(client.get_proposal_count(), 0);
+
+        env.mock_all_auths();
+
+        let desc = String::from_str(&env, "Update Luzon risk multiplier to 120%");
+        let action = Symbol::new(&env, "update_rate");
+        let prop_id = client.create_proposal(&creator, &desc, &action, &100);
+
+        assert_eq!(prop_id, 1);
+        assert_eq!(client.get_proposal_count(), 1);
+
+        let prop = client.get_proposal(&1);
+        assert_eq!(prop.creator, creator);
+        assert_eq!(prop.votes_for, 0);
+        assert_eq!(prop.votes_against, 0);
+        assert!(!prop.executed);
+    }
+
+    #[test]
+    #[should_panic(expected = "Duration must be greater than zero")]
+    fn test_zero_duration_proposal_rejected() {
+        let env = Env::default();
+        let contract_id = env.register(TyfiDaoContract, ());
+        let client = TyfiDaoContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let vault = Address::generate(&env);
+        let creator = Address::generate(&env);
+
+        client.initialize(&admin, &vault);
+        env.mock_all_auths();
+
+        let desc = String::from_str(&env, "Invalid proposal");
+        let action = Symbol::new(&env, "invalid");
+        client.create_proposal(&creator, &desc, &action, &0);
     }
 }
