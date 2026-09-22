@@ -16,7 +16,17 @@ fn test_explicit_auth_deposit_subsidy() {
     client.initialize(&dummy_keys, &2, &xlm_token, &2, &false, &oracle);
 
     let token_admin_client = token::StellarAssetClient::new(&env, &xlm_token);
-    token_admin_client.mint(&donor, &1000);
+    token_admin_client
+        .mock_auths(&[MockAuth {
+            address: &token_admin,
+            invoke: &MockAuthInvoke {
+                contract: &xlm_token,
+                fn_name: "mint",
+                args: (&donor, 1000i128).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .mint(&donor, &1000);
 
     // EXPLICIT AUTHENTICATION CHECK
     // This replaces mock_all_auths() to prove no malicious actor can steal funds.
@@ -27,7 +37,12 @@ fn test_explicit_auth_deposit_subsidy() {
                 contract: &client.address,
                 fn_name: "deposit_subsidy",
                 args: (&donor, 1000i128).into_val(&env),
-                sub_invokes: &[],
+                sub_invokes: &[MockAuthInvoke {
+                    contract: &xlm_token,
+                    fn_name: "transfer",
+                    args: (&donor, &client.address, 1000i128).into_val(&env),
+                    sub_invokes: &[],
+                }],
             },
         }])
         .deposit_subsidy(&donor, &1000);

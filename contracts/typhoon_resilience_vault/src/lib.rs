@@ -199,43 +199,6 @@ impl TyphoonVault {
         env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false)
     }
 
-    // --- Parametric Weather Trigger ---
-    pub fn verify_and_liquidate(
-        env: Env, 
-        proof: soroban_sdk::Bytes, 
-        _public_inputs: Vec<soroban_sdk::Val>, 
-        recipient: Address, 
-        amount: u128
-    ) -> Result<u128, Error> {
-        recipient.require_auth();
-
-        if proof.is_empty() {
-            return Err(Error::NotVerified);
-        }
-
-        bump_temporary(&env, &DataKey::TempTicket(recipient.clone()));
-
-        let current_time = env.ledger().timestamp();
-        let deposit_time = current_time.checked_sub(86400).unwrap_or(current_time);
-        let rate_scaled = 500_000;
-        
-        let payout = calculate_compound_yield(amount, rate_scaled, 365, current_time - deposit_time)?;
-        
-        let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
-        let client = token::Client::new(&env, &xlm_token_addr);
-        
-        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
-        let payout_i128 = payout as i128;
-        
-        total_deposited = total_deposited.checked_sub(payout_i128).ok_or(Error::Overflow)?;
-        if total_deposited < 0 { total_deposited = 0; }
-        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
-        
-        client.transfer(&env.current_contract_address(), &recipient, &payout_i128);
-
-        Ok(payout)
-    }
-
     // --- Governance & Admin Functions ---
 
     /// Set the active status of a weather oracle (Testnet consensus)
@@ -284,6 +247,9 @@ impl TyphoonVault {
     pub fn update_premium_rate(env: Env, region: Symbol, multiplier: u32) -> Result<(), Error> {
         let dao: Address = env.storage().instance().get(&DataKey::DaoAddress).ok_or(Error::Unauthorized)?;
         dao.require_auth();
+        if multiplier == 0 || multiplier > 1000 {
+            return Err(Error::InvalidAmount);
+        }
         env.storage().persistent().set(&DataKey::RiskZoneMultiplier(region), &multiplier);
         Ok(())
     }
@@ -476,6 +442,9 @@ impl TyphoonVault {
         }
         
         let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        if total_deposited < amount {
+            return Err(Error::InsufficientLiquidity);
+        }
         total_deposited = total_deposited.checked_sub(amount).ok_or(Error::Overflow)?;
         env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
         
@@ -571,7 +540,10 @@ impl TyphoonVault {
         };
 
         // Apply Risk Zone Multiplier if exists
-        let risk_multiplier: u32 = env.storage().persistent().get(&DataKey::RiskZoneMultiplier(region.clone())).unwrap_or(100);
+        let mut risk_multiplier: u32 = env.storage().persistent().get(&DataKey::RiskZoneMultiplier(region.clone())).unwrap_or(100);
+        if risk_multiplier == 0 {
+            risk_multiplier = 100;
+        }
         let adjusted_premium = (premium * risk_multiplier as i128) / 100;
         let adjusted_farmer_to_pay = (farmer_to_pay * risk_multiplier as i128) / 100;
 
@@ -627,6 +599,15 @@ impl TyphoonVault {
     /// Oracles submit damage estimation reports (Combined Oracle + AI) for a typhoon in a region, along with raw wind speed
     pub fn submit_weather_report(env: Env, oracle: Address, typhoon_id: Symbol, region: Symbol, damage_percentage: u32, wind_speed: u32) -> Result<(), Error> {
         oracle.require_auth();
+
+        if damage_percentage > 100 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let already_reached = env.storage().persistent().get(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone())).unwrap_or(false);
+        if already_reached {
+            return Err(Error::AlreadyInitialized);
+        }
         
         let is_mainnet = env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false);
         
@@ -719,7 +700,7 @@ impl TyphoonVault {
         
         let damage_percentage: u32 = env.storage().persistent().get(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), policy.region.clone())).unwrap_or(0);
         
-        let mut payout_percentage = damage_percentage; // Fallback to damage percentage if no bands
+        let mut payout_percentage = damage_percentage.min(100); // Fallback to clamped damage percentage if no bands
         
         // Advanced: Use Parametric Bands if available for this region
         if let Some(bands) = env.storage().persistent().get::<_, Vec<PayoutBand>>(&DataKey::ParametricBands(policy.region.clone())) {
@@ -728,7 +709,7 @@ impl TyphoonVault {
             payout_percentage = 0;
             for band in bands.iter() {
                 if wind_speed >= band.min_wind_speed && band.payout_percentage > payout_percentage {
-                    payout_percentage = band.payout_percentage;
+                    payout_percentage = band.payout_percentage.min(100);
                 }
             }
         }
@@ -768,11 +749,46 @@ impl TyphoonVault {
         Ok(payout_amount)
     }
 
-    // --- Getters removed to save space ---
+    // --- Getters ---
+
+    /// Get all farms registered for a farmer
+    pub fn get_farmer_farms(env: Env, farmer: Address) -> Vec<Symbol> {
+        env.storage().persistent().get(&DataKey::FarmList(farmer)).unwrap_or(Vec::new(&env))
+    }
+
+    /// Get details of a policy for a specific farm and season
+    pub fn get_farm_policy(env: Env, farmer: Address, farm_id: Symbol, season: Symbol) -> Option<Policy> {
+        env.storage().persistent().get(&DataKey::Policy(farmer, farm_id, season))
+    }
+
+    /// Get weather report submitted by specific oracle
+    pub fn get_weather_report(env: Env, typhoon_id: Symbol, region: Symbol, oracle: Address) -> u32 {
+        env.storage().persistent().get(&DataKey::Report(typhoon_id, region, oracle)).unwrap_or(0)
+    }
+
+    /// Get consensus damage percentage if consensus is reached
+    pub fn get_consensus_damage_percentage(env: Env, typhoon_id: Symbol, region: Symbol) -> Option<u32> {
+        let reached = env.storage().persistent().get(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone())).unwrap_or(false);
+        if reached {
+            Some(env.storage().persistent().get(&DataKey::ConsensusDamagePercentage(typhoon_id, region)).unwrap_or(0))
+        } else {
+            None
+        }
+    }
+
+    /// Get whether farmer is RSBSA verified
+    pub fn is_farmer_verified(env: Env, farmer: Address) -> bool {
+        env.storage().persistent().get(&DataKey::Verified(farmer)).unwrap_or(false)
+    }
 
     /// Admin Multi-sig: Update parametric payout bands for a region
     pub fn update_parametric_bands(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, region: Symbol, bands: Vec<PayoutBand>) -> Result<(), Error> {
         require_multisig_auth(&env, payload, signatures)?;
+        for band in bands.iter() {
+            if band.payout_percentage > 100 {
+                return Err(Error::InvalidAmount);
+            }
+        }
         env.storage().persistent().set(&DataKey::ParametricBands(region.clone()), &bands);
         bump_persistent(&env, &DataKey::ParametricBands(region.clone()));
         Ok(())

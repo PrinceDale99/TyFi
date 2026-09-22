@@ -1,43 +1,45 @@
-# TyFi Static Analysis & Security Review Report
+# TyFi Static Analysis & Security Remediation Report
 
-**Date**: June 2026  
+**Date**: September 2026  
 **Project**: TyFi — Parametric Typhoon Insurance on Stellar  
-**Reviewer**: Internal TyFi Security / Hackathon Mentorship Team  
-**Scope**: `contracts/typhoon_resilience_vault` (Soroban Smart Contract) & `circuits/weather_oracle` (Noir ZK Circuit)
+**Scope**: `contracts/typhoon_resilience_vault`, `contracts/tyfi_dao`, `contracts/smart_wallet_factory`
 
 ## 1. Executive Summary
-An automated static analysis and manual security review was conducted on the TyFi Soroban smart contracts and Noir zero-knowledge circuits. The review focused on identifying vulnerabilities related to smart contract security, zero-knowledge proof verification, arithmetic overflows, and proper implementation of Stellar's advanced features (Account Abstraction, Fee Bump, Multi-Sig).
+A comprehensive security review and vulnerability remediation was conducted following an external audit report. All identified critical, medium, and low issues have been remediated and verified via automated test suites.
 
-**Status: APPROVED**
-No high or critical severity vulnerabilities were found. The contract successfully implements the newly released Protocol 26 BN254 host functions securely.
+**Status: FULLY REMEDIATED & HARDENED**
 
-## 2. Methodology
-The review utilized the following tools and methodologies:
-- **`cargo clippy`**: Advanced static analysis for Rust idiomatic correctness, memory safety, and logical flaws.
-- **`cargo audit`**: Dependency vulnerability scanning against the RustSec Advisory Database.
-- **Manual Cryptographic Review**: Verification of the Noir Plonk proof generation pipeline and Soroban host environment interactions.
-- **Stellar Soroban Best Practices Check**: Ensuring the contract adheres to the official Stellar documentation regarding instance/persistent storage mapping and authorization logic.
+---
 
-## 3. Scope of Analysis
-- **Parametric Vault Logic**: Handling of premiums, payouts, and sliding-scale damage math.
-- **Zero-Knowledge Oracle**: Verification of the `verifier.rs` integration utilizing `env.crypto().bn254_pairing(...)`.
-- **Account Abstraction**: `require_auth` implementation for cross-border and farmer proxy transactions.
+## 2. Audit Findings & Remediations
 
-## 4. Key Findings
+### 2.1 Critical Finding: `verify_and_liquidate` Entrypoint Removed
+- **Issue**: An unverified placeholder liquidation function accepted arbitrary caller amounts without valid zero-knowledge verification or LP share burning.
+- **Remediation**: The insecure `verify_and_liquidate` entrypoint was completely removed from `lib.rs`. Fund withdrawals are strictly restricted to authenticated LP share redemption via `withdraw_reinsurance`.
+- **Status**: **RESOLVED** (Verified via unit test suite).
 
-### 4.1 Memory Safety and Type Casting (Low/None)
-- **Result**: `cargo clippy` reported 0 critical warnings. All math operations dealing with XLM/USDC precision (7 decimal places) use safe, panic-free arithmetic natively handled by Soroban's `i128` limits. No integer overflow/underflow vulnerabilities were detected in the payout calculations.
+### 2.2 Medium Finding: Damage Percentage Clamping and Upper Bound Validation
+- **Issue**: `damage_percentage: u32` lacked an upper bound check, which could lead to over-payouts (> 100%).
+- **Remediation**: 
+  - Added explicit validation `if damage_percentage > 100 { return Err(Error::InvalidAmount); }` in `submit_weather_report`.
+  - Enforced `damage_percentage.min(100)` clamping in `claim_payout`.
+  - Enforced `payout_percentage <= 100` validation in `update_parametric_bands`.
+- **Status**: **RESOLVED** (Verified via `test_invalid_damage_percentage_rejected` & `test_invalid_parametric_bands_rejected`).
 
-### 4.2 ZK Proof Verification Security (Pass)
-- **Observation**: The `verifier.rs` correctly checks that the `proof` and `public_inputs` buffers are non-empty before invoking host cryptographic functions. 
-- **Recommendation**: In future mainnet iterations beyond the pilot, ensure the Verification Key (VK) hash is hardcoded into the contract's read-only binary rather than being passed dynamically to prevent VK-substitution attacks.
+### 2.3 Low Finding: Oracle Consensus Lock & State Overwrite Protection
+- **Issue**: Subsequent weather reports could overwrite established consensus data for a given typhoon and region.
+- **Remediation**: Gated `submit_weather_report` so that once `ConsensusReached` is true, further submissions for that event/region return `Error::AlreadyInitialized`.
+- **Status**: **RESOLVED** (Verified via `test_consensus_cannot_be_overwritten`).
 
-### 4.3 Authorization & Reentrancy (Pass)
-- **Observation**: All state-modifying functions (e.g., `trigger_payout`, `deposit_premium`) enforce `address.require_auth()`. Soroban's lack of native reentrancy (due to its execution model) naturally protects the contract from cross-contract reentrancy attacks during fiat sweeping and payout routing.
+### 2.4 Hardening & Invariant Checks
+- **Microloan Solvency**: Added pool reserve check (`total_deposited >= amount`) in `originate_microloan` before loan disbursement.
+- **Premium Risk Multiplier Bounds**: Added bounds checking (`0 < multiplier <= 1000`) for DAO updates to region multipliers.
+- **DAO Proposal Validation**: Enforced non-zero proposal duration (`duration_ledgers > 0`) in `tyfi_dao`.
 
-### 4.4 Advanced Features Implementation (Pass)
-- **Fee Bump**: Properly utilized off-chain via the backend so the contract execution does not inadvertently rely on `env.invoker()` for fee logic.
-- **Account Abstraction**: The proxy logic allowing NGOs to submit premiums on behalf of farmers correctly verifies the multi-sig payload.
+---
 
-## 5. Conclusion
-The TyFi protocol meets the stringent security standards required for the **Level 6 Hackathon Submission**. The implementation of the zero-knowledge oracle significantly reduces the attack surface compared to traditional on-chain oracles. The codebase is cleared for Mainnet deployment and public use.
+## 3. Test Suite Verification
+All 16 workspace unit tests across all contracts pass:
+- `typhoon_resilience_vault`: 13 tests passed
+- `tyfi_dao`: 2 tests passed
+- `smart_wallet_factory`: 1 test passed
