@@ -1,7 +1,7 @@
 const { Keypair } = require('@stellar/stellar-sdk');
 const { execSync } = require('child_process');
 
-const TARGET = 'CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH';
+const TARGET = 'CAQWBSIJK2R2DSRCOVQDN2CC3A7IW3T5LWDJAK4QWTLNUJC4OL5IJUAM';
 const TOKEN_ID = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC'; // testnet native XLM
 
 async function fundAndTransfer() {

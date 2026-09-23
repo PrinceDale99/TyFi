@@ -28,7 +28,6 @@
     ],
     [],
     [],
-    [],
     [
       [
         "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
@@ -42,7 +41,7 @@
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
                 },
                 {
-                  "i128": "5000"
+                  "i128": "100000"
                 }
               ]
             }
@@ -64,7 +63,7 @@
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
                 },
                 {
-                  "i128": "5000"
+                  "i128": "100000"
                 }
               ]
             }
@@ -83,7 +82,7 @@
                       "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
                     },
                     {
-                      "i128": "5000"
+                      "i128": "100000"
                     }
                   ]
                 }
@@ -91,28 +90,6 @@
               "sub_invocations": []
             }
           ]
-        }
-      ]
-    ],
-    [
-      [
-        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
-        {
-          "function": {
-            "contract_fn": {
-              "contract_address": "CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN",
-              "function_name": "mint",
-              "args": [
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
-                },
-                {
-                  "i128": "200"
-                }
-              ]
-            }
-          },
-          "sub_invocations": []
         }
       ]
     ],
@@ -123,102 +100,19 @@
           "function": {
             "contract_fn": {
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "function_name": "subscribe",
+              "function_name": "originate_microloan",
               "args": [
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
                 },
                 {
-                  "symbol": "Farm2"
+                  "symbol": "L0"
                 },
                 {
-                  "symbol": "Visayas"
-                },
-                {
-                  "symbol": "Wet2026"
-                },
-                {
-                  "i128": "200"
-                }
-              ]
-            }
-          },
-          "sub_invocations": [
-            {
-              "function": {
-                "contract_fn": {
-                  "contract_address": "CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN",
-                  "function_name": "transfer",
-                  "args": [
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
-                    },
-                    {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"
-                    },
-                    {
-                      "i128": "200"
-                    }
-                  ]
-                }
-              },
-              "sub_invocations": []
-            }
-          ]
-        }
-      ]
-    ],
-    [
-      [
-        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
-        {
-          "function": {
-            "contract_fn": {
-              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "function_name": "submit_weather_report",
-              "args": [
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                },
-                {
-                  "symbol": "Odette"
-                },
-                {
-                  "symbol": "Visayas"
-                },
-                {
-                  "u32": 30
+                  "i128": "5000"
                 },
                 {
                   "u32": 90
-                }
-              ]
-            }
-          },
-          "sub_invocations": []
-        }
-      ]
-    ],
-    [
-      [
-        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM",
-        {
-          "function": {
-            "contract_fn": {
-              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "function_name": "claim_payout",
-              "args": [
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
-                },
-                {
-                  "symbol": "Farm2"
-                },
-                {
-                  "symbol": "Wet2026"
-                },
-                {
-                  "symbol": "Odette"
                 }
               ]
             }
@@ -290,67 +184,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "ConsensusDamagePercentage"
-                  },
-                  {
-                    "symbol": "Odette"
-                  },
-                  {
-                    "symbol": "Visayas"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "u32": 30
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "ConsensusReached"
-                  },
-                  {
-                    "symbol": "Odette"
-                  },
-                  {
-                    "symbol": "Visayas"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "bool": true
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "FarmList"
+                    "symbol": "FarmerOutstandingPrincipal"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
@@ -359,11 +193,7 @@
               },
               "durability": "persistent",
               "val": {
-                "vec": [
-                  {
-                    "symbol": "Farm2"
-                  }
-                ]
+                "i128": "5000"
               }
             }
           },
@@ -390,7 +220,7 @@
               },
               "durability": "persistent",
               "val": {
-                "i128": "5000"
+                "i128": "100000"
               }
             }
           },
@@ -408,73 +238,13 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Oracle"
-                  },
-                  {
-                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "bool": true
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "OracleWindSpeed"
-                  },
-                  {
-                    "symbol": "Odette"
-                  },
-                  {
-                    "symbol": "Visayas"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "u32": 90
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 3456000
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "Policy"
+                    "symbol": "MicroLoan"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
                   },
                   {
-                    "symbol": "Farm2"
-                  },
-                  {
-                    "symbol": "Wet2026"
+                    "symbol": "L0"
                   }
                 ]
               },
@@ -483,10 +253,18 @@
                 "map": [
                   {
                     "key": {
-                      "symbol": "farm_id"
+                      "symbol": "amount"
                     },
                     "val": {
-                      "symbol": "Farm2"
+                      "i128": "5000"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "farmer"
+                    },
+                    "val": {
+                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
                     }
                   },
                   {
@@ -494,107 +272,24 @@
                       "symbol": "is_active"
                     },
                     "val": {
-                      "bool": false
+                      "bool": true
                     }
                   },
                   {
                     "key": {
-                      "symbol": "payout_amount"
+                      "symbol": "repaid"
                     },
                     "val": {
-                      "i128": "2000"
+                      "i128": "0"
                     }
                   },
                   {
                     "key": {
-                      "symbol": "premium"
+                      "symbol": "yield_prediction"
                     },
                     "val": {
-                      "i128": "200"
+                      "u32": 90
                     }
-                  },
-                  {
-                    "key": {
-                      "symbol": "region"
-                    },
-                    "val": {
-                      "symbol": "Visayas"
-                    }
-                  },
-                  {
-                    "key": {
-                      "symbol": "season"
-                    },
-                    "val": {
-                      "symbol": "Wet2026"
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "Report"
-                  },
-                  {
-                    "symbol": "Odette"
-                  },
-                  {
-                    "symbol": "Visayas"
-                  },
-                  {
-                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "u32": 30
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "ReportedOracles"
-                  },
-                  {
-                    "symbol": "Odette"
-                  },
-                  {
-                    "symbol": "Visayas"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "vec": [
-                  {
-                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                   }
                 ]
               }
@@ -744,7 +439,7 @@
                         ]
                       },
                       "val": {
-                        "i128": "4600"
+                        "i128": "95000"
                       }
                     },
                     {
@@ -756,7 +451,7 @@
                         ]
                       },
                       "val": {
-                        "i128": "5000"
+                        "i128": "100000"
                       }
                     },
                     {
@@ -779,46 +474,6 @@
           "ext": "v0"
         },
         "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
-              "key": {
-                "ledger_key_nonce": {
-                  "nonce": "4270020994084947596"
-                }
-              },
-              "durability": "temporary",
-              "val": "void"
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 6311999
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
-              "key": {
-                "ledger_key_nonce": {
-                  "nonce": "4837995959683129791"
-                }
-              },
-              "durability": "temporary",
-              "val": "void"
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 6311999
       },
       {
         "entry": {
@@ -849,27 +504,7 @@
               "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM",
               "key": {
                 "ledger_key_nonce": {
-                  "nonce": "2032731177588607455"
-                }
-              },
-              "durability": "temporary",
-              "val": "void"
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 6311999
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM",
-              "key": {
-                "ledger_key_nonce": {
-                  "nonce": "8370022561469687789"
+                  "nonce": "4837995959683129791"
                 }
               },
               "durability": "temporary",
@@ -925,7 +560,7 @@
                       "symbol": "amount"
                     },
                     "val": {
-                      "i128": "4600"
+                      "i128": "95000"
                     }
                   },
                   {
@@ -977,7 +612,7 @@
                       "symbol": "amount"
                     },
                     "val": {
-                      "i128": "600"
+                      "i128": "5000"
                     }
                   },
                   {

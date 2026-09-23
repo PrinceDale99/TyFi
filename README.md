@@ -312,8 +312,8 @@ An automated static analysis and manual security review was conducted. **No high
 ### 📡 Testnet
 | | |
 |---|---|
-| **Contract Address** | `CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH` |
-| **Explorer** | [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH) |
+| **Contract Address** | `CAQWBSIJK2R2DSRCOVQDN2CC3A7IW3T5LWDJAK4QWTLNUJC4OL5IJUAM` |
+| **Explorer** | [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CAQWBSIJK2R2DSRCOVQDN2CC3A7IW3T5LWDJAK4QWTLNUJC4OL5IJUAM) |
 
 <img src="public/TESTNET2.png" alt="Testnet Screenshot" width="100%"/>
 

@@ -15,6 +15,11 @@ soroban-sdk = "27.0.0-rc.1"
 [dev-dependencies]
 soroban-sdk = { version = "27.0.0-rc.1", features = ["testutils"] }
 derive_arbitrary = "=1.3.2"
+# Used by integration tests (tests/) to produce real ed25519 signatures
+# over the contract's canonical signed-message format without any mocking.
+ed25519-dalek = { version = "2", default-features = false, features = ["rand_core"] }
+sha2 = { version = "0.10", default-features = false }
+rand = { version = "0.8", features = ["std"] }
 
 [profile.release]
 opt-level = "z"

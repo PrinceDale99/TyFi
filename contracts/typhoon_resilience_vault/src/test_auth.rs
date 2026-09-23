@@ -1,6 +1,13 @@
 use super::*;
 use soroban_sdk::{testutils::{Address as _, MockAuth, MockAuthInvoke}, Address, Env, IntoVal, token};
 
+/// Verifies that `deposit_subsidy` enforces the donor's `require_auth()` call —
+/// i.e. only the donor themselves can trigger the deposit.
+///
+/// This test uses explicit MockAuth rather than mock_all_auths() to prove that
+/// no other caller can front-run the deposit.  It is intentionally narrow:
+/// it tests Soroban's native require_auth on the deposit path, not the admin
+/// multisig (which has its own integration tests in tests/).
 #[test]
 fn test_explicit_auth_deposit_subsidy() {
     let env = Env::default();
@@ -12,8 +19,8 @@ fn test_explicit_auth_deposit_subsidy() {
     let xlm_token = env.register_stellar_asset_contract(token_admin.clone());
     let oracle = Address::generate(&env);
 
-    let dummy_keys = soroban_sdk::Vec::new(&env);
-    client.initialize(&dummy_keys, &2, &xlm_token, &2, &false, &oracle);
+    let empty_keys = soroban_sdk::Vec::new(&env);
+    client.initialize(&empty_keys, &1, &xlm_token, &1, &false, &oracle);
 
     let token_admin_client = token::StellarAssetClient::new(&env, &xlm_token);
     token_admin_client

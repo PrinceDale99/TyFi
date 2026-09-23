@@ -19,6 +19,7 @@ pub enum Error {
     Overflow = 10,
     InsufficientSignatures = 11,
     NoParametricBands = 12,
+    LoanCapExceeded = 13,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -34,25 +35,27 @@ pub enum DataKey {
     PersistentPool(Address),            // Institutional persistent pool metrics
     TempTicket(Address),                // Short-lived temporary consumer allocation tickets
     AdminMultisig,                      // Institutional Governance multisig
-    XlmToken,                   // Stellar native asset (XLM) contract address
-    QuorumThreshold,            // Quorum threshold (u32)
-    Oracle(Address),            // Oracle authorization status
-    SingleOracle,               // Mainnet single authorized oracle address
-    IsMainnetMode,              // Boolean indicator for Mainnet production mode
-    Verified(Address),          // Farmer RSBSA verification status
-    SubsidyBalance,             // Donor premium subsidy pool balance (i128)
-    TotalReinsuranceShares,     // Total reinsurance shares issued (i128)
-    TotalReinsuranceDeposited,  // Total reinsurance XLM deposited (i128)
-    LpShares(Address),          // Reinsurance shares balance of an LP (i128)
-    Policy(Address, Symbol, Symbol), // Policy details: (farmer, farm_id, season) -> Policy
-    FarmList(Address),          // List of farm IDs for a farmer
-    Report(Symbol, Symbol, Address), // Damage report: (typhoon_id, region, oracle) -> damage_percentage (u32)
-    ReportedOracles(Symbol, Symbol), // List of oracles that have reported: (typhoon_id, region) -> Vec<Address>
+    AdminNonce,                         // Monotonic nonce for admin multisig replay protection (u64)
+    XlmToken,                           // Stellar native asset (XLM) contract address
+    QuorumThreshold,                    // Quorum threshold (u32)
+    Oracle(Address),                    // Oracle authorization status
+    SingleOracle,                       // Mainnet single authorized oracle address
+    IsMainnetMode,                      // Boolean indicator for Mainnet production mode
+    Verified(Address),                  // Farmer RSBSA verification status
+    SubsidyBalance,                     // Donor premium subsidy pool balance (i128)
+    TotalReinsuranceShares,             // Total reinsurance shares issued (i128)
+    TotalReinsuranceDeposited,          // Total reinsurance XLM deposited (i128)
+    LpShares(Address),                  // Reinsurance shares balance of an LP (i128)
+    Policy(Address, Symbol, Symbol),    // Policy details: (farmer, farm_id, season) -> Policy
+    FarmList(Address),                  // List of farm IDs for a farmer
+    Report(Symbol, Symbol, Address),    // Damage report: (typhoon_id, region, oracle) -> damage_percentage (u32)
+    ReportedOracles(Symbol, Symbol),    // List of oracles that have reported: (typhoon_id, region) -> Vec<Address>
     ConsensusDamagePercentage(Symbol, Symbol), // Calculated consensus damage percentage: (typhoon_id, region) -> u32
     ConsensusReached(Symbol, Symbol),   // Whether consensus is reached: (typhoon_id, region) -> bool
     DaoAddress,                         // Address of the DAO contract
     RiskZoneMultiplier(Symbol),         // Premium multiplier per zone (region) -> u32
     MicroLoan(Address, Symbol),         // Microloan details: (farmer, loan_id) -> MicroLoan
+    FarmerOutstandingPrincipal(Address),// Total unrepaid loan principal per farmer (i128)
     ParametricBands(Symbol),            // region -> Vec<PayoutBand>
     OracleWindSpeed(Symbol, Symbol),    // Raw wind speed reported by Oracle: (typhoon_id, region) -> u32
 }
@@ -91,25 +94,79 @@ const PERSISTENT_TTL_EXTEND: u32 = 3_456_000;    // ~200 days
 const TEMP_TTL_THRESHOLD: u32 = 172_800;         // ~10 days
 const TEMP_TTL_EXTEND: u32 = 345_600;            // ~20 days
 
+/// Maximum per-farmer outstanding loan principal as a fraction of pool (20% = 2000 bps)
+const MAX_FARMER_LOAN_BPS: i128 = 2_000;
+
 pub fn bump_persistent(env: &Env, key: &DataKey) {
     env.storage().persistent().extend_ttl(key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND);
 }
 
-#[cfg(test)]
-pub fn require_multisig_auth(_env: &Env, _payload: Bytes, _signatures: Vec<(BytesN<32>, BytesN<64>)>) -> Result<(), Error> {
-    Ok(())
+pub fn bump_temporary(env: &Env, key: &DataKey) {
+    env.storage().temporary().extend_ttl(key, TEMP_TTL_THRESHOLD, TEMP_TTL_EXTEND);
 }
 
-#[cfg(not(test))]
-pub fn require_multisig_auth(env: &Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>) -> Result<(), Error> {
-    let multisig: AdminMultisig = env.storage().instance().get(&DataKey::AdminMultisig).ok_or(Error::NotInitialized)?;
-    
-    let mut verified_count = 0;
-    let payload_bytes: BytesN<32> = env.crypto().sha256(&payload).into();
-    
+/// Require a valid admin multisig authorization for the given function.
+///
+/// # Security properties
+///
+/// **Message binding** — the contract constructs the signed message itself:
+///   `sha256( nonce_be_8_bytes || fn_name_bytes )`
+/// The caller supplies only the signatures. `fn_name_bytes` is a static byte
+/// literal embedded at each call site, so a signature produced for one admin
+/// function cannot be replayed into a different one.
+///
+/// **Replay protection** — `AdminNonce` is a monotonically increasing u64
+/// stored in instance storage. It is incremented after every successful auth
+/// call, so each (nonce, fn_name) combination is valid exactly once.
+///
+/// **Signer deduplication** — the function maintains a `seen_keys` list and
+/// skips any public key that has already been counted in this invocation,
+/// preventing a single key from inflating the verified count.
+pub fn require_multisig_auth(
+    env: &Env,
+    fn_name_bytes: &[u8],
+    signatures: Vec<(BytesN<32>, BytesN<64>)>,
+) -> Result<(), Error> {
+    let multisig: AdminMultisig = env
+        .storage()
+        .instance()
+        .get(&DataKey::AdminMultisig)
+        .ok_or(Error::NotInitialized)?;
+
+    // Read the current nonce. Every successful call increments it, so each
+    // (nonce, fn_name) pair is valid for exactly one invocation.
+    let nonce: u64 = env
+        .storage()
+        .instance()
+        .get(&DataKey::AdminNonce)
+        .unwrap_or(0u64);
+
+    // Construct the expected message: nonce (8 bytes BE) || fn_name
+    let nonce_bytes: [u8; 8] = nonce.to_be_bytes();
+    let mut msg = Bytes::from_slice(env, &nonce_bytes);
+    msg.append(&Bytes::from_slice(env, fn_name_bytes));
+    let msg_hash: BytesN<32> = env.crypto().sha256(&msg).into();
+
+    // Verify signatures, deduplicating by public key.
+    let mut seen_keys: Vec<BytesN<32>> = Vec::new(env);
+    let mut verified_count: u32 = 0;
+
     for i in 0..signatures.len() {
         let (pub_key, sig) = signatures.get(i).unwrap();
-        
+
+        // --- Deduplication: skip keys we have already counted ---
+        let mut already_seen = false;
+        for j in 0..seen_keys.len() {
+            if seen_keys.get(j).unwrap() == pub_key {
+                already_seen = true;
+                break;
+            }
+        }
+        if already_seen {
+            continue;
+        }
+
+        // --- Authorization: verify the key is a registered admin key ---
         let mut is_authorized = false;
         for j in 0..multisig.keys.len() {
             if multisig.keys.get(j).unwrap() == pub_key {
@@ -117,9 +174,11 @@ pub fn require_multisig_auth(env: &Env, payload: Bytes, signatures: Vec<(BytesN<
                 break;
             }
         }
-        
+
         if is_authorized {
-            env.crypto().ed25519_verify(&pub_key, &payload_bytes.clone().into(), &sig);
+            // ed25519_verify panics on failure, which aborts the transaction.
+            env.crypto().ed25519_verify(&pub_key, &msg_hash.clone().into(), &sig);
+            seen_keys.push_back(pub_key);
             verified_count += 1;
         }
     }
@@ -128,30 +187,40 @@ pub fn require_multisig_auth(env: &Env, payload: Bytes, signatures: Vec<(BytesN<
         return Err(Error::InsufficientSignatures);
     }
 
+    // Advance the nonce so these signatures cannot be replayed.
+    env.storage()
+        .instance()
+        .set(&DataKey::AdminNonce, &(nonce + 1));
+
     Ok(())
 }
 
-pub fn bump_temporary(env: &Env, key: &DataKey) {
-    env.storage().temporary().extend_ttl(key, TEMP_TTL_THRESHOLD, TEMP_TTL_EXTEND);
+/// Returns the current admin nonce. Callers use this to construct the
+/// message they must sign: `sha256(nonce_be_8_bytes || fn_name_bytes)`.
+pub fn get_admin_nonce(env: &Env) -> u64 {
+    env.storage()
+        .instance()
+        .get(&DataKey::AdminNonce)
+        .unwrap_or(0u64)
 }
 
 pub fn calculate_compound_yield(
-    principal: u128, 
-    rate_scaled: u128, 
-    compounds_per_year: u128, 
+    principal: u128,
+    rate_scaled: u128,
+    compounds_per_year: u128,
     elapsed_seconds: u64
 ) -> Result<u128, Error> {
     let t_years_scaled = (elapsed_seconds as u128 * SCALE) / 31_536_000;
     let nt = (compounds_per_year * t_years_scaled) / SCALE;
-    
+
     let mut amount = principal;
     let r_over_n = rate_scaled / compounds_per_year;
-    
+
     for _ in 0..nt {
         let interest = (amount * r_over_n) / SCALE;
         amount = amount.checked_add(interest).ok_or(Error::Overflow)?;
     }
-    
+
     Ok(amount)
 }
 
@@ -162,10 +231,10 @@ pub struct TyphoonVault;
 impl TyphoonVault {
     /// Initialize the contract with admin, token address, oracle parameters, and mainnet/testnet flag
     pub fn initialize(
-        env: Env, 
+        env: Env,
         admin_keys: Vec<BytesN<32>>,
         admin_threshold: u32,
-        xlm_token: Address, 
+        xlm_token: Address,
         quorum: u32,
         is_mainnet_mode: bool,
         single_oracle: Address
@@ -173,18 +242,19 @@ impl TyphoonVault {
         if env.storage().instance().has(&DataKey::AdminMultisig) {
             return Err(Error::AlreadyInitialized);
         }
-        
+
         let multisig = AdminMultisig { keys: admin_keys, threshold: admin_threshold };
         env.storage().instance().set(&DataKey::AdminMultisig, &multisig);
+        env.storage().instance().set(&DataKey::AdminNonce, &0u64);
         env.storage().instance().set(&DataKey::XlmToken, &xlm_token);
         env.storage().instance().set(&DataKey::QuorumThreshold, &quorum);
         env.storage().instance().set(&DataKey::IsMainnetMode, &is_mainnet_mode);
         env.storage().instance().set(&DataKey::SingleOracle, &single_oracle);
-        
+
         env.storage().instance().set(&DataKey::SubsidyBalance, &0i128);
         env.storage().instance().set(&DataKey::TotalReinsuranceShares, &0i128);
         env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &0i128);
-        
+
         log!(&env, "Initialized vault. Mainnet mode:", is_mainnet_mode);
         Ok(())
     }
@@ -199,47 +269,79 @@ impl TyphoonVault {
         env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false)
     }
 
+    /// Returns the current admin nonce. Off-chain signers call this to learn
+    /// which nonce to include in the message they sign.
+    pub fn admin_nonce(env: Env) -> u64 {
+        get_admin_nonce(&env)
+    }
+
     // --- Governance & Admin Functions ---
 
     /// Set the active status of a weather oracle (Testnet consensus)
-    pub fn set_oracle(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, oracle: Address, is_active: bool) -> Result<(), Error> {
-        require_multisig_auth(&env, payload, signatures)?;
-        
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"set_oracle" )`
+    /// where `nonce` is the value returned by `admin_nonce()`.
+    pub fn set_oracle(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, oracle: Address, is_active: bool) -> Result<(), Error> {
+        require_multisig_auth(&env, b"set_oracle", signatures)?;
+
         env.storage().persistent().set(&DataKey::Oracle(oracle.clone()), &is_active);
         log!(&env, "Oracle status updated", oracle, is_active);
         Ok(())
     }
 
     /// Set the single authorized oracle (Mainnet mode)
-    pub fn set_single_oracle(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, single_oracle: Address) -> Result<(), Error> {
-        require_multisig_auth(&env, payload, signatures)?;
-        
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"set_single_oracle" )`
+    pub fn set_single_oracle(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, single_oracle: Address) -> Result<(), Error> {
+        require_multisig_auth(&env, b"set_single_oracle", signatures)?;
+
         env.storage().instance().set(&DataKey::SingleOracle, &single_oracle);
         log!(&env, "Single oracle updated for mainnet", single_oracle);
         Ok(())
     }
 
     /// Official KYC/RSBSA Verification of farmers
-    pub fn verify_farmer(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, farmer: Address, is_verified: bool) -> Result<(), Error> {
-        require_multisig_auth(&env, payload, signatures)?;
-        
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"verify_farmer" )`
+    pub fn verify_farmer(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, farmer: Address, is_verified: bool) -> Result<(), Error> {
+        require_multisig_auth(&env, b"verify_farmer", signatures)?;
+
         env.storage().persistent().set(&DataKey::Verified(farmer.clone()), &is_verified);
         log!(&env, "Farmer verification status set", farmer, is_verified);
         Ok(())
     }
 
     /// Set the consensus quorum threshold
-    pub fn set_quorum_threshold(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, threshold: u32) -> Result<(), Error> {
-        require_multisig_auth(&env, payload, signatures)?;
-        
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"set_quorum_threshold" )`
+    pub fn set_quorum_threshold(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, threshold: u32) -> Result<(), Error> {
+        require_multisig_auth(&env, b"set_quorum_threshold", signatures)?;
+
         env.storage().instance().set(&DataKey::QuorumThreshold, &threshold);
         Ok(())
     }
 
     /// Set the DAO Address (Admin transition)
-    pub fn set_dao_address(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, dao: Address) -> Result<(), Error> {
-        require_multisig_auth(&env, payload, signatures)?;
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"set_dao_address" )`
+    pub fn set_dao_address(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, dao: Address) -> Result<(), Error> {
+        require_multisig_auth(&env, b"set_dao_address", signatures)?;
         env.storage().instance().set(&DataKey::DaoAddress, &dao);
+        Ok(())
+    }
+
+    /// Upgrade the contract WASM bytecode (Admin multisig authorized)
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"upgrade" )`
+    pub fn upgrade(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, new_wasm_hash: BytesN<32>) -> Result<(), Error> {
+        require_multisig_auth(&env, b"upgrade", signatures)?;
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
         Ok(())
     }
 
@@ -262,20 +364,20 @@ impl TyphoonVault {
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
-        
+
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
         client.transfer(&donor, &env.current_contract_address(), &amount);
-        
+
         let balance: i128 = env.storage().instance().get(&DataKey::SubsidyBalance).unwrap_or(0);
         let new_balance = balance.checked_add(amount).ok_or(Error::Overflow)?;
         env.storage().instance().set(&DataKey::SubsidyBalance, &new_balance);
-        
+
         env.events().publish(
             (Symbol::new(&env, "deposit_subsidy"), donor),
             amount
         );
-        
+
         Ok(())
     }
 
@@ -292,36 +394,36 @@ impl TyphoonVault {
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
-        
+
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
         client.transfer(&lp, &env.current_contract_address(), &amount);
-        
+
         let mut total_shares: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0);
         let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
-        
+
         let shares = if total_shares == 0 || total_deposited == 0 {
             amount
         } else {
             (amount.checked_mul(total_shares).ok_or(Error::Overflow)?)
                 .checked_div(total_deposited).ok_or(Error::Overflow)?
         };
-        
+
         let mut lp_share_balance: i128 = env.storage().persistent().get(&DataKey::LpShares(lp.clone())).unwrap_or(0);
         lp_share_balance = lp_share_balance.checked_add(shares).ok_or(Error::Overflow)?;
         env.storage().persistent().set(&DataKey::LpShares(lp.clone()), &lp_share_balance);
-        
+
         total_shares = total_shares.checked_add(shares).ok_or(Error::Overflow)?;
         total_deposited = total_deposited.checked_add(amount).ok_or(Error::Overflow)?;
-        
+
         env.storage().instance().set(&DataKey::TotalReinsuranceShares, &total_shares);
         env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
-        
+
         env.events().publish(
             (Symbol::new(&env, "deposit_reinsurance"), lp),
             (amount, shares)
         );
-        
+
         Ok(shares)
     }
 
@@ -331,50 +433,48 @@ impl TyphoonVault {
         if shares <= 0 {
             return Err(Error::InvalidAmount);
         }
-        
+
         let mut lp_share_balance: i128 = env.storage().persistent().get(&DataKey::LpShares(lp.clone())).unwrap_or(0);
         if lp_share_balance < shares {
             return Err(Error::InvalidAmount);
         }
-        
+
         let mut total_shares: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0);
         let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
-        
+
         if total_shares == 0 {
             return Err(Error::InvalidAmount);
         }
-        
+
         let amount = (shares.checked_mul(total_deposited).ok_or(Error::Overflow)?)
             .checked_div(total_shares).ok_or(Error::Overflow)?;
-        
+
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
         let contract_balance = client.balance(&env.current_contract_address());
-        
+
         if contract_balance < amount {
             return Err(Error::InsufficientLiquidity);
         }
-        
+
         lp_share_balance = lp_share_balance.checked_sub(shares).ok_or(Error::Overflow)?;
         env.storage().persistent().set(&DataKey::LpShares(lp.clone()), &lp_share_balance);
-        
+
         total_shares = total_shares.checked_sub(shares).ok_or(Error::Overflow)?;
         total_deposited = total_deposited.checked_sub(amount).ok_or(Error::Overflow)?;
-        
+
         env.storage().instance().set(&DataKey::TotalReinsuranceShares, &total_shares);
         env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
-        
+
         client.transfer(&env.current_contract_address(), &lp, &amount);
-        
+
         env.events().publish(
             (Symbol::new(&env, "withdraw_reinsurance"), lp),
             (amount, shares)
         );
-        
+
         Ok(amount)
     }
-
-
 
     /// Get details of LP shares
     pub fn get_lp_shares(env: Env, lp: Address) -> i128 {
@@ -394,7 +494,7 @@ impl TyphoonVault {
         }
 
         let mut to_balance: i128 = env.storage().persistent().get(&DataKey::LpShares(to.clone())).unwrap_or(0);
-        
+
         from_balance = from_balance.checked_sub(amount).ok_or(Error::Overflow)?;
         to_balance = to_balance.checked_add(amount).ok_or(Error::Overflow)?;
 
@@ -421,33 +521,68 @@ impl TyphoonVault {
 
     // --- MicroLoans ---
 
-    /// Originate an uncollateralized rebuilding micro-loan
+    /// Originate an uncollateralized rebuilding micro-loan.
+    ///
+    /// # Loan caps (Finding 2 fix)
+    ///
+    /// A verified farmer's total outstanding (unrepaid) principal across all active
+    /// loans is capped at `MAX_FARMER_LOAN_BPS / 10_000` of the current pool
+    /// (`TotalReinsuranceDeposited`). With `MAX_FARMER_LOAN_BPS = 2_000` this is 20%.
+    /// The cap is re-evaluated at origination time against the live pool balance,
+    /// so as the pool grows or shrinks the cap moves with it.
+    ///
+    /// Repaying a loan decreases `FarmerOutstandingPrincipal`, restoring headroom.
     pub fn originate_microloan(env: Env, farmer: Address, loan_id: Symbol, amount: i128, yield_prediction: u32) -> Result<(), Error> {
         farmer.require_auth();
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
-        
+
         let is_verified: bool = env.storage().persistent().get(&DataKey::Verified(farmer.clone())).unwrap_or(false);
         if !is_verified {
             return Err(Error::NotVerified);
         }
 
+        // Reject a duplicate loan_id for this farmer (loan must not already be active).
+        if let Some(existing) = env.storage().persistent().get::<_, MicroLoan>(&DataKey::MicroLoan(farmer.clone(), loan_id.clone())) {
+            if existing.is_active {
+                return Err(Error::AlreadyInitialized);
+            }
+        }
+
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
-        
+
         let contract_balance = client.balance(&env.current_contract_address());
         if contract_balance < amount {
             return Err(Error::InsufficientLiquidity);
         }
-        
+
         let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
         if total_deposited < amount {
             return Err(Error::InsufficientLiquidity);
         }
+
+        // --- Per-farmer outstanding principal cap ---
+        // cap = total_deposited * MAX_FARMER_LOAN_BPS / 10_000
+        let pool_cap: i128 = (total_deposited * MAX_FARMER_LOAN_BPS) / 10_000;
+        let outstanding: i128 = env.storage().persistent()
+            .get(&DataKey::FarmerOutstandingPrincipal(farmer.clone()))
+            .unwrap_or(0i128);
+        let new_outstanding = outstanding.checked_add(amount).ok_or(Error::Overflow)?;
+        if new_outstanding > pool_cap {
+            return Err(Error::LoanCapExceeded);
+        }
+
+        // Update accounting before transfer (checks-effects-interactions).
         total_deposited = total_deposited.checked_sub(amount).ok_or(Error::Overflow)?;
         env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
-        
+
+        env.storage().persistent().set(
+            &DataKey::FarmerOutstandingPrincipal(farmer.clone()),
+            &new_outstanding,
+        );
+
         let loan = MicroLoan {
             farmer: farmer.clone(),
             amount,
@@ -455,52 +590,65 @@ impl TyphoonVault {
             repaid: 0,
             is_active: true,
         };
-        
+
         env.storage().persistent().set(&DataKey::MicroLoan(farmer.clone(), loan_id.clone()), &loan);
-        
+
         client.transfer(&env.current_contract_address(), &farmer, &amount);
-        
+
         env.events().publish(
             (Symbol::new(&env, "originate_microloan"), farmer, loan_id),
             (amount, yield_prediction)
         );
-        
+
         Ok(())
     }
 
-    /// Repay a microloan
+    /// Repay a microloan, restoring the repaid amount to pool reserves.
     pub fn repay_microloan(env: Env, farmer: Address, loan_id: Symbol, amount: i128) -> Result<(), Error> {
         farmer.require_auth();
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
-        
+
         let mut loan: MicroLoan = env.storage().persistent().get(&DataKey::MicroLoan(farmer.clone(), loan_id.clone())).ok_or(Error::NotInitialized)?;
         if !loan.is_active {
             return Err(Error::NotInitialized);
         }
-        
+
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
-        
+
         client.transfer(&farmer, &env.current_contract_address(), &amount);
-        
+
         loan.repaid = loan.repaid.checked_add(amount).ok_or(Error::Overflow)?;
-        if loan.repaid >= loan.amount {
+        let fully_repaid = loan.repaid >= loan.amount;
+        if fully_repaid {
             loan.is_active = false;
         }
-        
+
         env.storage().persistent().set(&DataKey::MicroLoan(farmer.clone(), loan_id.clone()), &loan);
-        
+
+        // Restore repaid principal to pool accounting.
         let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
         total_deposited = total_deposited.checked_add(amount).ok_or(Error::Overflow)?;
         env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
-        
+
+        // Decrease the farmer's outstanding principal tracker.
+        let outstanding: i128 = env.storage().persistent()
+            .get(&DataKey::FarmerOutstandingPrincipal(farmer.clone()))
+            .unwrap_or(0i128);
+        // Clamp to zero to guard against any accounting edge cases.
+        let new_outstanding = outstanding.saturating_sub(amount);
+        env.storage().persistent().set(
+            &DataKey::FarmerOutstandingPrincipal(farmer.clone()),
+            &new_outstanding,
+        );
+
         env.events().publish(
             (Symbol::new(&env, "repay_microloan"), farmer, loan_id),
             amount
         );
-        
+
         Ok(())
     }
 
@@ -608,22 +756,22 @@ impl TyphoonVault {
         if already_reached {
             return Err(Error::AlreadyInitialized);
         }
-        
+
         let is_mainnet = env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false);
-        
+
         if is_mainnet {
             // Mainnet: Validate single authorized oracle
             let single_oracle: Address = env.storage().instance().get(&DataKey::SingleOracle).ok_or(Error::NotInitialized)?;
             if oracle != single_oracle {
                 return Err(Error::Unauthorized);
             }
-            
+
             // Single authorized oracle immediately establishes absolute consensus
             env.storage().persistent().set(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), region.clone()), &damage_percentage);
             env.storage().persistent().set(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone()), &true);
             env.storage().persistent().set(&DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()), &wind_speed);
             bump_persistent(&env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
-            
+
             env.events().publish(
                 (Symbol::new(&env, "consensus_reached"), typhoon_id, region),
                 damage_percentage
@@ -634,11 +782,11 @@ impl TyphoonVault {
             if !is_active {
                 return Err(Error::Unauthorized);
             }
-            
+
             env.storage().persistent().set(&DataKey::Report(typhoon_id.clone(), region.clone(), oracle.clone()), &damage_percentage);
-            
+
             let mut reported: Vec<Address> = env.storage().persistent().get(&DataKey::ReportedOracles(typhoon_id.clone(), region.clone())).unwrap_or(Vec::new(&env));
-            
+
             let mut already_reported = false;
             for i in 0..reported.len() {
                 if reported.get(i).unwrap() == oracle {
@@ -646,12 +794,12 @@ impl TyphoonVault {
                     break;
                 }
             }
-            
+
             if !already_reported {
                 reported.push_back(oracle.clone());
                 env.storage().persistent().set(&DataKey::ReportedOracles(typhoon_id.clone(), region.clone()), &reported);
             }
-            
+
             let quorum: u32 = env.storage().instance().get(&DataKey::QuorumThreshold).unwrap_or(1);
             if reported.len() >= quorum {
                 let mut sum: u64 = 0;
@@ -666,19 +814,19 @@ impl TyphoonVault {
                     return Err(Error::NoConsensus);
                 }
                 let avg_damage = (sum.checked_div(count).ok_or(Error::Overflow)?) as u32;
-                
+
                 env.storage().persistent().set(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), region.clone()), &avg_damage);
                 env.storage().persistent().set(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone()), &true);
                 env.storage().persistent().set(&DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()), &wind_speed);
                 bump_persistent(&env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
-                
+
                 env.events().publish(
                     (Symbol::new(&env, "consensus_reached"), typhoon_id, region),
                     avg_damage
                 );
             }
         }
-        
+
         Ok(())
     }
 
@@ -687,25 +835,25 @@ impl TyphoonVault {
     /// Claim payout based on dynamic network-configured parametric curves for a specific farm and season
     pub fn claim_payout(env: Env, farmer: Address, farm_id: Symbol, season: Symbol, typhoon_id: Symbol) -> Result<i128, Error> {
         farmer.require_auth();
-        
+
         let mut policy: Policy = env.storage().persistent().get(&DataKey::Policy(farmer.clone(), farm_id.clone(), season.clone())).ok_or(Error::PolicyNotActive)?;
         if !policy.is_active {
             return Err(Error::PolicyNotActive);
         }
-        
+
         let consensus_reached = env.storage().persistent().get(&DataKey::ConsensusReached(typhoon_id.clone(), policy.region.clone())).unwrap_or(false);
         if !consensus_reached {
             return Err(Error::NoConsensus);
         }
-        
+
         let damage_percentage: u32 = env.storage().persistent().get(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), policy.region.clone())).unwrap_or(0);
-        
+
         let mut payout_percentage = damage_percentage.min(100); // Fallback to clamped damage percentage if no bands
-        
+
         // Advanced: Use Parametric Bands if available for this region
         if let Some(bands) = env.storage().persistent().get::<_, Vec<PayoutBand>>(&DataKey::ParametricBands(policy.region.clone())) {
             let wind_speed: u32 = env.storage().persistent().get(&DataKey::OracleWindSpeed(typhoon_id.clone(), policy.region.clone())).unwrap_or(0);
-            
+
             payout_percentage = 0;
             for band in bands.iter() {
                 if wind_speed >= band.min_wind_speed && band.payout_percentage > payout_percentage {
@@ -713,39 +861,39 @@ impl TyphoonVault {
                 }
             }
         }
-        
+
         if payout_percentage == 0 {
             return Err(Error::ThresholdNotMet);
         }
-        
+
         let payout_amount = (policy.payout_amount.checked_mul(payout_percentage as i128).ok_or(Error::Overflow)?)
             .checked_div(100).ok_or(Error::Overflow)?;
-        
+
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
         let contract_balance = client.balance(&env.current_contract_address());
-        
+
         if contract_balance < payout_amount {
             return Err(Error::InsufficientLiquidity);
         }
-        
+
         policy.is_active = false;
         env.storage().persistent().set(&DataKey::Policy(farmer.clone(), farm_id.clone(), season.clone()), &policy);
-        
+
         let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
         total_deposited = total_deposited.checked_sub(payout_amount).ok_or(Error::Overflow)?;
         if total_deposited < 0 {
             total_deposited = 0;
         }
         env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
-        
+
         client.transfer(&env.current_contract_address(), &farmer, &payout_amount);
-        
+
         env.events().publish(
             (Symbol::new(&env, "payout_claimed"), farmer, farm_id),
             (typhoon_id, damage_percentage, payout_amount)
         );
-        
+
         Ok(payout_amount)
     }
 
@@ -781,9 +929,19 @@ impl TyphoonVault {
         env.storage().persistent().get(&DataKey::Verified(farmer)).unwrap_or(false)
     }
 
+    /// Get the outstanding unrepaid principal for a farmer across all active loans
+    pub fn get_farmer_outstanding_principal(env: Env, farmer: Address) -> i128 {
+        env.storage().persistent()
+            .get(&DataKey::FarmerOutstandingPrincipal(farmer))
+            .unwrap_or(0i128)
+    }
+
     /// Admin Multi-sig: Update parametric payout bands for a region
-    pub fn update_parametric_bands(env: Env, payload: Bytes, signatures: Vec<(BytesN<32>, BytesN<64>)>, region: Symbol, bands: Vec<PayoutBand>) -> Result<(), Error> {
-        require_multisig_auth(&env, payload, signatures)?;
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"update_parametric_bands" )`
+    pub fn update_parametric_bands(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, region: Symbol, bands: Vec<PayoutBand>) -> Result<(), Error> {
+        require_multisig_auth(&env, b"update_parametric_bands", signatures)?;
         for band in bands.iter() {
             if band.payout_percentage > 100 {
                 return Err(Error::InvalidAmount);

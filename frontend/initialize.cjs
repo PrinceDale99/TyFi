@@ -3,7 +3,7 @@ const { rpc, Contract, nativeToScVal, TransactionBuilder, BASE_FEE, Networks, Ke
 (async () => {
   try {
     const server = new rpc.Server('https://soroban-testnet.stellar.org');
-    const contract = new Contract('CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH');
+    const contract = new Contract('CAQWBSIJK2R2DSRCOVQDN2CC3A7IW3T5LWDJAK4QWTLNUJC4OL5IJUAM');
     
     // We will use a random keypair for admin and fund it
     const kp = Keypair.random();

@@ -1,31 +1,15 @@
 {
   "generators": {
-    "address": 4,
+    "address": 5,
     "nonce": 0,
     "mux_id": 0
   },
   "auth": [
     [],
     [],
-    [
-      [
-        "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJXFF",
-        {
-          "function": {
-            "contract_fn": {
-              "contract_address": "CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN",
-              "function_name": "set_admin",
-              "args": [
-                {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
-                }
-              ]
-            }
-          },
-          "sub_invocations": []
-        }
-      ]
-    ],
+    [],
+    [],
+    [],
     [],
     []
   ],
@@ -43,42 +27,28 @@
         "entry": {
           "last_modified_ledger_seq": 0,
           "data": {
-            "account": {
-              "account_id": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJXFF",
-              "balance": "0",
-              "seq_num": "0",
-              "num_sub_entries": 0,
-              "inflation_dest": null,
-              "flags": 0,
-              "home_domain": "",
-              "thresholds": "01010101",
-              "signers": [],
-              "ext": "v0"
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": null
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
             "contract_data": {
               "ext": "v0",
-              "contract": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJXFF",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
               "key": {
-                "ledger_key_nonce": {
-                  "nonce": "801925984706572462"
-                }
+                "vec": [
+                  {
+                    "symbol": "Oracle"
+                  },
+                  {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                  }
+                ]
               },
-              "durability": "temporary",
-              "val": "void"
+              "durability": "persistent",
+              "val": {
+                "bool": true
+              }
             }
           },
           "ext": "v0"
         },
-        "live_until": 6311999
+        "live_until": 4095
       },
       {
         "entry": {
@@ -110,7 +80,17 @@
                               "symbol": "keys"
                             },
                             "val": {
-                              "vec": []
+                              "vec": [
+                                {
+                                  "bytes": "ac2e57e89ab92fdbc89213e42e345ea1cdd64e71e51348771269ce88aef80e14"
+                                },
+                                {
+                                  "bytes": "3c8d59cf9b9a62316fcf40d1bc18d11920af77db5faad880a690bd32cc45ccb6"
+                                },
+                                {
+                                  "bytes": "f3212d82b6fc6ee845211b6b3018c7d4fb648cae9bb545d30f87126645559086"
+                                }
+                              ]
                             }
                           },
                           {
@@ -118,7 +98,7 @@
                               "symbol": "threshold"
                             },
                             "val": {
-                              "u32": 1
+                              "u32": 2
                             }
                           }
                         ]
@@ -133,7 +113,7 @@
                         ]
                       },
                       "val": {
-                        "u64": "0"
+                        "u64": "2"
                       }
                     },
                     {
@@ -145,7 +125,7 @@
                         ]
                       },
                       "val": {
-                        "bool": false
+                        "bool": true
                       }
                     },
                     {
@@ -157,7 +137,7 @@
                         ]
                       },
                       "val": {
-                        "u32": 1
+                        "u32": 2
                       }
                     },
                     {
@@ -169,7 +149,7 @@
                         ]
                       },
                       "val": {
-                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
                       }
                     },
                     {
@@ -217,7 +197,7 @@
                         ]
                       },
                       "val": {
-                        "address": "CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN"
+                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                       }
                     }
                   ]
@@ -228,109 +208,6 @@
           "ext": "v0"
         },
         "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CCABDO7UZXYE4W6GVSEGSNNZTKSLFQGKXXQTH6OX7M7GKZ4Z6CUJNGZN",
-              "key": "ledger_key_contract_instance",
-              "durability": "persistent",
-              "val": {
-                "contract_instance": {
-                  "executable": "stellar_asset",
-                  "storage": [
-                    {
-                      "key": {
-                        "symbol": "METADATA"
-                      },
-                      "val": {
-                        "map": [
-                          {
-                            "key": {
-                              "symbol": "decimal"
-                            },
-                            "val": {
-                              "u32": 7
-                            }
-                          },
-                          {
-                            "key": {
-                              "symbol": "name"
-                            },
-                            "val": {
-                              "string": "aaa:GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJXFF"
-                            }
-                          },
-                          {
-                            "key": {
-                              "symbol": "symbol"
-                            },
-                            "val": {
-                              "string": "aaa"
-                            }
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "Admin"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
-                      }
-                    },
-                    {
-                      "key": {
-                        "vec": [
-                          {
-                            "symbol": "AssetInfo"
-                          }
-                        ]
-                      },
-                      "val": {
-                        "vec": [
-                          {
-                            "symbol": "AlphaNum4"
-                          },
-                          {
-                            "map": [
-                              {
-                                "key": {
-                                  "symbol": "asset_code"
-                                },
-                                "val": {
-                                  "string": "aaa\\0"
-                                }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "issuer"
-                                },
-                                "val": {
-                                  "bytes": "0000000000000000000000000000000000000000000000000000000000000004"
-                                }
-                              }
-                            ]
-                          }
-                        ]
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 120960
       },
       {
         "entry": {
