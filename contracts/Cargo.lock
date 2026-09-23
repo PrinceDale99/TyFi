@@ -1712,6 +1712,9 @@ name = "typhoon_resilience_vault"
 version = "0.1.0"
 dependencies = [
  "derive_arbitrary",
+ "ed25519-dalek",
+ "rand",
+ "sha2",
  "soroban-sdk",
 ]
 
