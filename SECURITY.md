@@ -1,3 +1,5 @@
+# NOTICE TO THE PUBLIC: OUR BUG BOUNTY PROGRAM IS CURRENTLY CLOSED DUE TO ONGOING DEVELOPMENT
+
 # 🏆 Security Hall of Fame
 
 The TyFi protocol is built on transparency, resilience, and community trust. We are deeply grateful to the independent security researchers and white-hat hackers who dedicate their time and expertise to reviewing our Soroban smart contracts. 
