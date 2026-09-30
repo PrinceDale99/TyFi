@@ -10,14 +10,17 @@
       "wasmHash": "3bd4c52269f229a838dc63086c60439b6c71f63c2d17b9d92103a51041af8663",
       "wasmSizeBytes": 29836,
       "exportedFunctions": 33,
-      "installTx": "4bedd7e9d6f163ed98965d2a72afe9e467596b8f423a194f9e6db07a13178691",
-      "deployTx": "c65e9d12484702fafa31f9fbd1bf8b162e060542bf915db295fb0115a7e4179b",
+      "isInitialized": true,
+      "isMainnetMode": false,
+      "quorumThreshold": 1,
+      "xlmToken": "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
       "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
       "labUrl": "https://lab.stellar.org/r/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR"
     }
   },
   "transactions": [
     {
+      "step": 1,
       "action": "upload_vault_wasm",
       "contract": "typhoon_resilience_vault",
       "txHash": "4bedd7e9d6f163ed98965d2a72afe9e467596b8f423a194f9e6db07a13178691",
@@ -25,11 +28,30 @@
       "explorerUrl": "https://stellar.expert/explorer/testnet/tx/4bedd7e9d6f163ed98965d2a72afe9e467596b8f423a194f9e6db07a13178691"
     },
     {
+      "step": 2,
       "action": "deploy_vault_contract",
       "contract": "typhoon_resilience_vault",
       "txHash": "c65e9d12484702fafa31f9fbd1bf8b162e060542bf915db295fb0115a7e4179b",
       "status": "SUCCESS",
       "explorerUrl": "https://stellar.expert/explorer/testnet/tx/c65e9d12484702fafa31f9fbd1bf8b162e060542bf915db295fb0115a7e4179b"
+    },
+    {
+      "step": 3,
+      "action": "initialize_vault_contract",
+      "contract": "typhoon_resilience_vault",
+      "txHash": "4f9467dabd89f56ac80f977021ee2eebc34485b10d666d36570b854f9bd8f23a",
+      "status": "SUCCESS",
+      "note": "Vault initialized: xlm_token=CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC, quorum=1, mainnet=false",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/4f9467dabd89f56ac80f977021ee2eebc34485b10d666d36570b854f9bd8f23a"
+    },
+    {
+      "step": 4,
+      "action": "upgrade_vault_wasm",
+      "contract": "typhoon_resilience_vault",
+      "txHash": "22aef453743a022dd1bda7ff8411496ee368d7d909a828c4ecd22415cdb64555",
+      "status": "SUCCESS",
+      "note": "upgrade() called with wasm_hash=3bd4c52269f229a838dc63086c60439b6c71f63c2d17b9d92103a51041af8663, confirming admin multisig upgrade path works on-chain",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/22aef453743a022dd1bda7ff8411496ee368d7d909a828c4ecd22415cdb64555"
     }
   ]
 }
