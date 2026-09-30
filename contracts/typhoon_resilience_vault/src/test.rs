@@ -510,3 +510,85 @@ fn test_duplicate_loan_id_rejected() {
     let r = client.try_originate_microloan(&farmer, &loan_id, &5_000, &90);
     assert!(r.is_err(), "duplicate active loan_id must be rejected");
 }
+
+
+#[test]
+fn test_zk_weather_report_valid() {
+    let (env, client, contract_id, oracle, _xlm_token, _token, _token_admin) = setup();
+    env.mock_all_auths();
+    set_oracle_active(&env, &contract_id, &oracle, true);
+
+    let typhoon_id = Symbol::new(&env, "ZK_STORM");
+    let region = Symbol::new(&env, "Visayas");
+    let mut proof_bytes = [0u8; 64];
+    proof_bytes[0] = 0xde;
+    proof_bytes[1] = 0xad;
+    let proof = Bytes::from_slice(&env, &proof_bytes);
+
+    let mut public_inputs = soroban_sdk::Vec::new(&env);
+    public_inputs.push_back(150u32.into());
+    public_inputs.push_back(1u32.into());
+
+    client.submit_weather_report_zk(
+        &oracle,
+        &typhoon_id,
+        &region,
+        &85,
+        &155,
+        &proof,
+        &public_inputs,
+    );
+    assert_eq!(client.get_weather_report(&typhoon_id, &region, &oracle), 85);
+}
+
+#[test]
+fn test_zk_weather_report_empty_proof_fails() {
+    let (env, client, contract_id, oracle, _xlm_token, _token, _token_admin) = setup();
+    env.mock_all_auths();
+    set_oracle_active(&env, &contract_id, &oracle, true);
+
+    let typhoon_id = Symbol::new(&env, "ZK_STORM");
+    let region = Symbol::new(&env, "Visayas");
+    let empty_proof = Bytes::new(&env);
+
+    let mut public_inputs = soroban_sdk::Vec::new(&env);
+    public_inputs.push_back(150u32.into());
+
+    let res = client.try_submit_weather_report_zk(
+        &oracle,
+        &typhoon_id,
+        &region,
+        &85,
+        &155,
+        &empty_proof,
+        &public_inputs,
+    );
+    assert!(res.is_err() || res.unwrap().is_err(), "empty proof must be rejected");
+}
+
+#[test]
+fn test_zk_weather_report_empty_inputs_fails() {
+    let (env, client, contract_id, oracle, _xlm_token, _token, _token_admin) = setup();
+    env.mock_all_auths();
+    set_oracle_active(&env, &contract_id, &oracle, true);
+
+    let typhoon_id = Symbol::new(&env, "ZK_STORM");
+    let region = Symbol::new(&env, "Visayas");
+    let mut proof_bytes = [0u8; 64];
+    proof_bytes[0] = 0x01;
+    let proof = Bytes::from_slice(&env, &proof_bytes);
+    let empty_inputs = soroban_sdk::Vec::new(&env);
+
+    let res = client.try_submit_weather_report_zk(
+        &oracle,
+        &typhoon_id,
+        &region,
+        &85,
+        &155,
+        &proof,
+        &empty_inputs,
+    );
+    assert!(res.is_err() || res.unwrap().is_err(), "empty public inputs must be rejected");
+}
+
+
