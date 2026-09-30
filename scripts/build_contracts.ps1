@@ -6,13 +6,13 @@ Push-Location "$PSScriptRoot\..\contracts"
 
 try {
     Write-Host "1. Building typhoon_resilience_vault..." -ForegroundColor Yellow
-    cargo build --target wasm32-unknown-unknown --release -p typhoon_resilience_vault
+    cargo build --target wasm32v1-none --release -p typhoon_resilience_vault
 
     Write-Host "2. Building smart_wallet_factory..." -ForegroundColor Yellow
-    cargo build --target wasm32-unknown-unknown --release -p smart_wallet_factory
+    cargo build --target wasm32v1-none --release -p smart-wallet-factory
 
     Write-Host "3. Building tyfi_dao..." -ForegroundColor Yellow
-    cargo build --target wasm32-unknown-unknown --release -p tyfi_dao
+    cargo build --target wasm32v1-none --release -p tyfi_dao
 
     Write-Host "=== All contracts compiled to WASM successfully ===" -ForegroundColor Green
 } finally {
