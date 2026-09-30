@@ -711,6 +711,18 @@
                       "key": {
                         "vec": [
                           {
+                            "symbol": "TotalOutstandingCoverage"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "i128": "2000"
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
                             "symbol": "TotalReinsuranceDeposited"
                           }
                         ]
