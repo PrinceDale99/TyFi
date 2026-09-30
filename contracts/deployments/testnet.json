@@ -2,86 +2,28 @@
   "network": "testnet",
   "networkPassphrase": "Test SDF Network ; September 2015",
   "rpcUrl": "https://soroban-testnet.stellar.org",
-  "timestamp": "2026-09-23T14:30:00Z",
+  "timestamp": "2026-09-30T12:00:00Z",
   "contracts": {
     "typhoon_resilience_vault": {
-      "address": "CAQWBSIJK2R2DSRCOVQDN2CC3A7IW3T5LWDJAK4QWTLNUJC4OL5IJUAM",
-      "wasmHash": "d8a1f73b64f4340d854eb132a0c4f828a2a7a40733d9c3ceb1613ebce3219488",
-      "deployTx": "24f9d3df533ebfdf2169967c2359bdb0e67d34cef6d0cae4b95363709d2fcf5b",
-      "initTx": "fc0e08dd4ea469d0e111b1ce38460d968d8f046e4e9be84b582f264cf97a8cf7",
-      "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CAQWBSIJK2R2DSRCOVQDN2CC3A7IW3T5LWDJAK4QWTLNUJC4OL5IJUAM"
-    },
-    "weather_oracle_verifier": {
-      "address": "CBZVERIF893NJKA209KSAJDNXZMN710294JSAKDNXMZLKSAJD0129ASDJAL",
-      "wasmHash": "8c6b7100b4458f6236b28cd99f1873426e2e507b9a52862e6e18f28c2eb08451",
-      "deployTx": "6d4acec4ceb9f54faef2b27001f603741e51cffef222703f7287a3b33371c1e6",
-      "initTx": "2968e855e222772700092171ae221a3961ffaca25b10444cd281423ba50ec56d",
-      "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CBZVERIF893NJKA209KSAJDNXZMN710294JSAKDNXMZLKSAJD0129ASDJAL"
+      "address": "CA7TF7SLHLBNS6VLF2VGQ5NPC4F6WBUWMNR7QW3Y5RBTZCKNU7BCXAYM",
+      "wasmHash": "13f4c76dabe5fa33a2cdb436969ddc58e14418fca020293da2fc18eec18dc11b",
+      "deployTx": "e0e3f39f7a3f252350fcdb24b9b56c8d6c89019feb27083bafa2cd1026f5afc7",
+      "installTx": "2fbc47c6b9ad7a490175b20f3240aaf153eed22bfe1c113f7038d14248d6e9b0",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CA7TF7SLHLBNS6VLF2VGQ5NPC4F6WBUWMNR7QW3Y5RBTZCKNU7BCXAYM"
     }
   },
   "transactions": [
     {
+      "action": "install_vault_wasm",
+      "contract": "typhoon_resilience_vault",
+      "txHash": "2fbc47c6b9ad7a490175b20f3240aaf153eed22bfe1c113f7038d14248d6e9b0",
+      "status": "SUCCESS"
+    },
+    {
       "action": "deploy_vault_contract",
       "contract": "typhoon_resilience_vault",
-      "txHash": "24f9d3df533ebfdf2169967c2359bdb0e67d34cef6d0cae4b95363709d2fcf5b",
-      "status": "SUCCESS",
-      "ledger": 1045231
-    },
-    {
-      "action": "initialize_vault",
-      "contract": "typhoon_resilience_vault",
-      "txHash": "fc0e08dd4ea469d0e111b1ce38460d968d8f046e4e9be84b582f264cf97a8cf7",
-      "status": "SUCCESS",
-      "ledger": 1045234
-    },
-    {
-      "action": "deploy_zk_verifier",
-      "contract": "weather_oracle_verifier",
-      "txHash": "6d4acec4ceb9f54faef2b27001f603741e51cffef222703f7287a3b33371c1e6",
-      "status": "SUCCESS",
-      "ledger": 1045238
-    },
-    {
-      "action": "set_oracle_multi_quorum",
-      "txHash": "8f13bce228d05207d489a61c8b55b5b2bd05aeca5d1d8bb880d87f175ecd3017",
-      "status": "SUCCESS",
-      "ledger": 1045242
-    },
-    {
-      "action": "verify_rsbsa_farmer",
-      "txHash": "cb07844a2c523dca58f70e0ded323bc966f892b9570ec82ad6eeb4f41ea22d63",
-      "status": "SUCCESS",
-      "ledger": 1045245
-    },
-    {
-      "action": "deposit_subsidy_pool",
-      "txHash": "5fc7ac4cc50553870d95d119a62f7cbb30dd5ff610b0b71fd77098764688e341",
-      "status": "SUCCESS",
-      "ledger": 1045249
-    },
-    {
-      "action": "deposit_reinsurance_lp",
-      "txHash": "d034b30048fa503b9c57743ccc5632ae2f2160921005e155c04b89b88f7b9dbb",
-      "status": "SUCCESS",
-      "ledger": 1045253
-    },
-    {
-      "action": "update_parametric_bands",
-      "txHash": "132844f835a353b884843ee06dfed8ff80c6f0eff2eb1b09f6307140a30b44a5",
-      "status": "SUCCESS",
-      "ledger": 1045258
-    },
-    {
-      "action": "submit_zk_weather_proof",
-      "txHash": "48d14d47bae68f86865cad6abc7c415e8b197c0ab7364baea1ccb9d585fa9e13",
-      "status": "SUCCESS",
-      "ledger": 1045262
-    },
-    {
-      "action": "claim_parametric_payout",
-      "txHash": "e10722dcaf3f4f62abb91a619c70e80f76a26a670364851e040490c983f1c530",
-      "status": "SUCCESS",
-      "ledger": 1045267
+      "txHash": "e0e3f39f7a3f252350fcdb24b9b56c8d6c89019feb27083bafa2cd1026f5afc7",
+      "status": "SUCCESS"
     }
   ]
 }

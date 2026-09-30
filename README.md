@@ -283,6 +283,26 @@ An automated static analysis and manual security review was conducted. **No high
 
 ---
 
+## ✅ Week 1 Output Checklist
+
+**Soroban Storage & Gas Optimization**
+- [x] Optimized gas limits and persistent vs instance storage keys in `typhoon_resilience_vault` to prevent state bloat.
+
+**ZK Circuit Compilation & Integration**
+- [x] Verified ZK proof verification logic is integrated natively into the vault via `src/verifier.rs` using Protocol 27 BN254 host functions. (Single streamlined WASM deployment)
+
+**Testnet Deployment & Testing**
+- [x] Successfully deployed the `typhoon_resilience_vault` to the Stellar Testnet.
+- [x] Test suite passing locally.
+- [x] Real verified Testnet transaction hashes and addresses generated and committed.
+
+**Verifiable On-Chain Artifacts**
+- **Vault Contract Address:** `CA7TF7SLHLBNS6VLF2VGQ5NPC4F6WBUWMNR7QW3Y5RBTZCKNU7BCXAYM` ([View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CA7TF7SLHLBNS6VLF2VGQ5NPC4F6WBUWMNR7QW3Y5RBTZCKNU7BCXAYM))
+- **WASM Install TX:** `2fbc47c6b9ad7a490175b20f3240aaf153eed22bfe1c113f7038d14248d6e9b0` ([View TX](https://stellar.expert/explorer/testnet/tx/2fbc47c6b9ad7a490175b20f3240aaf153eed22bfe1c113f7038d14248d6e9b0))
+- **Contract Deploy TX:** `e0e3f39f7a3f252350fcdb24b9b56c8d6c89019feb27083bafa2cd1026f5afc7` ([View TX](https://stellar.expert/explorer/testnet/tx/e0e3f39f7a3f252350fcdb24b9b56c8d6c89019feb27083bafa2cd1026f5afc7))
+
+---
+
 ## 📖 Roadmap
 
 ### ✅ Phase 1 — Testnet *(Current)*
