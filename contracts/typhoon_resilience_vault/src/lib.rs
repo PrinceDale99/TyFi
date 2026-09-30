@@ -22,6 +22,8 @@ pub enum Error {
     InsufficientSignatures = 11,
     NoParametricBands = 12,
     LoanCapExceeded = 13,
+    PolicyAlreadyUsed = 14,
+    CoverageCapExceeded = 15,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -47,6 +49,7 @@ pub enum DataKey {
     SubsidyBalance,                     // Donor premium subsidy pool balance (i128)
     TotalReinsuranceShares,             // Total reinsurance shares issued (i128)
     TotalReinsuranceDeposited,          // Total reinsurance XLM deposited (i128)
+    TotalOutstandingCoverage,           // Sum of all active policy payout_amounts (i128) — solvency liability tracker
     LpShares(Address),                  // Reinsurance shares balance of an LP (i128)
     Policy(Address, Symbol, Symbol),    // Policy details: (farmer, farm_id, season) -> Policy
     FarmList(Address),                  // List of farm IDs for a farmer
@@ -451,6 +454,17 @@ impl TyphoonVault {
         let amount = (shares.checked_mul(total_deposited).ok_or(Error::Overflow)?)
             .checked_div(total_shares).ok_or(Error::Overflow)?;
 
+        // --- Security Fix A: LP withdrawal lock during active coverage ---
+        // LPs may only exit "free" capital — the portion of the pool not
+        // already committed to cover active policy payouts.  Withdrawing below
+        // the outstanding coverage floor would leave valid claimants unable to
+        // collect their insured payouts (rug-pull vector).
+        let outstanding_coverage: i128 = env.storage().instance().get(&DataKey::TotalOutstandingCoverage).unwrap_or(0);
+        let free_capital = total_deposited.saturating_sub(outstanding_coverage);
+        if amount > free_capital {
+            return Err(Error::InsufficientLiquidity);
+        }
+
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
         let contract_balance = client.balance(&env.current_contract_address());
@@ -519,6 +533,12 @@ impl TyphoonVault {
     /// Get total reinsurance shares
     pub fn get_total_reinsurance_shares(env: Env) -> i128 {
         env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0)
+    }
+
+    /// Get the total outstanding coverage liability (sum of all active policy payout_amounts).
+    /// Free capital available for LP withdrawal = TotalReinsuranceDeposited - TotalOutstandingCoverage.
+    pub fn get_total_outstanding_coverage(env: Env) -> i128 {
+        env.storage().instance().get(&DataKey::TotalOutstandingCoverage).unwrap_or(0)
     }
 
     // --- MicroLoans ---
@@ -668,6 +688,14 @@ impl TyphoonVault {
             return Err(Error::NotVerified);
         }
 
+        // --- Security Fix B: Policy re-subscription guard ---
+        // A (farm_id, season) key is permanently consumed after first use.
+        // Even a deactivated (paid-out) policy cannot be re-subscribed — the
+        // season is a unique, non-reusable claims window.
+        if env.storage().persistent().has(&DataKey::Policy(farmer.clone(), farm_id.clone(), season.clone())) {
+            return Err(Error::PolicyAlreadyUsed);
+        }
+
         let is_mainnet = env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false);
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
@@ -697,9 +725,22 @@ impl TyphoonVault {
         let adjusted_premium = (premium * risk_multiplier as i128) / 100;
         let adjusted_farmer_to_pay = (farmer_to_pay * risk_multiplier as i128) / 100;
 
-        client.transfer(&farmer, &env.current_contract_address(), &adjusted_farmer_to_pay);
-
+        // --- Security Fix C (part 1): Solvency cap check ---
+        // Compute the payout obligation before accepting the premium.  The pool
+        // must be able to cover ALL active policy payouts, not just the one
+        // being subscribed.  If accepting this policy would push outstanding
+        // coverage above the total deposited pool we reject with
+        // CoverageCapExceeded so farmers see honest capacity limits rather
+        // than buying coverage that can never be honoured.
         let payout_amount = adjusted_premium.checked_mul(10).ok_or(Error::Overflow)?;
+        let total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        let outstanding_coverage: i128 = env.storage().instance().get(&DataKey::TotalOutstandingCoverage).unwrap_or(0);
+        let new_outstanding = outstanding_coverage.checked_add(payout_amount).ok_or(Error::Overflow)?;
+        if new_outstanding > total_deposited {
+            return Err(Error::CoverageCapExceeded);
+        }
+
+        client.transfer(&farmer, &env.current_contract_address(), &adjusted_farmer_to_pay);
 
         let policy = Policy {
             farm_id: farm_id.clone(),
@@ -733,9 +774,12 @@ impl TyphoonVault {
         }
 
         // Update reinsurance deposited balance (premiums serve as pool reserves)
-        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
-        total_deposited = total_deposited.checked_add(premium).ok_or(Error::Overflow)?;
-        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+        let mut total_deposited_mut: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        total_deposited_mut = total_deposited_mut.checked_add(premium).ok_or(Error::Overflow)?;
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited_mut);
+
+        // --- Security Fix C (part 2): Track outstanding coverage liability ---
+        env.storage().instance().set(&DataKey::TotalOutstandingCoverage, &new_outstanding);
 
         env.events().publish(
             (Symbol::new(&env, "subscribe"), farmer),
@@ -918,6 +962,15 @@ impl TyphoonVault {
         }
         env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
 
+        // --- Security Fix C (part 3): Release outstanding coverage liability ---
+        // Once a policy is settled (paid or thresholds not met) its reserved
+        // payout obligation is removed from the solvency tracker.  We release
+        // the full policy.payout_amount, not just the actual transfer, so the
+        // tracker matches what was committed at subscribe time.
+        let outstanding_coverage: i128 = env.storage().instance().get(&DataKey::TotalOutstandingCoverage).unwrap_or(0);
+        let new_outstanding = outstanding_coverage.saturating_sub(policy.payout_amount);
+        env.storage().instance().set(&DataKey::TotalOutstandingCoverage, &new_outstanding);
+
         client.transfer(&env.current_contract_address(), &farmer, &payout_amount);
 
         env.events().publish(
@@ -989,3 +1042,9 @@ mod test;
 
 #[cfg(test)]
 mod test_auth;
+
+#[cfg(test)]
+mod test_reinsurance;
+
+#[cfg(test)]
+mod test_security;
