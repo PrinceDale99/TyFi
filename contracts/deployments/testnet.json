@@ -2,28 +2,34 @@
   "network": "testnet",
   "networkPassphrase": "Test SDF Network ; September 2015",
   "rpcUrl": "https://soroban-testnet.stellar.org",
-  "timestamp": "2026-09-30T12:00:00Z",
+  "deployedAt": "2026-09-30T13:02:33+08:00",
+  "deployer": "GA4M2FME27D2IG7W5AFMZCVUJ2U67PIIYIRGJNSAUCFY6NZHYE7KSVSV",
   "contracts": {
     "typhoon_resilience_vault": {
-      "address": "CA7TF7SLHLBNS6VLF2VGQ5NPC4F6WBUWMNR7QW3Y5RBTZCKNU7BCXAYM",
-      "wasmHash": "13f4c76dabe5fa33a2cdb436969ddc58e14418fca020293da2fc18eec18dc11b",
-      "deployTx": "e0e3f39f7a3f252350fcdb24b9b56c8d6c89019feb27083bafa2cd1026f5afc7",
-      "installTx": "2fbc47c6b9ad7a490175b20f3240aaf153eed22bfe1c113f7038d14248d6e9b0",
-      "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CA7TF7SLHLBNS6VLF2VGQ5NPC4F6WBUWMNR7QW3Y5RBTZCKNU7BCXAYM"
+      "address": "CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
+      "wasmHash": "3bd4c52269f229a838dc63086c60439b6c71f63c2d17b9d92103a51041af8663",
+      "wasmSizeBytes": 29836,
+      "exportedFunctions": 33,
+      "installTx": "4bedd7e9d6f163ed98965d2a72afe9e467596b8f423a194f9e6db07a13178691",
+      "deployTx": "c65e9d12484702fafa31f9fbd1bf8b162e060542bf915db295fb0115a7e4179b",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
+      "labUrl": "https://lab.stellar.org/r/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR"
     }
   },
   "transactions": [
     {
-      "action": "install_vault_wasm",
+      "action": "upload_vault_wasm",
       "contract": "typhoon_resilience_vault",
-      "txHash": "2fbc47c6b9ad7a490175b20f3240aaf153eed22bfe1c113f7038d14248d6e9b0",
-      "status": "SUCCESS"
+      "txHash": "4bedd7e9d6f163ed98965d2a72afe9e467596b8f423a194f9e6db07a13178691",
+      "status": "SUCCESS",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/4bedd7e9d6f163ed98965d2a72afe9e467596b8f423a194f9e6db07a13178691"
     },
     {
       "action": "deploy_vault_contract",
       "contract": "typhoon_resilience_vault",
-      "txHash": "e0e3f39f7a3f252350fcdb24b9b56c8d6c89019feb27083bafa2cd1026f5afc7",
-      "status": "SUCCESS"
+      "txHash": "c65e9d12484702fafa31f9fbd1bf8b162e060542bf915db295fb0115a7e4179b",
+      "status": "SUCCESS",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/c65e9d12484702fafa31f9fbd1bf8b162e060542bf915db295fb0115a7e4179b"
     }
   ]
 }
