@@ -1,0 +1,55 @@
+{
+  "noir_version": "0.22.0",
+  "hash": "8c6b7100...",
+  "abi": {
+    "parameters": [
+      {
+        "name": "wind_speed",
+        "type": { "kind": "integer", "sign": "unsigned", "width": 64 },
+        "visibility": "private"
+      },
+      {
+        "name": "oracle_pub_key_x",
+        "type": { "kind": "field" },
+        "visibility": "private"
+      },
+      {
+        "name": "oracle_pub_key_y",
+        "type": { "kind": "field" },
+        "visibility": "private"
+      },
+      {
+        "name": "signature",
+        "type": { "kind": "array", "length": 64, "type": { "kind": "integer", "sign": "unsigned", "width": 8 } },
+        "visibility": "private"
+      },
+      {
+        "name": "typhoon_id",
+        "type": { "kind": "field" },
+        "visibility": "public"
+      },
+      {
+        "name": "region_id",
+        "type": { "kind": "field" },
+        "visibility": "public"
+      },
+      {
+        "name": "payout_threshold",
+        "type": { "kind": "integer", "sign": "unsigned", "width": 64 },
+        "visibility": "public"
+      }
+    ],
+    "param_witnesses": {
+      "wind_speed": [1],
+      "oracle_pub_key_x": [2],
+      "oracle_pub_key_y": [3],
+      "signature": [4,5,6,7],
+      "typhoon_id": [8],
+      "region_id": [9],
+      "payout_threshold": [10]
+    },
+    "return_type": null,
+    "return_witnesses": []
+  },
+  "bytecode": "H4sIAAAAAAAA/wEzAM3/AAAAAAAA"
+}
