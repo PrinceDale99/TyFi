@@ -7,7 +7,7 @@ export const NETWORK_CONFIGS = {
     rpcUrl: process.env.SOROBAN_RPC_URL_TESTNET || 'https://soroban-testnet.stellar.org',
     horizonUrl: 'https://horizon-testnet.stellar.org',
     passphrase: Networks.TESTNET,
-    vaultContractId: process.env.CONTRACT_ID_TESTNET || 'CAQWBSIJK2R2DSRCOVQDN2CC3A7IW3T5LWDJAK4QWTLNUJC4OL5IJUAM',
+    vaultContractId: process.env.CONTRACT_ID_TESTNET || 'CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR',
     daoContractId: 'CCYYM6VOPD7HUP337W4334A2MYL6KAZ55K4JMXYOPX3EWYDSDYY6C23G'
   },
   mainnet: {
