@@ -12,7 +12,7 @@
 <br/>
 
 [![Stellar](https://img.shields.io/badge/Stellar-Soroban-7B2FBE?style=for-the-badge&logo=stellar&logoColor=white)](https://stellar.org)
-[![Testnet Live](https://img.shields.io/badge/Testnet-LIVE-22c55e?style=for-the-badge&logo=checkmarx&logoColor=white)](https://lab.stellar.org/r/testnet/contract/CCA7FZTWEJDESXHLOENHB6FV3DN5YZYZDNZWKKUPPP2NGNSJCZ7APEYH)
+[![Testnet Live](https://img.shields.io/badge/Testnet-LIVE-22c55e?style=for-the-badge&logo=checkmarx&logoColor=white)](https://stellar.expert/explorer/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR)
 [![React](https://img.shields.io/badge/React-19-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Gemini AI](https://img.shields.io/badge/Gemini-2.5_Pro-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev)
@@ -296,10 +296,21 @@ An automated static analysis and manual security review was conducted. **No high
 - [x] Test suite passing locally.
 - [x] Real verified Testnet transaction hashes and addresses generated and committed.
 
-**Verifiable On-Chain Artifacts**
-- **Vault Contract Address:** `CA7TF7SLHLBNS6VLF2VGQ5NPC4F6WBUWMNR7QW3Y5RBTZCKNU7BCXAYM` ([View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CA7TF7SLHLBNS6VLF2VGQ5NPC4F6WBUWMNR7QW3Y5RBTZCKNU7BCXAYM))
-- **WASM Install TX:** `2fbc47c6b9ad7a490175b20f3240aaf153eed22bfe1c113f7038d14248d6e9b0` ([View TX](https://stellar.expert/explorer/testnet/tx/2fbc47c6b9ad7a490175b20f3240aaf153eed22bfe1c113f7038d14248d6e9b0))
-- **Contract Deploy TX:** `e0e3f39f7a3f252350fcdb24b9b56c8d6c89019feb27083bafa2cd1026f5afc7` ([View TX](https://stellar.expert/explorer/testnet/tx/e0e3f39f7a3f252350fcdb24b9b56c8d6c89019feb27083bafa2cd1026f5afc7))
+**Verifiable On-Chain Artifacts — Contract: [`CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR`](https://stellar.expert/explorer/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR)**
+
+| Step | Action | TX Hash | Explorer |
+|:---:|---|---|---|
+| 1 | `upload_vault_wasm` | `4bedd7e9…178691` | [View ↗](https://stellar.expert/explorer/testnet/tx/4bedd7e9d6f163ed98965d2a72afe9e467596b8f423a194f9e6db07a13178691) |
+| 2 | `deploy_vault_contract` | `c65e9d12…4179b` | [View ↗](https://stellar.expert/explorer/testnet/tx/c65e9d12484702fafa31f9fbd1bf8b162e060542bf915db295fb0115a7e4179b) |
+| 3 | `initialize_vault_contract` | `4f9467da…f23a` | [View ↗](https://stellar.expert/explorer/testnet/tx/4f9467dabd89f56ac80f977021ee2eebc34485b10d666d36570b854f9bd8f23a) |
+| 4 | `upgrade_vault_wasm` (multisig) | `22aef453…4555` | [View ↗](https://stellar.expert/explorer/testnet/tx/22aef453743a022dd1bda7ff8411496ee368d7d909a828c4ecd22415cdb64555) |
+| 5 | `deposit_reinsurance` LP1 — 9,990 XLM | `0f9a834e…969c` | [View ↗](https://stellar.expert/explorer/testnet/tx/0f9a834e26dd174c9c8f437f8abdcb7f4deed7559dc35ae16a0bd4371f5e969c) |
+| 6 | `deposit_subsidy` NGO — 9,990 XLM | `2e5d864f…37a3` | [View ↗](https://stellar.expert/explorer/testnet/tx/2e5d864f03296ba3e37dc8bde82afe407b24ec7b06fc7ca2d16555e9cbd537a3) |
+| 7 | `deposit_reinsurance` LP2 — 9,990 XLM | `8259394c…8da7` | [View ↗](https://stellar.expert/explorer/testnet/tx/8259394c9711b5432dfdd192cceced35fc3116d2f5335d1ca2bb0ba3a3898da7) |
+| 8 | `deposit_reinsurance` LP3 — 4,990 XLM | `7acb0e75…2683` | [View ↗](https://stellar.expert/explorer/testnet/tx/7acb0e75f3d887d2018f6038ceb95de4a409d0d629fff5bc081224c54b162683) |
+| 9 | `transfer_shares` LP2 → LP3 (bond trade) | `b75e3c97…9e49` | [View ↗](https://stellar.expert/explorer/testnet/tx/b75e3c977d5200c168032598c582eed7c1bd5027cf5b01b733cf8e24bebc9e49) |
+
+> All 9 transactions are live and publicly auditable on Stellar Expert. The vault now holds **~24,970 XLM** in reinsurance liquidity across 3 LPs, with a 9,990 XLM subsidy pool for farmer premium discounts. Tokenized disaster relief bond shares were successfully traded between LPs (Step 9), verifying the `transfer_shares` feature end-to-end on-chain.
 
 ---
 
@@ -332,8 +343,10 @@ An automated static analysis and manual security review was conducted. **No high
 ### 📡 Testnet
 | | |
 |---|---|
-| **Contract Address** | `CAQWBSIJK2R2DSRCOVQDN2CC3A7IW3T5LWDJAK4QWTLNUJC4OL5IJUAM` |
-| **Explorer** | [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CAQWBSIJK2R2DSRCOVQDN2CC3A7IW3T5LWDJAK4QWTLNUJC4OL5IJUAM) |
+| **Contract Address** | `CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR` |
+| **WASM Hash** | `3bd4c52269f229a838dc63086c60439b6c71f63c2d17b9d92103a51041af8663` |
+| **Explorer** | [Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR) |
+| **Lab** | [Stellar Lab](https://lab.stellar.org/r/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR) |
 
 <img src="public/TESTNET2.png" alt="Testnet Screenshot" width="100%"/>
 

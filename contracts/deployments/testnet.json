@@ -52,6 +52,47 @@
       "status": "SUCCESS",
       "note": "upgrade() called with wasm_hash=3bd4c52269f229a838dc63086c60439b6c71f63c2d17b9d92103a51041af8663, confirming admin multisig upgrade path works on-chain",
       "explorerUrl": "https://stellar.expert/explorer/testnet/tx/22aef453743a022dd1bda7ff8411496ee368d7d909a828c4ecd22415cdb64555"
+    },
+    {
+      "step": 5,
+      "action": "deposit_reinsurance",
+      "txHash": "0f9a834e26dd174c9c8f437f8abdcb7f4deed7559dc35ae16a0bd4371f5e969c",
+      "status": "SUCCESS",
+      "note": "LP1 deposited 9,990 XLM into reinsurance pool — vault TVL funded",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/0f9a834e26dd174c9c8f437f8abdcb7f4deed7559dc35ae16a0bd4371f5e969c"
+    },
+    {
+      "step": 6,
+      "action": "deposit_subsidy",
+      "txHash": "2e5d864f03296ba3e37dc8bde82afe407b24ec7b06fc7ca2d16555e9cbd537a3",
+      "status": "SUCCESS",
+      "note": "NGO/Sponsor deposited 9,990 XLM premium subsidy — farmers receive 50% discount on premiums",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/2e5d864f03296ba3e37dc8bde82afe407b24ec7b06fc7ca2d16555e9cbd537a3"
+    },
+    {
+      "step": 7,
+      "action": "deposit_reinsurance_lp2",
+      "txHash": "8259394c9711b5432dfdd192cceced35fc3116d2f5335d1ca2bb0ba3a3898da7",
+      "status": "SUCCESS",
+      "note": "LP2 deposited 9,990 XLM — multi-LP reinsurance pool, vault TVL now 19,980 XLM",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/8259394c9711b5432dfdd192cceced35fc3116d2f5335d1ca2bb0ba3a3898da7"
+    },
+    {
+      "step": 8,
+      "action": "deposit_reinsurance_lp3",
+      "txHash": "7acb0e75f3d887d2018f6038ceb95de4a409d0d629fff5bc081224c54b162683",
+      "status": "SUCCESS",
+      "note": "LP3 deposited 4,990 XLM — 3-LP reinsurance pool fully operational",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/7acb0e75f3d887d2018f6038ceb95de4a409d0d629fff5bc081224c54b162683"
+    },
+    {
+      "step": 9,
+      "action": "transfer_shares",
+      "txHash": "b75e3c977d5200c168032598c582eed7c1bd5027cf5b01b733cf8e24bebc9e49",
+      "status": "SUCCESS",
+      "note": "LP2 transferred 24975000000 disaster relief bond shares to LP3 — on-chain tokenized bond trading verified",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/b75e3c977d5200c168032598c582eed7c1bd5027cf5b01b733cf8e24bebc9e49"
     }
-  ]
+  ],
+  "week1GeneratedAt": "2026-09-30T16:15:56.186Z"
 }
