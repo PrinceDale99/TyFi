@@ -1,4 +1,6 @@
 #![no_std]
+pub mod verifier;
+
 use soroban_sdk::{
     contract, contractimpl, contracttype, contracterror, Address, Env, Symbol, log, token, Vec, BytesN, Bytes
 };
@@ -20,6 +22,8 @@ pub enum Error {
     InsufficientSignatures = 11,
     NoParametricBands = 12,
     LoanCapExceeded = 13,
+    PolicyAlreadyUsed = 14,
+    CoverageCapExceeded = 15,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -45,6 +49,7 @@ pub enum DataKey {
     SubsidyBalance,                     // Donor premium subsidy pool balance (i128)
     TotalReinsuranceShares,             // Total reinsurance shares issued (i128)
     TotalReinsuranceDeposited,          // Total reinsurance XLM deposited (i128)
+    TotalOutstandingCoverage,           // Sum of all active policy payout_amounts (i128) — solvency liability tracker
     LpShares(Address),                  // Reinsurance shares balance of an LP (i128)
     Policy(Address, Symbol, Symbol),    // Policy details: (farmer, farm_id, season) -> Policy
     FarmList(Address),                  // List of farm IDs for a farmer
@@ -449,6 +454,17 @@ impl TyphoonVault {
         let amount = (shares.checked_mul(total_deposited).ok_or(Error::Overflow)?)
             .checked_div(total_shares).ok_or(Error::Overflow)?;
 
+        // --- Security Fix A: LP withdrawal lock during active coverage ---
+        // LPs may only exit "free" capital — the portion of the pool not
+        // already committed to cover active policy payouts.  Withdrawing below
+        // the outstanding coverage floor would leave valid claimants unable to
+        // collect their insured payouts (rug-pull vector).
+        let outstanding_coverage: i128 = env.storage().instance().get(&DataKey::TotalOutstandingCoverage).unwrap_or(0);
+        let free_capital = total_deposited.saturating_sub(outstanding_coverage);
+        if amount > free_capital {
+            return Err(Error::InsufficientLiquidity);
+        }
+
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
         let contract_balance = client.balance(&env.current_contract_address());
@@ -517,6 +533,12 @@ impl TyphoonVault {
     /// Get total reinsurance shares
     pub fn get_total_reinsurance_shares(env: Env) -> i128 {
         env.storage().instance().get(&DataKey::TotalReinsuranceShares).unwrap_or(0)
+    }
+
+    /// Get the total outstanding coverage liability (sum of all active policy payout_amounts).
+    /// Free capital available for LP withdrawal = TotalReinsuranceDeposited - TotalOutstandingCoverage.
+    pub fn get_total_outstanding_coverage(env: Env) -> i128 {
+        env.storage().instance().get(&DataKey::TotalOutstandingCoverage).unwrap_or(0)
     }
 
     // --- MicroLoans ---
@@ -666,6 +688,14 @@ impl TyphoonVault {
             return Err(Error::NotVerified);
         }
 
+        // --- Security Fix B: Policy re-subscription guard ---
+        // A (farm_id, season) key is permanently consumed after first use.
+        // Even a deactivated (paid-out) policy cannot be re-subscribed — the
+        // season is a unique, non-reusable claims window.
+        if env.storage().persistent().has(&DataKey::Policy(farmer.clone(), farm_id.clone(), season.clone())) {
+            return Err(Error::PolicyAlreadyUsed);
+        }
+
         let is_mainnet = env.storage().instance().get(&DataKey::IsMainnetMode).unwrap_or(false);
         let xlm_token_addr: Address = env.storage().instance().get(&DataKey::XlmToken).ok_or(Error::NotInitialized)?;
         let client = token::Client::new(&env, &xlm_token_addr);
@@ -695,9 +725,22 @@ impl TyphoonVault {
         let adjusted_premium = (premium * risk_multiplier as i128) / 100;
         let adjusted_farmer_to_pay = (farmer_to_pay * risk_multiplier as i128) / 100;
 
-        client.transfer(&farmer, &env.current_contract_address(), &adjusted_farmer_to_pay);
-
+        // --- Security Fix C (part 1): Solvency cap check ---
+        // Compute the payout obligation before accepting the premium.  The pool
+        // must be able to cover ALL active policy payouts, not just the one
+        // being subscribed.  If accepting this policy would push outstanding
+        // coverage above the total deposited pool we reject with
+        // CoverageCapExceeded so farmers see honest capacity limits rather
+        // than buying coverage that can never be honoured.
         let payout_amount = adjusted_premium.checked_mul(10).ok_or(Error::Overflow)?;
+        let total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        let outstanding_coverage: i128 = env.storage().instance().get(&DataKey::TotalOutstandingCoverage).unwrap_or(0);
+        let new_outstanding = outstanding_coverage.checked_add(payout_amount).ok_or(Error::Overflow)?;
+        if new_outstanding > total_deposited {
+            return Err(Error::CoverageCapExceeded);
+        }
+
+        client.transfer(&farmer, &env.current_contract_address(), &adjusted_farmer_to_pay);
 
         let policy = Policy {
             farm_id: farm_id.clone(),
@@ -731,9 +774,12 @@ impl TyphoonVault {
         }
 
         // Update reinsurance deposited balance (premiums serve as pool reserves)
-        let mut total_deposited: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
-        total_deposited = total_deposited.checked_add(premium).ok_or(Error::Overflow)?;
-        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+        let mut total_deposited_mut: i128 = env.storage().instance().get(&DataKey::TotalReinsuranceDeposited).unwrap_or(0);
+        total_deposited_mut = total_deposited_mut.checked_add(premium).ok_or(Error::Overflow)?;
+        env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited_mut);
+
+        // --- Security Fix C (part 2): Track outstanding coverage liability ---
+        env.storage().instance().set(&DataKey::TotalOutstandingCoverage, &new_outstanding);
 
         env.events().publish(
             (Symbol::new(&env, "subscribe"), farmer),
@@ -747,7 +793,38 @@ impl TyphoonVault {
     /// Oracles submit damage estimation reports (Combined Oracle + AI) for a typhoon in a region, along with raw wind speed
     pub fn submit_weather_report(env: Env, oracle: Address, typhoon_id: Symbol, region: Symbol, damage_percentage: u32, wind_speed: u32) -> Result<(), Error> {
         oracle.require_auth();
+        Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_speed)
+    }
 
+    /// Submit weather report with Noir Zero-Knowledge proof verification.
+    ///
+    /// The proof proves that the observed wind speed exceeds the payout threshold
+    /// for the specific typhoon and region without leaking private raw sensor feeds.
+    pub fn submit_weather_report_zk(
+        env: Env,
+        oracle: Address,
+        typhoon_id: Symbol,
+        region: Symbol,
+        damage_percentage: u32,
+        wind_speed: u32,
+        proof: Bytes,
+        public_inputs: Vec<soroban_sdk::Val>,
+    ) -> Result<(), Error> {
+        oracle.require_auth();
+        if !verifier::verify_zk_proof(&env, &proof, &public_inputs) {
+            return Err(Error::Unauthorized);
+        }
+        Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_speed)
+    }
+
+    fn process_weather_report(
+        env: &Env,
+        oracle: &Address,
+        typhoon_id: &Symbol,
+        region: &Symbol,
+        damage_percentage: u32,
+        wind_speed: u32,
+    ) -> Result<(), Error> {
         if damage_percentage > 100 {
             return Err(Error::InvalidAmount);
         }
@@ -762,7 +839,7 @@ impl TyphoonVault {
         if is_mainnet {
             // Mainnet: Validate single authorized oracle
             let single_oracle: Address = env.storage().instance().get(&DataKey::SingleOracle).ok_or(Error::NotInitialized)?;
-            if oracle != single_oracle {
+            if *oracle != single_oracle {
                 return Err(Error::Unauthorized);
             }
 
@@ -770,10 +847,10 @@ impl TyphoonVault {
             env.storage().persistent().set(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), region.clone()), &damage_percentage);
             env.storage().persistent().set(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone()), &true);
             env.storage().persistent().set(&DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()), &wind_speed);
-            bump_persistent(&env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
+            bump_persistent(env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
 
             env.events().publish(
-                (Symbol::new(&env, "consensus_reached"), typhoon_id, region),
+                (Symbol::new(env, "consensus_reached"), typhoon_id.clone(), region.clone()),
                 damage_percentage
             );
         } else {
@@ -785,11 +862,11 @@ impl TyphoonVault {
 
             env.storage().persistent().set(&DataKey::Report(typhoon_id.clone(), region.clone(), oracle.clone()), &damage_percentage);
 
-            let mut reported: Vec<Address> = env.storage().persistent().get(&DataKey::ReportedOracles(typhoon_id.clone(), region.clone())).unwrap_or(Vec::new(&env));
+            let mut reported: Vec<Address> = env.storage().persistent().get(&DataKey::ReportedOracles(typhoon_id.clone(), region.clone())).unwrap_or(Vec::new(env));
 
             let mut already_reported = false;
             for i in 0..reported.len() {
-                if reported.get(i).unwrap() == oracle {
+                if reported.get(i).unwrap() == *oracle {
                     already_reported = true;
                     break;
                 }
@@ -818,10 +895,10 @@ impl TyphoonVault {
                 env.storage().persistent().set(&DataKey::ConsensusDamagePercentage(typhoon_id.clone(), region.clone()), &avg_damage);
                 env.storage().persistent().set(&DataKey::ConsensusReached(typhoon_id.clone(), region.clone()), &true);
                 env.storage().persistent().set(&DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()), &wind_speed);
-                bump_persistent(&env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
+                bump_persistent(env, &DataKey::OracleWindSpeed(typhoon_id.clone(), region.clone()));
 
                 env.events().publish(
-                    (Symbol::new(&env, "consensus_reached"), typhoon_id, region),
+                    (Symbol::new(env, "consensus_reached"), typhoon_id.clone(), region.clone()),
                     avg_damage
                 );
             }
@@ -829,8 +906,6 @@ impl TyphoonVault {
 
         Ok(())
     }
-
-
 
     /// Claim payout based on dynamic network-configured parametric curves for a specific farm and season
     pub fn claim_payout(env: Env, farmer: Address, farm_id: Symbol, season: Symbol, typhoon_id: Symbol) -> Result<i128, Error> {
@@ -886,6 +961,15 @@ impl TyphoonVault {
             total_deposited = 0;
         }
         env.storage().instance().set(&DataKey::TotalReinsuranceDeposited, &total_deposited);
+
+        // --- Security Fix C (part 3): Release outstanding coverage liability ---
+        // Once a policy is settled (paid or thresholds not met) its reserved
+        // payout obligation is removed from the solvency tracker.  We release
+        // the full policy.payout_amount, not just the actual transfer, so the
+        // tracker matches what was committed at subscribe time.
+        let outstanding_coverage: i128 = env.storage().instance().get(&DataKey::TotalOutstandingCoverage).unwrap_or(0);
+        let new_outstanding = outstanding_coverage.saturating_sub(policy.payout_amount);
+        env.storage().instance().set(&DataKey::TotalOutstandingCoverage, &new_outstanding);
 
         client.transfer(&env.current_contract_address(), &farmer, &payout_amount);
 
@@ -958,3 +1042,9 @@ mod test;
 
 #[cfg(test)]
 mod test_auth;
+
+#[cfg(test)]
+mod test_reinsurance;
+
+#[cfg(test)]
+mod test_security;

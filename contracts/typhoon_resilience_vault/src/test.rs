@@ -144,7 +144,7 @@ fn test_successful_payout_with_subsidy() {
 
 #[test]
 fn test_yield_bearing_reinsurance_pool() {
-    let (env, client, contract_id, oracle, xlm_token, token, token_admin) = setup();
+    let (env, client, contract_id, oracle, _xlm_token, _token, token_admin) = setup();
     let lp = Address::generate(&env);
     let farmer = Address::generate(&env);
     let farm_id = Symbol::new(&env, "Farm1");
@@ -153,26 +153,46 @@ fn test_yield_bearing_reinsurance_pool() {
 
     env.mock_all_auths();
 
-    // Mint stablecoins and deposit reinsurance
-    token_admin.mint(&lp, &1000);
-    client.deposit_reinsurance(&lp, &1000);
+    // Mint and deposit enough liquidity to cover the farmer's payout_amount (200*10=2000).
+    // Fix C: subscribe rejects if outstanding_coverage > total_deposited.
+    // Fix A: LP cannot withdraw while coverage is outstanding.
+    token_admin.mint(&lp, &3000);
+    client.deposit_reinsurance(&lp, &3000);
 
-    assert_eq!(client.get_lp_shares(&lp), 1000);
-    assert_eq!(client.get_total_reinsurance_deposited(), 1000);
+    assert_eq!(client.get_lp_shares(&lp), 3000);
+    assert_eq!(client.get_total_reinsurance_deposited(), 3000);
 
-    // Subscribe farmer without subsidy (subsidy pool is empty)
+    // Subscribe farmer without subsidy (subsidy pool is empty).
+    // premium=200 → payout_amount=2000; pool after = 3200, outstanding=2000 (fits ✓)
     set_farmer_verified(&env, &contract_id, &farmer, true);
+    set_oracle_active(&env, &contract_id, &oracle, true);
     token_admin.mint(&farmer, &200);
     client.subscribe(&farmer, &farm_id, &region, &season, &200);
 
-    // Reinsurance pool deposited is now 1200 due to premium accrual
+    // Pool grew by premium; outstanding coverage = 2000
+    assert_eq!(client.get_total_reinsurance_deposited(), 3200);
+    assert_eq!(client.get_total_outstanding_coverage(), 2000,
+        "outstanding coverage must equal payout_amount after subscribe");
+
+    // LP cannot withdraw ALL shares while farmer coverage is outstanding (Fix A)
+    let blocked = client.try_withdraw_reinsurance(&lp, &3000);
+    assert!(blocked.is_err(), "LP must not exit while coverage outstanding");
+
+    // Settle the claim via oracle + farmer claim
+    let typhoon_id = Symbol::new(&env, "Odette");
+    client.submit_weather_report(&oracle, &typhoon_id, &region, &100, &0);
+    client.claim_payout(&farmer, &farm_id, &season, &typhoon_id);
+
+    // Outstanding coverage released after payout
+    assert_eq!(client.get_total_outstanding_coverage(), 0,
+        "outstanding coverage must be 0 after payout is settled");
+
+    // Pool after payout: 3200 - 2000 = 1200
     assert_eq!(client.get_total_reinsurance_deposited(), 1200);
 
-    // LP withdraws their shares
-    client.withdraw_reinsurance(&lp, &1000);
-
-    // LP should receive their original 1000 + 200 yield = 1200 tokens
-    assert_eq!(token.balance(&lp), 1200);
+    // LP withdraws all remaining shares (3000 shares on pool of 1200 → 1200 XLM)
+    let lp_withdrawn = client.withdraw_reinsurance(&lp, &3000);
+    assert_eq!(lp_withdrawn, 1200, "LP receives all remaining pool after payout event");
     assert_eq!(client.get_lp_shares(&lp), 0);
 }
 
@@ -510,3 +530,85 @@ fn test_duplicate_loan_id_rejected() {
     let r = client.try_originate_microloan(&farmer, &loan_id, &5_000, &90);
     assert!(r.is_err(), "duplicate active loan_id must be rejected");
 }
+
+
+#[test]
+fn test_zk_weather_report_valid() {
+    let (env, client, contract_id, oracle, _xlm_token, _token, _token_admin) = setup();
+    env.mock_all_auths();
+    set_oracle_active(&env, &contract_id, &oracle, true);
+
+    let typhoon_id = Symbol::new(&env, "ZK_STORM");
+    let region = Symbol::new(&env, "Visayas");
+    let mut proof_bytes = [0u8; 64];
+    proof_bytes[0] = 0xde;
+    proof_bytes[1] = 0xad;
+    let proof = Bytes::from_slice(&env, &proof_bytes);
+
+    let mut public_inputs = soroban_sdk::Vec::new(&env);
+    public_inputs.push_back(150u32.into());
+    public_inputs.push_back(1u32.into());
+
+    client.submit_weather_report_zk(
+        &oracle,
+        &typhoon_id,
+        &region,
+        &85,
+        &155,
+        &proof,
+        &public_inputs,
+    );
+    assert_eq!(client.get_weather_report(&typhoon_id, &region, &oracle), 85);
+}
+
+#[test]
+fn test_zk_weather_report_empty_proof_fails() {
+    let (env, client, contract_id, oracle, _xlm_token, _token, _token_admin) = setup();
+    env.mock_all_auths();
+    set_oracle_active(&env, &contract_id, &oracle, true);
+
+    let typhoon_id = Symbol::new(&env, "ZK_STORM");
+    let region = Symbol::new(&env, "Visayas");
+    let empty_proof = Bytes::new(&env);
+
+    let mut public_inputs = soroban_sdk::Vec::new(&env);
+    public_inputs.push_back(150u32.into());
+
+    let res = client.try_submit_weather_report_zk(
+        &oracle,
+        &typhoon_id,
+        &region,
+        &85,
+        &155,
+        &empty_proof,
+        &public_inputs,
+    );
+    assert!(res.is_err() || res.unwrap().is_err(), "empty proof must be rejected");
+}
+
+#[test]
+fn test_zk_weather_report_empty_inputs_fails() {
+    let (env, client, contract_id, oracle, _xlm_token, _token, _token_admin) = setup();
+    env.mock_all_auths();
+    set_oracle_active(&env, &contract_id, &oracle, true);
+
+    let typhoon_id = Symbol::new(&env, "ZK_STORM");
+    let region = Symbol::new(&env, "Visayas");
+    let mut proof_bytes = [0u8; 64];
+    proof_bytes[0] = 0x01;
+    let proof = Bytes::from_slice(&env, &proof_bytes);
+    let empty_inputs = soroban_sdk::Vec::new(&env);
+
+    let res = client.try_submit_weather_report_zk(
+        &oracle,
+        &typhoon_id,
+        &region,
+        &85,
+        &155,
+        &proof,
+        &empty_inputs,
+    );
+    assert!(res.is_err() || res.unwrap().is_err(), "empty public inputs must be rejected");
+}
+
+
