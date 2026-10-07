@@ -63,6 +63,7 @@ pub enum DataKey {
     FarmerOutstandingPrincipal(Address),// Total unrepaid loan principal per farmer (i128)
     ParametricBands(Symbol),            // region -> Vec<PayoutBand>
     OracleWindSpeed(Symbol, Symbol),    // Raw wind speed reported by Oracle: (typhoon_id, region) -> u32
+    SolvencyCapBps,                     // DAO-adjustable max coverage ratio (basis points, u32)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -357,8 +358,70 @@ impl TyphoonVault {
         if multiplier == 0 || multiplier > 1000 {
             return Err(Error::InvalidAmount);
         }
-        env.storage().persistent().set(&DataKey::RiskZoneMultiplier(region), &multiplier);
+        env.storage().persistent().set(&DataKey::RiskZoneMultiplier(region.clone()), &multiplier);
+        env.events().publish(
+            (Symbol::new(&env, "dao_rate_updated"), region),
+            multiplier,
+        );
         Ok(())
+    }
+
+    /// DAO ONLY: Read the current premium rate multiplier for a risk zone.
+    pub fn get_premium_rate(env: Env, region: Symbol) -> u32 {
+        env.storage().persistent().get(&DataKey::RiskZoneMultiplier(region)).unwrap_or(100)
+    }
+
+    /// DAO ONLY: Update the oracle consensus quorum threshold.
+    /// Called by tyfi_dao invocation bridge after a successful governance vote.
+    pub fn dao_update_quorum_threshold(env: Env, new_threshold: u32) -> Result<(), Error> {
+        let dao: Address = env.storage().instance().get(&DataKey::DaoAddress).ok_or(Error::Unauthorized)?;
+        dao.require_auth();
+        if new_threshold == 0 || new_threshold > 100 {
+            return Err(Error::InvalidAmount);
+        }
+        env.storage().instance().set(&DataKey::QuorumThreshold, &new_threshold);
+        env.events().publish(
+            (Symbol::new(&env, "dao_quorum_updated"),),
+            new_threshold,
+        );
+        log!(&env, "DAO updated oracle quorum threshold:", new_threshold);
+        Ok(())
+    }
+
+    /// DAO ONLY: Update maximum coverage-to-TVL ratio (solvency cap in basis points).
+    /// `new_cap_bps` range: 100–9500 (1%–95% of TVL). Prevents vault over-coverage.
+    pub fn dao_update_solvency_cap(env: Env, new_cap_bps: u32) -> Result<(), Error> {
+        let dao: Address = env.storage().instance().get(&DataKey::DaoAddress).ok_or(Error::Unauthorized)?;
+        dao.require_auth();
+        if new_cap_bps < 100 || new_cap_bps > 9500 {
+            return Err(Error::InvalidAmount);
+        }
+        env.storage().instance().set(&DataKey::SolvencyCapBps, &new_cap_bps);
+        env.events().publish(
+            (Symbol::new(&env, "dao_solvency_cap_updated"),),
+            new_cap_bps,
+        );
+        log!(&env, "DAO updated solvency cap (bps):", new_cap_bps);
+        Ok(())
+    }
+
+    /// DAO ONLY: Register or deactivate a weather oracle via DAO governance.
+    /// Unlike set_oracle (admin multisig), this path is governed by token-weighted vote.
+    pub fn dao_set_oracle(env: Env, oracle: Address, active: bool) -> Result<(), Error> {
+        let dao: Address = env.storage().instance().get(&DataKey::DaoAddress).ok_or(Error::Unauthorized)?;
+        dao.require_auth();
+        env.storage().persistent().set(&DataKey::Oracle(oracle.clone()), &active);
+        env.events().publish(
+            (Symbol::new(&env, "dao_oracle_set"), oracle.clone()),
+            active,
+        );
+        log!(&env, "DAO set oracle status:", oracle, active);
+        Ok(())
+    }
+
+    /// Get current solvency cap in basis points (default 8000 = 80% of TVL).
+    pub fn get_solvency_cap(env: Env) -> u32 {
+        env.storage().instance().get(&DataKey::SolvencyCapBps).unwrap_or(8000)
     }
 
     // --- Public Premium Subsidy Pool ---
