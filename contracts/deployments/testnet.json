@@ -7,15 +7,26 @@
   "contracts": {
     "typhoon_resilience_vault": {
       "address": "CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
-      "wasmHash": "3bd4c52269f229a838dc63086c60439b6c71f63c2d17b9d92103a51041af8663",
-      "wasmSizeBytes": 29836,
-      "exportedFunctions": 33,
+      "wasmHash": "03e347ebc05e6fbdbbef8932b0d4350dd7aad30f8b86cd0be96eb088cc5a502a",
+      "wasmSizeBytes": 30230,
+      "exportedFunctions": 36,
       "isInitialized": true,
       "isMainnetMode": false,
       "quorumThreshold": 1,
       "xlmToken": "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
       "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
       "labUrl": "https://lab.stellar.org/r/testnet/contract/CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR"
+    },
+    "tyfi_dao": {
+      "address": "CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY",
+      "wasmHash": "6bd8d130a727190d75e88dfa4b1def297a3278d898e44f37f141ede5eceba678",
+      "wasmSizeBytes": 21062,
+      "exportedFunctions": 17,
+      "isInitialized": true,
+      "admin": "GA4M2FME27D2IG7W5AFMZCVUJ2U67PIIYIRGJNSAUCFY6NZHYE7KSVSV",
+      "vaultId": "CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY",
+      "labUrl": "https://lab.stellar.org/r/testnet/contract/CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY"
     }
   },
   "transactions": [
@@ -92,7 +103,106 @@
       "status": "SUCCESS",
       "note": "LP2 transferred 24975000000 disaster relief bond shares to LP3 — on-chain tokenized bond trading verified",
       "explorerUrl": "https://stellar.expert/explorer/testnet/tx/b75e3c977d5200c168032598c582eed7c1bd5027cf5b01b733cf8e24bebc9e49"
+    },
+    {
+      "step": 10,
+      "action": "upload_dao_wasm",
+      "contract": "tyfi_dao",
+      "txHash": "b1c91b02b2011d40f7bbab9e38842c20cce960e5cafa79a3aa952c93d53f6626",
+      "status": "SUCCESS",
+      "note": "WASM 6bd8d130a727190d75e88dfa4b1def297a3278d898e44f37f141ede5eceba678 uploaded (21,062 bytes, 17 exported functions)",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/b1c91b02b2011d40f7bbab9e38842c20cce960e5cafa79a3aa952c93d53f6626"
+    },
+    {
+      "step": 11,
+      "action": "deploy_dao_contract",
+      "contract": "tyfi_dao",
+      "txHash": "bd53611fdf0d0c462985c63663ba2a4b5b00ff1ad7fd648b3b43d9982a255132",
+      "status": "SUCCESS",
+      "note": "Contract CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY deployed",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/bd53611fdf0d0c462985c63663ba2a4b5b00ff1ad7fd648b3b43d9982a255132"
+    },
+    {
+      "step": 12,
+      "action": "upload_updated_vault_wasm",
+      "contract": "typhoon_resilience_vault",
+      "txHash": "7455aab9d4af8a19b0ad6308554954493efdb06755c553f483f2dc5122a89d8f",
+      "status": "SUCCESS",
+      "note": "WASM 03e347ebc05e6fbdbbef8932b0d4350dd7aad30f8b86cd0be96eb088cc5a502a uploaded with DAO bridge endpoints (30,230 bytes, 36 functions)",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/7455aab9d4af8a19b0ad6308554954493efdb06755c553f483f2dc5122a89d8f"
+    },
+    {
+      "step": 13,
+      "action": "initialize_dao_contract",
+      "contract": "tyfi_dao",
+      "txHash": "704df610def0fa9a20991ea3f1df1efb74089c0fed8460cafe3b8f41a50f6115",
+      "status": "SUCCESS",
+      "note": "tyfi_dao initialized: admin=GA4M2FME27D2IG7W5AFMZCVUJ2U67PIIYIRGJNSAUCFY6NZHYE7KSVSV, vault=CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/704df610def0fa9a20991ea3f1df1efb74089c0fed8460cafe3b8f41a50f6115"
+    },
+    {
+      "step": 14,
+      "action": "grant_role_proposer",
+      "contract": "tyfi_dao",
+      "txHash": "2bc0e778976550f2f4b953ee44966af53fc1b8094b1b0bd1f29f9d39a5f1d7a3",
+      "status": "SUCCESS",
+      "note": "Admin granted Proposer role to GAQLUBJ44ZQFRLQD44KB5ZMVDJNVDJXUIVH7R7JCGX2ZQKECOQ3RHVT5 (alice); role_granted event published",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/2bc0e778976550f2f4b953ee44966af53fc1b8094b1b0bd1f29f9d39a5f1d7a3"
+    },
+    {
+      "step": 15,
+      "action": "create_proposal_1",
+      "contract": "tyfi_dao",
+      "txHash": "30bec70599298a7af468f245a220d121102e690279e61fe36bccece425e2cce8",
+      "status": "SUCCESS",
+      "note": "Proposal #1 created: UpdatePremiumRate Luzon 125% (multiplier=125, deadline=5069210, timelock=5077850)",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/30bec70599298a7af468f245a220d121102e690279e61fe36bccece425e2cce8"
+    },
+    {
+      "step": 16,
+      "action": "create_proposal_2",
+      "contract": "tyfi_dao",
+      "txHash": "17a622e61a051d736486982c10a5f4aab3b0f80221b51449dfc6a0454caf402e",
+      "status": "SUCCESS",
+      "note": "Proposal #2 created: UpdateSolvencyCap 8500 bps (max coverage ratio=85%)",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/17a622e61a051d736486982c10a5f4aab3b0f80221b51449dfc6a0454caf402e"
+    },
+    {
+      "step": 17,
+      "action": "veto_proposal_2",
+      "contract": "tyfi_dao",
+      "txHash": "05c9db394688af0d7945f8ad6d0e2c1245142a4cc8709d1fa40fe65dbfca50d4",
+      "status": "SUCCESS",
+      "note": "Emergency administrative veto exercised on proposal #2; dao_veto event emitted; on-chain status updated to Vetoed",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/05c9db394688af0d7945f8ad6d0e2c1245142a4cc8709d1fa40fe65dbfca50d4"
+    },
+    {
+      "step": 18,
+      "action": "deposit_reinsurance_deployer",
+      "contract": "typhoon_resilience_vault",
+      "txHash": "110af8325c0560486ba2b5e4d6054b0f6b89eda90754639bd583b2954e84dba2",
+      "status": "SUCCESS",
+      "note": "Deployer deposited 100 XLM (1,000,000,000 stroops) into reinsurance pool to acquire LP voting shares",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/110af8325c0560486ba2b5e4d6054b0f6b89eda90754639bd583b2954e84dba2"
+    },
+    {
+      "step": 19,
+      "action": "vote_proposal_1",
+      "contract": "tyfi_dao",
+      "txHash": "366ff310c0db0afcb9ba87fbfc0f076e3adf7be684d258181296904824a363e6",
+      "status": "SUCCESS",
+      "note": "Deployer cast vote FOR proposal #1 using 1,000,000,000 stroops LP voting power; dao_vote event emitted; duplicate vote attempt rejected with Error #7 (AlreadyVoted)",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/366ff310c0db0afcb9ba87fbfc0f076e3adf7be684d258181296904824a363e6"
+    },
+    {
+      "step": 20,
+      "action": "execute_proposal_1",
+      "contract": "tyfi_dao",
+      "txHash": "fb53fa9b3460d55acf44caa88ce7d251722cce70af0d6ca0e12b8403bd4daa41",
+      "status": "SUCCESS",
+      "note": "Proposal #1 executed after voting deadline; quorum check failed (1B < 74.91B required); state transitioned to Failed; quorum_failed event emitted; premature finalize attempt blocked with Error #10 (ProposalFailed)",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/fb53fa9b3460d55acf44caa88ce7d251722cce70af0d6ca0e12b8403bd4daa41"
     }
   ],
-  "week1GeneratedAt": "2026-09-30T16:15:56.186Z"
+  "week2GeneratedAt": "2026-10-07T10:41:08Z"
 }
