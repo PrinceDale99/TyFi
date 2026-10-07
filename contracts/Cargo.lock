@@ -1716,6 +1716,7 @@ dependencies = [
  "rand",
  "sha2",
  "soroban-sdk",
+ "tyfi_dao",
 ]
 
 [[package]]
