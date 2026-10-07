@@ -314,6 +314,43 @@ An automated static analysis and manual security review was conducted. **No high
 
 ---
 
+## 🏛️ Week 2 Output Checklist: DAO Governance, Invocation Bridge & RBAC
+
+**Finalize and Deploy `tyfi_dao`**
+- [x] Complete Rust state machine for proposals, token-weighted voting, and multi-stage lifecycle (`tyfi_dao/src/lib.rs`).
+- [x] Successfully deployed `tyfi_dao` to Stellar Testnet: [`CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY`](https://stellar.expert/explorer/testnet/contract/CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY).
+- [x] Deployed updated `typhoon_resilience_vault` with DAO bridge endpoints (`CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR`).
+
+**Build the Invocation Bridge**
+- [x] Implemented cross-contract invocation bridge enabling `tyfi_dao` to autonomously mutate `typhoon_resilience_vault` parameters (`update_premium_rate`, `dao_update_quorum_threshold`, `dao_update_solvency_cap`, `dao_set_oracle`).
+- [x] Enforced 48-ledger timelock between execution qualification and final state actuation.
+- [x] Integrated permanent replay protection seal (`proposal.executed = true`) preventing double-finalization.
+
+**Implement Strict Role-Based Access Control (RBAC)**
+- [x] Enforced granular RBAC hierarchy: `Admin`, `Proposer`, `Voter`, `Executor`, and `Guardian` emergency veto.
+- [x] Protected vault parameters with `dao.require_auth()`; direct unauthorized calls panic with `Error::Unauthorized`.
+
+**Execution Testing & Testnet Dry-Runs**
+- [x] 76 / 76 unit and integration tests passing across workspace (`tyfi_dao`, `test_dao_bridge`, `test_security`, `test_microloan`, `test_multisig_auth`).
+- [x] 11 verified on-chain lifecycle transactions (Steps 10–20) executed on Stellar Testnet.
+- [x] Full evidence and audit log recorded in [`week2.md`](week2.md).
+
+| Step | Action | Contract | TX Hash | Explorer |
+|:---:|---|---|---|:---:|
+| 10 | `upload_dao_wasm` | `tyfi_dao` | `b1c91b02…f6626` | [View ↗](https://stellar.expert/explorer/testnet/tx/b1c91b02b2011d40f7bbab9e38842c20cce960e5cafa79a3aa952c93d53f6626) |
+| 11 | `deploy_dao_contract` | `tyfi_dao` | `bd53611f…255132` | [View ↗](https://stellar.expert/explorer/testnet/tx/bd53611fdf0d0c462985c63663ba2a4b5b00ff1ad7fd648b3b43d9982a255132) |
+| 12 | `upload_updated_vault_wasm` | `typhoon_vault` | `7455aab9…89d8f` | [View ↗](https://stellar.expert/explorer/testnet/tx/7455aab9d4af8a19b0ad6308554954493efdb06755c553f483f2dc5122a89d8f) |
+| 13 | `initialize_dao_contract` | `tyfi_dao` | `704df610…6115` | [View ↗](https://stellar.expert/explorer/testnet/tx/704df610def0fa9a20991ea3f1df1efb74089c0fed8460cafe3b8f41a50f6115) |
+| 14 | `grant_role_proposer` (Alice) | `tyfi_dao` | `2bc0e778…1d7a3` | [View ↗](https://stellar.expert/explorer/testnet/tx/2bc0e778976550f2f4b953ee44966af53fc1b8094b1b0bd1f29f9d39a5f1d7a3) |
+| 15 | `create_proposal_1` (Rate 125%) | `tyfi_dao` | `30bec705…2cce8` | [View ↗](https://stellar.expert/explorer/testnet/tx/30bec70599298a7af468f245a220d121102e690279e61fe36bccece425e2cce8) |
+| 16 | `create_proposal_2` (Cap 85%) | `tyfi_dao` | `17a622e6…af402e` | [View ↗](https://stellar.expert/explorer/testnet/tx/17a622e61a051d736486982c10a5f4aab3b0f80221b51449dfc6a0454caf402e) |
+| 17 | `veto_proposal_2` (Admin Veto) | `tyfi_dao` | `05c9db39…ca50d4` | [View ↗](https://stellar.expert/explorer/testnet/tx/05c9db394688af0d7945f8ad6d0e2c1245142a4cc8709d1fa40fe65dbfca50d4) |
+| 18 | `deposit_reinsurance_deployer` | `typhoon_vault` | `110af832…8dba2` | [View ↗](https://stellar.expert/explorer/testnet/tx/110af8325c0560486ba2b5e4d6054b0f6b89eda90754639bd583b2954e84dba2) |
+| 19 | `vote_proposal_1` (1B votes) | `tyfi_dao` | `366ff310…363e6` | [View ↗](https://stellar.expert/explorer/testnet/tx/366ff310c0db0afcb9ba87fbfc0f076e3adf7be684d258181296904824a363e6) |
+| 20 | `execute_proposal_1` (Quorum check) | `tyfi_dao` | `fb53fa9b…daa41` | [View ↗](https://stellar.expert/explorer/testnet/tx/fb53fa9b3460d55acf44caa88ce7d251722cce70af0d6ca0e12b8403bd4daa41) |
+
+---
+
 ## 📖 Roadmap
 
 ### ✅ Phase 1 — Testnet *(Current)*
