@@ -948,5 +948,13 @@ if (require.main === module) {
       transport: 'express',
     });
     await logEvent('INFO', `Notification telemetry server successfully launched`, { port: PORT });
+
+    // Run the Soroban event listener in this process instead of a second
+    // Node process: on the 512 MB host two processes exceeded the memory
+    // limit and the instance was killed in a restart loop.
+    if (process.env.ENABLE_EVENT_LISTENER !== 'false') {
+      const { startEventListeners } = await import('./listener');
+      startEventListeners();
+    }
   });
 }
