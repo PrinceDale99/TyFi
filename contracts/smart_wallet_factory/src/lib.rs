@@ -104,6 +104,58 @@ impl SmartWalletFactory {
         storage::is_paused(&env)
     }
 
+    // ── Account linking ──────────────────────────────────────────────────────
+
+    /// Link a passkey wallet to an existing account (e.g. a Freighter or
+    /// WalletConnect G-address) so the user keeps one identity across both.
+    ///
+    /// Both sides must authorize: the account with its own signature and the
+    /// wallet with a passkey assertion. Neither can be linked without the
+    /// consent of the other, and each side can hold at most one link.
+    pub fn link_account(env: Env, wallet: Address, account: Address) -> Result<(), Error> {
+        if !storage::is_wallet(&env, &wallet) {
+            return Err(Error::NotAFactoryWallet);
+        }
+        if account == wallet || storage::is_wallet(&env, &account) {
+            return Err(Error::InvalidLink);
+        }
+        if storage::linked_wallet(&env, &account).is_some() {
+            return Err(Error::AccountAlreadyLinked);
+        }
+        if storage::linked_account(&env, &wallet).is_some() {
+            return Err(Error::WalletAlreadyLinked);
+        }
+        account.require_auth();
+        wallet.require_auth();
+
+        storage::set_link(&env, &wallet, &account);
+        events::AccountLinked { wallet, account }.publish(&env);
+        Ok(())
+    }
+
+    /// Remove a link. Either party may do it on its own: `caller` must be the
+    /// wallet or its linked account, and must authorize.
+    pub fn unlink_account(env: Env, wallet: Address, caller: Address) -> Result<(), Error> {
+        let account = storage::linked_account(&env, &wallet).ok_or(Error::NotLinked)?;
+        if caller != wallet && caller != account {
+            return Err(Error::NotLinkParty);
+        }
+        caller.require_auth();
+        storage::remove_link(&env, &wallet, &account);
+        events::AccountUnlinked { wallet, account }.publish(&env);
+        Ok(())
+    }
+
+    /// The passkey wallet linked to `account`, if any.
+    pub fn linked_wallet(env: Env, account: Address) -> Option<Address> {
+        storage::linked_wallet(&env, &account)
+    }
+
+    /// The account linked to a passkey `wallet`, if any.
+    pub fn linked_account(env: Env, wallet: Address) -> Option<Address> {
+        storage::linked_account(&env, &wallet)
+    }
+
     // ── Admin ────────────────────────────────────────────────────────────────
 
     /// Emergency stop for new wallet creation. Existing wallets are unaffected:
