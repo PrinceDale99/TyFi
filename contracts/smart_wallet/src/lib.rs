@@ -16,7 +16,12 @@ mod webauthn;
 pub use error::Error;
 pub use types::{PasskeySigner, Secp256r1Signature, Signature, SignerKey, Signatures};
 
-use soroban_sdk::{contract, contractimpl, Bytes, BytesN, Env};
+use soroban_sdk::{
+    auth::{Context, CustomAccountInterface},
+    contract, contractimpl,
+    crypto::Hash,
+    Bytes, BytesN, Env, Vec,
+};
 
 /// WebAuthn credential ids are at most 1023 bytes by spec; real platform
 /// authenticators use 16–64. A tighter bound limits storage-key size.
@@ -43,6 +48,43 @@ impl SmartWallet {
     /// Contract version, bumped on every interface or behaviour change.
     pub fn version(_env: Env) -> u32 {
         1
+    }
+}
+
+#[contractimpl]
+impl CustomAccountInterface for SmartWallet {
+    type Signature = Signatures;
+    type Error = Error;
+
+    /// Called by the Soroban host whenever this wallet's address must
+    /// authorize an invocation (`require_auth`). Replaces the default Ed25519
+    /// account check with WebAuthn secp256r1 verification.
+    ///
+    /// Every signature in the map must come from a registered passkey and must
+    /// verify; one valid passkey signature is sufficient to authorize. Replay
+    /// protection (nonce + expiration ledger) is enforced by the host, because
+    /// both are part of `signature_payload`.
+    #[allow(non_snake_case)]
+    fn __check_auth(
+        env: Env,
+        signature_payload: Hash<32>,
+        signatures: Signatures,
+        _auth_contexts: Vec<Context>,
+    ) -> Result<(), Error> {
+        if signatures.0.is_empty() {
+            return Err(Error::NoSignatures);
+        }
+
+        for (signer_key, signature) in signatures.0.iter() {
+            let SignerKey::Secp256r1(key_id) = signer_key;
+            let Signature::Secp256r1(assertion) = signature;
+
+            let signer = storage::get_signer(&env, &key_id).ok_or(Error::UnknownSigner)?;
+            webauthn::verify(&env, &signature_payload, &assertion, &signer.public_key)?;
+        }
+
+        storage::bump_instance(&env);
+        Ok(())
     }
 }
 
