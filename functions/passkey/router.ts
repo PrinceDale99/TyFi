@@ -7,6 +7,7 @@ import { loadPasskeyConfig } from './config';
 import { KeyValidationError, parseKeyId, parsePublicKey } from './keys';
 import { decodeInvocation, PolicyError } from './policy';
 import { PasskeyRelayer, RelayerError } from './relayer';
+import { registerDeviceRoutes } from './devicesRouter';
 
 /**
  * HTTP API for seedless passkey wallets (mounted at /api/passkey).
@@ -83,6 +84,7 @@ export function createPasskeyRouter(): Router {
 
   const { config } = loaded as Extract<typeof loaded, { ok: true }>;
   const relayer = new PasskeyRelayer(config);
+  const deviceRoutes = registerDeviceRoutes(router, { relayer, config });
   console.log(`[Passkey] Relayer enabled on ${config.network}: factory ${config.factoryId}, sponsor ${relayer.sponsorPublicKey}`);
 
   router.get('/config', (_req, res) => {
@@ -113,6 +115,7 @@ export function createPasskeyRouter(): Router {
       const keyId = parseKeyId(req.body?.keyId);
       const publicKey = parsePublicKey(req.body?.publicKey);
       const result = await relayer.deployWallet(keyId, publicKey);
+      if (!result.alreadyDeployed) await deviceRoutes.recordNewWallet(result.walletAddress, keyId.toString('base64url'), req);
       logEvent('INFO', '[Passkey] Wallet ready', { wallet: result.walletAddress, hash: result.hash, alreadyDeployed: result.alreadyDeployed });
       res.status(result.alreadyDeployed ? 200 : 201).json(result);
     } catch (err) {
