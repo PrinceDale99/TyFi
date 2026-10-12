@@ -351,6 +351,35 @@ An automated static analysis and manual security review was conducted. **No high
 
 ---
 
+## 🔐 Week 3 Output Checklist: Seedless Passkey Smart Wallets
+
+**Smart wallet factory × Stellar Passkey Kit SDK**
+- [x] New `smart_wallet` custom account contract (`contracts/smart_wallet`) — signature types are wire-compatible with the Passkey Kit `PasskeySigner`.
+- [x] Rewrote `smart_wallet_factory` to deploy one wallet per passkey with `deploy_v2` + constructor binding; address salt = `sha256(public_key ‖ key_id)` (front-running resistant).
+- [x] Frontend uses the Passkey Kit (`createKey`, `PasskeySigner`) with a strict WebAuthn client that **requires** user verification.
+
+**Protocol 21 `secp256r1` / prime256v1 on-chain verification**
+- [x] `__check_auth` verifies WebAuthn assertions with the native `secp256r1_verify` host function — no Ed25519 path.
+- [x] Enforces UP + UV (biometric) flags, `webauthn.get` type and an exact challenge ↔ Soroban payload match.
+
+**Biometric UI & seedless onboarding**
+- [x] "Create wallet with Face ID / fingerprint" and "Sign in with passkey" in the wallet picker; step-by-step prompts; plain-language errors.
+- [x] Sign-in on any browser with only the passkey (public-key recovery + on-chain signer check). No seed phrase is ever created.
+- [x] Vault and DAO transactions from passkey wallets are authorized with a biometric and fee-sponsored by the TyFi relayer.
+
+**Validation**
+- [x] Factory deployed to testnet: [`CDL7BZJG6R3HNNVV5XDYR3WJ735DD3P63YCI4VTB2DEDTYS3NAWRV7WM`](https://stellar.expert/explorer/testnet/contract/CDL7BZJG6R3HNNVV5XDYR3WJ735DD3P63YCI4VTB2DEDTYS3NAWRV7WM).
+- [x] 2 seedless smart accounts created via the Passkey Kit UI, each with a passkey-signed payment (table below).
+- [x] Public prototype page: [`/passkey`](https://www.tyfi.site/passkey).
+- [x] 42 contract tests + 14 relayer tests + 10 frontend tests + browser E2E. Full report: [`week3.md`](week3.md).
+
+| # | Smart account | Created by factory | Passkey-signed payment |
+|:---:|---|:---:|:---:|
+| 1 | [`CBF4KRNX…NW35B`](https://stellar.expert/explorer/testnet/contract/CBF4KRNXMZWV5FW4OT5MWHKTGYM52MBSY7V2DL6LCF3AEHQ5K7INW35B) | [View ↗](https://stellar.expert/explorer/testnet/tx/59bc1451b23880e2c47b506917c2c233bde60385c3f7cdba2f93c701380c4f03) | [View ↗](https://stellar.expert/explorer/testnet/tx/ef1beec636f93c2f1f994832485a2a86f9935dba83dc35b34c7fa9aebf8d37a5) |
+| 2 | [`CDJBGVJL…6J6AX`](https://stellar.expert/explorer/testnet/contract/CDJBGVJLYSHSUR2AJOINQIM6CG3WIQOUW62GIYRDRELUVU35YVB6J6AX) | [View ↗](https://stellar.expert/explorer/testnet/tx/5eb2ad96d4cd99e19efb6d2e2e51c92a8a048aef667de9eb2aa1b899510f2b85) | [View ↗](https://stellar.expert/explorer/testnet/tx/22d6d010beb2e45b6ae628c9434365a84a4a5e85a0cc5a070a7189c9871c97b1) |
+
+---
+
 ## 📖 Roadmap
 
 ### ✅ Phase 1 — Testnet *(Current)*
