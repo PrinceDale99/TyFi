@@ -14,9 +14,10 @@ import { PasskeyRelayer } from '../passkey/relayer';
 
 async function main() {
   const loaded = loadPasskeyConfig();
-  if (!loaded.ok) throw new Error(loaded.reason);
-  const relayer = new PasskeyRelayer(loaded.config);
-  const explorer = `https://stellar.expert/explorer/${loaded.config.network}`;
+  if ('reason' in loaded) throw new Error(loaded.reason);
+  const { config } = loaded as Extract<typeof loaded, { ok: true }>;
+  const relayer = new PasskeyRelayer(config);
+  const explorer = `https://stellar.expert/explorer/${config.network}`;
 
   const { publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const jwk = publicKey.export({ format: 'jwk' });
