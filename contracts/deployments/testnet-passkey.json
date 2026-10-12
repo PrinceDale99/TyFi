@@ -2,35 +2,68 @@
   "network": "testnet",
   "networkPassphrase": "Test SDF Network ; September 2015",
   "rpcUrl": "https://soroban-testnet.stellar.org",
-  "deployedAt": "2026-10-12T06:57:03Z",
+  "deployedAt": "2026-10-12T07:09:03Z",
   "admin": "GC4GMBGK7DUGXJWGFEJFWGENX3MG3KOZAHJ3W2GGN2J3YRAO3QFCHNGC",
   "smartWallet": {
-    "wasmHash": "67bae589c75ea11145abc56373173c86f216bd056304bf02b23e647465a1a3e3",
-    "wasmSizeBytes": 16956
+    "wasmHash": "b1bd3f95c1f461bfe612751aad6b139e600c5507cec5dbd3b8afbfd47e3254c0",
+    "wasmSizeBytes": 16924
   },
   "smartWalletFactory": {
-    "address": "CCL4ENKSYR3CMRWTKUL3HIK3DJRZFTHE3IYY6RV63V6R7X5K6NBBVTBY",
-    "wasmSizeBytes": 8801,
-    "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CCL4ENKSYR3CMRWTKUL3HIK3DJRZFTHE3IYY6RV63V6R7X5K6NBBVTBY"
+    "address": "CBN5WLCDEIMPGDIXCDTF6PI2TZF7GWLMLOQ2FECC4EKMPFNIY4DE2T4M",
+    "wasmSizeBytes": 8440,
+    "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CBN5WLCDEIMPGDIXCDTF6PI2TZF7GWLMLOQ2FECC4EKMPFNIY4DE2T4M"
+  },
+  "sponsor": {
+    "publicKey": "GDUF46FCQFNBHNWNENYSDSQPDP3PSL2S7CTKLJELGBOC6SJC62JPKMJ7",
+    "role": "Fee sponsor for passkey wallets (envelope source only; never an authorizer)"
+  },
+  "costs": {
+    "walletDeployResourceFeeXlm": 0.0539314,
+    "measuredAt": "2026-10-12",
+    "note": "Entries are created at the network minimum TTL and extended on use; the first iteration prepaid ~120 days of rent and cost ~141 XLM per wallet."
   },
   "transactions": [
     {
       "step": 1,
       "action": "upload_smart_wallet_wasm",
-      "txHash": "e618da0aa3bbbf2d8039e6fb5c9c8a233cc2fbcb6f6cf5bf6ec03dd894f1f4cd",
-      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/e618da0aa3bbbf2d8039e6fb5c9c8a233cc2fbcb6f6cf5bf6ec03dd894f1f4cd"
+      "txHash": "3cef80cb4cdec323b6d015bc9f5252a79900bd4a6114804d27410190a360ca51",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/3cef80cb4cdec323b6d015bc9f5252a79900bd4a6114804d27410190a360ca51"
     },
     {
       "step": 2,
       "action": "upload_smart_wallet_factory_wasm",
-      "txHash": "59cfc9b31bfad4980ce9e3a20a7866de4a386511d08799db2c71b25cc2109d40",
-      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/59cfc9b31bfad4980ce9e3a20a7866de4a386511d08799db2c71b25cc2109d40"
+      "txHash": "f4828a509006a45f841a2da6ea6cef1700ceab17ae56bbc23ddc33b6741a8c8d",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/f4828a509006a45f841a2da6ea6cef1700ceab17ae56bbc23ddc33b6741a8c8d"
     },
     {
       "step": 3,
       "action": "deploy_smart_wallet_factory (constructor: admin, wallet_wasm_hash)",
-      "txHash": "cdf93401537b961929cd5a4a2ee504ee95d7755a5e7b2d3ede09cfce101e6948",
-      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/cdf93401537b961929cd5a4a2ee504ee95d7755a5e7b2d3ede09cfce101e6948"
+      "txHash": "9dc744e5307cd74fead0af725a3f47ffa43c2b7e46100055656d685af7ee36af",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/9dc744e5307cd74fead0af725a3f47ffa43c2b7e46100055656d685af7ee36af"
+    },
+    {
+      "step": 4,
+      "action": "relayer smoke test: sponsored factory.deploy → CAKGNATZIKPK7T5QI2WU2652YKXY2I6V4TH5GF46RYZF3K7PS66XU3RX",
+      "txHash": "40a81d200809417c390127248fcf6082c26b5558e24a258e53e2540a5287f0ce",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/40a81d200809417c390127248fcf6082c26b5558e24a258e53e2540a5287f0ce"
+    },
+    {
+      "step": 5,
+      "action": "relayer smoke test: testnet welcome funding (5 XLM via native SAC)",
+      "txHash": "0a73c7d801dd20d264b8e285f871ef578b5c5c73a89cbef7481bca1ff4caccaf",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/0a73c7d801dd20d264b8e285f871ef578b5c5c73a89cbef7481bca1ff4caccaf"
+    }
+  ],
+  "superseded": [
+    {
+      "factory": "CCL4ENKSYR3CMRWTKUL3HIK3DJRZFTHE3IYY6RV63V6R7X5K6NBBVTBY",
+      "walletWasmHash": "67bae589c75ea11145abc56373173c86f216bd056304bf02b23e647465a1a3e3",
+      "reason": "Prepaid ~120-day TTL extensions made each wallet cost ~141 XLM"
+    },
+    {
+      "factory": "CAX3SBBGMCM7OSLCV4ULPJYE47LUMZDTPIQN34PDKIQFLT76KRN6IHMI",
+      "walletWasmHash": "2d265b3096819d65e169693760cad86789090117665766f357a0676d64ef6c41",
+      "reason": "30-day prepaid TTLs still cost ~28.8 XLM per wallet"
     }
   ]
 }
