@@ -13,7 +13,19 @@ interface GovernancePortalProps {
   network: 'testnet' | 'mainnet';
 }
 
-import { NETWORK_CONFIGS } from '../lib/stellar';
+import { NETWORK_CONFIGS, voteOnDaoProposal, createDaoProposal, isUserRejection } from '../lib/stellar';
+import { capturePostHogEvent } from '../lib/posthog';
+
+// Newer freighter-api versions return { error } on rejection instead of throwing,
+// so surface it as an error that the analytics pipeline can classify.
+const signWithFreighter = async (xdr: string, networkPassphrase: string): Promise<string> => {
+  const result: any = await signTransaction(xdr, { networkPassphrase });
+  if (typeof result === 'string') return result;
+  if (result?.error) {
+    throw Object.assign(new Error(result.error.message ?? String(result.error)), { code: result.error.code });
+  }
+  return result.signedTxXdr;
+};
 
 export function GovernancePortal({ walletAddress, network }: GovernancePortalProps) {
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -161,59 +173,29 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     
     try {
       showToast(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`, "info");
-      
-      const config = NETWORK_CONFIGS[network];
-      const server = new rpc.Server(config.sorobanRpcUrl);
-      const daoContract = new Contract(config.daoContractId);
-      
-      const accountResp = await server.getAccount(walletAddress);
-      const tx = new TransactionBuilder(
-        new Account(walletAddress, (accountResp as any).sequence.toString()),
-        { fee: '1000000', networkPassphrase: config.passphrase }
-      )
-      .addOperation(
-        daoContract.call('vote', 
-          nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
-          nativeToScVal(id, { type: 'u64' }),
-          nativeToScVal(support, { type: 'bool' })
-        )
-      )
-      .setTimeout(300)
-      .build();
 
-      const preparedTx = await server.prepareTransaction(tx) as Transaction;
-      
-      const signResult = await signTransaction(preparedTx.toXDR(), { 
-        networkPassphrase: config.passphrase 
+      const passphrase = NETWORK_CONFIGS[network].passphrase;
+      await voteOnDaoProposal(id, support, network, walletAddress, xdr => signWithFreighter(xdr, passphrase));
+
+      capturePostHogEvent('governance_vote_submitted', {
+        proposal_id: id,
+        vote: support ? 'for' : 'against',
+        network,
       });
-      const signedXdrStr = typeof signResult === 'string' ? signResult : (signResult as any).signedTxXdr;
-      const signedTx = TransactionBuilder.fromXDR(signedXdrStr, config.passphrase) as Transaction;
-      const sendResult = await server.sendTransaction(signedTx);
-      
-      if (sendResult.status === 'PENDING') {
-        showToast("Vote transaction submitted! It may take a few seconds to confirm.", "success");
-        // Optimistic UI update
-        setProposals(prev => prev.map(p => {
-          if (p.id === id) {
-            return {
-              ...p,
-              votesFor: support ? p.votesFor + Number(votingPower || 0) * 10000000 : p.votesFor,
-              votesAgainst: !support ? p.votesAgainst + Number(votingPower || 0) * 10000000 : p.votesAgainst
-            };
-          }
-          return p;
-        }));
-      } else {
-        console.error("Vote submission rejected by network:", sendResult);
-        let errorReason = sendResult.status;
-        if ((sendResult as any).errorResultXdr) {
-          errorReason += " - Check console for XDR";
+      showToast("Vote confirmed on-chain!", "success");
+      setProposals(prev => prev.map(p => {
+        if (p.id === id) {
+          return {
+            ...p,
+            votesFor: support ? p.votesFor + Number(votingPower || 0) * 10000000 : p.votesFor,
+            votesAgainst: !support ? p.votesAgainst + Number(votingPower || 0) * 10000000 : p.votesAgainst
+          };
         }
-        showToast(`Failed to submit vote: ${errorReason}`, "error");
-      }
+        return p;
+      }));
     } catch (e) {
       console.error("Voting failed", e);
-      showToast("Voting failed. Check console for details.", "error");
+      showToast(isUserRejection(e) ? "Vote cancelled in wallet." : "Voting failed. Check console for details.", "error");
     }
   };
 
@@ -469,50 +451,18 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     const durationLedgers = Math.floor(diffSeconds / 5);
 
                     showToast(`Submitting Proposal via Smart Contract... Please check Freighter.`, "info");
-                    const config = NETWORK_CONFIGS[network];
-                    const server = new rpc.Server(config.sorobanRpcUrl);
-                    const daoContract = new Contract(config.daoContractId);
-                    
-                    const accountResp = await server.getAccount(walletAddress);
-                    const tx = new TransactionBuilder(
-                      new Account(walletAddress, (accountResp as any).sequence.toString()),
-                      { fee: '1000000', networkPassphrase: config.passphrase }
-                    )
-                    .addOperation(
-                      daoContract.call('create_proposal',
-                        nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
-                        nativeToScVal(desc, { type: 'string' }),
-                        nativeToScVal(action, { type: 'symbol' }),
-                        nativeToScVal(durationLedgers, { type: 'u64' })
-                      )
-                    )
-                    .setTimeout(300)
-                    .build();
+                    const passphrase = NETWORK_CONFIGS[network].passphrase;
+                    await createDaoProposal(walletAddress, desc, action, durationLedgers, network, xdr => signWithFreighter(xdr, passphrase));
 
-                    const preparedTx = await server.prepareTransaction(tx) as Transaction;
-                    
-                    const signResult = await signTransaction(preparedTx.toXDR(), {
-                      networkPassphrase: config.passphrase
+                    capturePostHogEvent('governance_proposal_submitted', {
+                      action_type: action,
+                      network,
                     });
-                    
-                    const signedXdrStr = typeof signResult === 'string' ? signResult : (signResult as any).signedTxXdr;
-                    const signedTx = TransactionBuilder.fromXDR(signedXdrStr, config.passphrase);
-                    const sendResult = await server.sendTransaction(signedTx as Transaction);
-                    
-                    if (sendResult.status === 'PENDING') {
-                      showToast("Proposal submitted! Please refresh after a few seconds.", "success");
-                      setShowCreateModal(false);
-                    } else {
-                      console.error("Proposal submission rejected by network:", sendResult);
-                      let errorReason = sendResult.status;
-                      if ((sendResult as any).errorResultXdr) {
-                        errorReason += " - Check console for XDR";
-                      }
-                      showToast(`Failed to submit: ${errorReason}`, "error");
-                    }
+                    showToast("Proposal confirmed on-chain! Refresh to see it in the list.", "success");
+                    setShowCreateModal(false);
                   } catch (e) {
                     console.error("Create proposal failed", e);
-                    showToast("Failed to create proposal. Check console for details.", "error");
+                    showToast(isUserRejection(e) ? "Proposal cancelled in wallet." : "Failed to create proposal. Check console for details.", "error");
                   }
                 }}
                 className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-black uppercase tracking-wider text-sm transition-all"

@@ -18,6 +18,7 @@ import { claimPayoutOnChain } from '../lib/stellar';
 import { useXlmToPhp } from '../hooks/useXlmToPhp';
 import { analyzeWeatherImpact, type AiPredictionResult } from '../services/aiService';
 import { calculateCombinedDamage } from '../utils/DamageCalculator';
+import { capturePostHogEvent } from '../lib/posthog';
 
 interface PayoutClaimProps {
   isVerified: boolean;
@@ -108,6 +109,10 @@ const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmDa
       const queue = JSON.parse(localStorage.getItem('vault_pending_claims') || '[]');
       queue.push(intent);
       localStorage.setItem('vault_pending_claims', JSON.stringify(queue));
+      capturePostHogEvent('payout_claim_queued', {
+        network,
+        damage_percentage: Math.round(damagePercent),
+      });
       setStep('offline_queued');
       return;
     }
@@ -123,6 +128,10 @@ const PayoutClaim: React.FC<PayoutClaimProps> = ({ isVerified, windSpeed, farmDa
         isMainnet ? 'mainnet' : 'testnet'
       );
       setTxHash(tx);
+      capturePostHogEvent('payout_claim_completed', {
+        network: isMainnet ? 'mainnet' : 'testnet',
+        damage_percentage: Math.round(damagePercent),
+      });
       setStep('success');
     } catch (err) {
       console.error('Error executing claim payout:', err);

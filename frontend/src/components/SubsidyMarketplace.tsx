@@ -17,6 +17,7 @@ import { getActiveSubsidyRequests, getSponsoredFarms, unlistFromSubsidy, registe
 import { registerPolicyOnChain, contributeLiquidityOnChain } from '../lib/stellar';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { capturePostHogEvent } from '../lib/posthog';
 
 interface SubsidyRequest {
   id: string;
@@ -222,6 +223,10 @@ const SubsidyMarketplace: React.FC<SubsidyMarketplaceProps> = ({
                           addNotification(`Registering ${farm.farmName} for financial assistance...`, 'info');
                           // Using statically imported registerForSubsidy
                           await registerForSubsidy(sponsorAddress, farm, network);
+                          capturePostHogEvent('subsidy_listing_completed', {
+                            network,
+                            crop_type: farm.cropType,
+                          });
                           addNotification(`${farm.farmName} successfully listed in the Subsidy Marketplace.`, 'success');
                           fetchRequests(); // Refresh the list
                         } catch (e) {

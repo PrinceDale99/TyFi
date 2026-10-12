@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Globe, Upload, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import { registerSponsor } from '../services/firebaseService';
 import { DiditSdk } from '@didit-protocol/sdk-web';
+import { capturePostHogEvent } from '../lib/posthog';
 
 interface SponsorVerificationProps {
   onVerificationComplete: (sponsorInfo: {name: string, email: string, sponsorType: string, birthDate: string}) => void;
@@ -60,6 +61,7 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
       if (result.type === 'completed' && result.session) {
         setIsDiditVerified(true);
         setDiditSessionId(result.session.sessionId);
+        capturePostHogEvent('sponsor_identity_verification_completed', { network });
       }
       setIsDiditLoading(false);
     };
@@ -80,6 +82,10 @@ const SponsorVerification: React.FC<SponsorVerificationProps> = ({ onVerificatio
     setIsRegistering(true);
     try {
       await registerSponsor(walletAddress, sponsorInfo, network);
+      capturePostHogEvent('sponsor_registration_completed', {
+        network,
+        sponsor_type: sponsorInfo.sponsorType,
+      });
       onVerificationComplete(sponsorInfo);
     } catch (e) {
       console.error(e);

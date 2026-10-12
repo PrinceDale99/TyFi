@@ -27,6 +27,7 @@ import { registerPolicyOnChain } from '../lib/stellar';
 import { estimateCropMetrics } from '../services/aiService';
 import { PHILIPPINE_REGIONS } from '../constants';
 import { registerForSubsidy } from '../services/firebaseService';
+import { capturePostHogEvent } from '../lib/posthog';
 
 // Leaflet & React-Leaflet Imports
 import { Globe, Leaf, Wind, Droplets, Droplet, Camera } from 'lucide-react';
@@ -121,6 +122,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
       if (result.type === 'completed' && result.session) {
         setIsDiditVerified(true);
         setDiditSessionId(result.session.sessionId);
+        capturePostHogEvent('identity_verification_completed', { network });
       }
       setIsDiditLoading(false);
     };
@@ -300,6 +302,11 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
     };
 
     setFarms([...farms, newFarm]);
+    capturePostHogEvent('farm_added', {
+      crop_type: currentFarm.cropType,
+      farm_size_hectares: currentFarm.farmSize,
+      network,
+    });
     setCurrentFarm({
       farmName: '',
       cropType: 'Rice',
@@ -337,6 +344,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    let submissionSucceeded = false;
     
     // Enrich farms with payment data
     const enrichedFarms = farms.map(f => ({
@@ -403,10 +411,20 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
           })
         }).catch(console.error);
       }
+      submissionSucceeded = true;
     } catch (error) {
       console.error('Failed to complete submission:', error);
     }
 
+    if (submissionSucceeded) {
+      capturePostHogEvent('policy_registration_completed', {
+        registration_type: needsSubsidy ? 'subsidy_request' : 'paid_policy',
+        fulfillment_mode: isOffline ? 'offline_queued' : 'online',
+        farm_count: enrichedFarms.length,
+        payment_plan: paymentPlan,
+        network,
+      });
+    }
     setIsSubmitting(false);
     onVerificationComplete(enrichedFarms);
   };
