@@ -58,7 +58,8 @@ impl SmartWalletFactory {
         let wallet = deployer.deploy_v2(storage::wallet_wasm_hash(&env), (key_id.clone(), public_key.clone()));
 
         storage::record_wallet(&env, &wallet);
-        storage::bump_instance(&env);
+        // No TTL extension here: deployments are sponsor-paid and must stay cheap.
+        // Factory rent is maintained by the operator (scripts/extend_passkey_ttl.sh).
         events::WalletCreated { wallet: wallet.clone(), key_id, public_key }.publish(&env);
         Ok(wallet)
     }
