@@ -2,10 +2,8 @@ use soroban_sdk::{contracttype, Bytes, Env};
 
 use crate::types::PasskeySigner;
 
-/// ~30 days at 5s ledgers: entries are extended once they drop below this.
-const TTL_THRESHOLD: u32 = 518_400;
-/// ~120 days at 5s ledgers: the TTL entries are extended to.
-const TTL_EXTEND_TO: u32 = 2_073_600;
+const TTL_THRESHOLD: u32 = 120_960; // ~7 days at 5s ledgers: refresh once below this
+const TTL_EXTEND_TO: u32 = 518_400; // ~30 days: keeps per-wallet rent low; any use refreshes it
 
 /// Maximum number of passkeys a single wallet may hold (bounds storage and
 /// the cost of signer enumeration).
