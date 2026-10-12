@@ -11,8 +11,6 @@ pub enum DataKey {
     WalletWasmHash,
     Paused,
     WalletCount,
-    /// Deployment salt → wallet address (persistent).
-    Wallet(BytesN<32>),
     /// Wallet address → true, for "was this wallet made by this factory?" checks.
     IsWallet(Address),
 }
@@ -60,20 +58,14 @@ pub fn wallet_count(env: &Env) -> u64 {
     env.storage().instance().get(&DataKey::WalletCount).unwrap_or(0)
 }
 
-pub fn wallet_for_salt(env: &Env, salt: &BytesN<32>) -> Option<Address> {
-    env.storage().persistent().get(&DataKey::Wallet(salt.clone()))
-}
-
 pub fn is_wallet(env: &Env, wallet: &Address) -> bool {
     env.storage().persistent().has(&DataKey::IsWallet(wallet.clone()))
 }
 
-pub fn record_wallet(env: &Env, salt: &BytesN<32>, wallet: &Address) {
-    let by_salt = DataKey::Wallet(salt.clone());
-    let by_address = DataKey::IsWallet(wallet.clone());
-    env.storage().persistent().set(&by_salt, wallet);
-    env.storage().persistent().set(&by_address, &true);
-    env.storage().persistent().extend_ttl(&by_salt, TTL_THRESHOLD, TTL_EXTEND_TO);
-    env.storage().persistent().extend_ttl(&by_address, TTL_THRESHOLD, TTL_EXTEND_TO);
+/// One persistent entry per wallet, created at the network minimum TTL (no
+/// prepaid rent). The address itself is derivable from the passkey, so no
+/// salt → address map is stored.
+pub fn record_wallet(env: &Env, wallet: &Address) {
+    env.storage().persistent().set(&DataKey::IsWallet(wallet.clone()), &true);
     env.storage().instance().set(&DataKey::WalletCount, &(wallet_count(env) + 1));
 }
