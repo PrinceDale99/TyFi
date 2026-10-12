@@ -271,3 +271,17 @@ The superseded factories are listed in `contracts/deployments/testnet-passkey.js
 Tests: 4 new factory tests (16 total) and `scripts/e2e/passkey-link-e2e.mjs`, which runs the real frontend link/unlink code against testnet.
 
 **Cold starts.** The Render backend sleeps when idle and its wake-up responses lack CORS headers, which surfaced as "blocked by CORS policy" in browsers. The passkey client now retries those transparently and tells the user the servers are waking up.
+
+## 13. ➕ Addendum: Multi-Device Passkeys (pairing, device review, removal)
+
+Users can now use their seedless wallet on more than one device without ever exposing a key:
+
+- **Add another device** (Settings / wallet card → *Your devices*): generates a one-time code (`tyfi-pair-…`, 256-bit, 10 minutes, single use, stored only as a SHA-256 hash). The new device pastes it under *Connect Wallet → Use a code from another device*, creates **its own passkey**, and the original device approves with a biometric, which adds the new passkey on-chain via `add_signer`.
+- **Review devices:** after a server-verified passkey proof, each device shows its name/type (e.g. "Android · Chrome"), when it was added and last used, and its IP addresses — **hidden by default**, revealed with the eye icon.
+- **Remove a device:** on-chain `remove_signer` approved by biometric; the last device can never be removed.
+
+| Proof | Link |
+|---|---|
+| Payment signed by the *paired* device's own passkey | [be73b50b…dcc80f4](https://stellar.expert/explorer/testnet/tx/be73b50b0120a3ee6c1cc4ca04e84ca743174e9e402fed9b13136f782dcc80f4) |
+
+Tests: 33 relayer unit tests (WebAuthn verification, sessions, pairing codes, user-agent parsing, self-admin policy) and `scripts/e2e/passkey-devices-e2e.mjs`, which pairs a second virtual device, signs in on it with only its passkey, pays with it, and removes it — confirming on-chain that its key is gone.
