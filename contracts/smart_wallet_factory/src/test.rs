@@ -198,3 +198,58 @@ fn deployed_wallet_accepts_its_passkey_and_rejects_others() {
     );
     assert!(rejected.is_err());
 }
+
+// ─── Admin ───────────────────────────────────────────────────────────────────
+
+#[test]
+fn pause_blocks_new_wallets_only_for_admin() {
+    let s = setup();
+    s.env.mock_all_auths();
+    s.factory.set_paused(&true);
+    assert_eq!(s.env.auths()[0].0, s.admin);
+    assert!(s.factory.is_paused());
+
+    let pk = TestPasskey::new(7);
+    assert_eq!(s.factory.try_deploy(&pk.key_id(&s.env), &pk.public_key(&s.env)), Err(Ok(Error::DeploymentsPaused)));
+    s.factory.set_paused(&false);
+    s.factory.deploy(&pk.key_id(&s.env), &pk.public_key(&s.env));
+}
+
+#[test]
+#[should_panic]
+fn pause_requires_admin_authorization() {
+    let s = setup();
+    s.factory.set_paused(&true);
+}
+
+#[test]
+fn two_step_admin_transfer() {
+    let s = setup();
+    s.env.mock_all_auths();
+    let next = Address::generate(&s.env);
+
+    assert_eq!(s.factory.try_accept_admin(), Err(Ok(Error::NoPendingAdmin)));
+    s.factory.propose_admin(&next);
+    assert_eq!(s.factory.admin(), s.admin); // unchanged until accepted
+    s.factory.accept_admin();
+    assert_eq!(s.env.auths()[0].0, next); // the new admin had to sign
+    assert_eq!(s.factory.admin(), next);
+}
+
+#[test]
+fn wallet_code_rotation_applies_to_new_wallets() {
+    let s = setup();
+    s.env.mock_all_auths();
+    assert_eq!(s.factory.wallet_wasm_hash(), s.wasm_hash);
+    let rotated = BytesN::from_array(&s.env, &[9u8; 32]);
+    s.factory.set_wallet_wasm_hash(&rotated);
+    assert_eq!(s.env.auths()[0].0, s.admin);
+    assert_eq!(s.factory.wallet_wasm_hash(), rotated);
+}
+
+#[test]
+#[should_panic]
+fn wallet_code_rotation_requires_admin_authorization() {
+    let s = setup();
+    s.factory.set_wallet_wasm_hash(&BytesN::from_array(&s.env, &[9u8; 32]));
+}
