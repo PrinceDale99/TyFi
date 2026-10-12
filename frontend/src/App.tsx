@@ -72,7 +72,7 @@ import UnifiedCopilot from './components/UnifiedCopilot';
 import LedgerStream from './components/LedgerStream';
 import { fetchWeather } from './services/weatherService';
 import type { WeatherData, FarmData, Claim } from "./types";
-import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance, NETWORK_CONFIGS, initKit, StellarWalletsKit } from './lib/stellar';
+import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance, NETWORK_CONFIGS, initKit, StellarWalletsKit, signTx } from './lib/stellar';
 import { calculateCombinedDamage } from './utils/DamageCalculator';
 import { useXlmToPhp } from './hooks/useXlmToPhp';
 import { useXlmRates } from './hooks/useXlmRates';
@@ -101,7 +101,8 @@ import ParticleBurst from './components/ParticleBurst';
 import MagneticButton from './components/MagneticButton';
 import { capturePostHogEvent, isPostHogEnabled, posthog } from './lib/posthog';
 import { analytics, isInAppWalletId, walletTypeFromId } from './lib/analytics';
-import { clearPasskeySession, loadPasskeySession, type PasskeySession } from './lib/passkey';
+import { clearPasskeySession, getLinkedAccount, loadPasskeySession, type PasskeySession } from './lib/passkey';
+import { PasskeyLinkCard } from './components/PasskeyLinkCard';
 
 /** Value stored in typhoon_vault_walletId for seedless passkey sessions. */
 const PASSKEY_WALLET_ID = 'passkey';
@@ -854,6 +855,33 @@ function App() {
     lastSyncedAddress.current = address;
   };
 
+  /**
+   * Copy the off-chain TyFi profile (farms, verification, consent, role) from a
+   * linked account to its passkey wallet, so the user keeps their identity when
+   * they switch to passkey sign-in. Never overwrites a profile the passkey
+   * wallet already has.
+   */
+  const carryProfileToPasskeyWallet = async (account: string, wallet: string) => {
+    const net = network;
+    const existing = await getUserProfile(wallet, net);
+    if (existing && ((existing.farms?.length ?? 0) > 0 || existing.isVerified)) return;
+
+    let source: any = await getUserProfile(account, net);
+    if (!source) {
+      try { source = JSON.parse(localStorage.getItem(`typhoon_vault_${net}_${account}`) || 'null'); } catch { source = null; }
+    }
+    if (!source) return;
+
+    const { walletAddress: _ignored, ...profile } = source;
+    const carried = { ...profile, linkedAccount: account };
+    await saveUserProfile(wallet, carried, net);
+    localStorage.setItem(`typhoon_vault_${net}_${wallet}`, JSON.stringify(carried));
+    for (const key of ['legal_consent', 'role']) {
+      const value = localStorage.getItem(`typhoon_vault_${key}_${net}_${account}`);
+      if (value !== null) localStorage.setItem(`typhoon_vault_${key}_${net}_${wallet}`, value);
+    }
+  };
+
   /** A seedless passkey wallet was created or signed in (see PasskeyOnboarding). */
   const handlePasskeyConnected = async (session: PasskeySession) => {
     localStorage.setItem('typhoon_vault_walletId', PASSKEY_WALLET_ID);
@@ -861,6 +889,12 @@ function App() {
     setIsWalletConnected(true);
     setBurstCount(c => c + 1);
     analytics.trackWalletConnectionSuccessful({ stellar_address: session.walletAddress, wallet_type: 'passkey', network });
+    try {
+      const linkedAccount = await getLinkedAccount(session.walletAddress);
+      if (linkedAccount) await carryProfileToPasskeyWallet(linkedAccount, session.walletAddress);
+    } catch (e) {
+      console.warn('Could not check linked account for passkey wallet', e);
+    }
     await loadProfile(session.walletAddress, network);
     addNotification('Seedless passkey wallet connected. Transactions are approved with your biometrics.', 'success');
   };
@@ -2814,6 +2848,19 @@ function App() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+              {/* Passkey sign-in: link an extension account, or show a passkey wallet's link */}
+              {isTestnet && isWalletConnected && !isInAppWalletId(walletAddress) && (
+                <PasskeyLinkCard
+                  walletAddress={walletAddress}
+                  network={network}
+                  signEnvelope={xdr => signTx(xdr, network)}
+                  onLinked={async (session, account) => {
+                    await carryProfileToPasskeyWallet(account, session.walletAddress);
+                    addNotification('Passkey linked. Next time, sign in with your fingerprint or face — your profile comes with you.', 'success');
+                  }}
+                />
+              )}
+
               {/* Wallet Info Section — Live Balance */}
               <div className={`glass-panel p-5 border ${
                 isMainnet ? 'border-emerald-500/15 bg-emerald-500/[0.03]' : 'border-sky-500/15 bg-sky-500/[0.03]'
