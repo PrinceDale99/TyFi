@@ -37,5 +37,19 @@ TyFi is committed to the security of our farmers and liquidity providers. We inv
 
 If you discover a critical vulnerability (e.g., unauthorized fund withdrawal, oracle manipulation), please report it to us immediately.
 
+## Seedless Passkey Wallets (Week 3)
+
+`smart_wallet` and `smart_wallet_factory` were added in Week 3. Their full threat model is in [docs/passkey-architecture.md](docs/passkey-architecture.md). Key invariants:
+
+- **Passkey-only authorization.** `__check_auth` accepts only WebAuthn secp256r1 assertions verified with the native `secp256r1_verify` host function; there is no Ed25519 or admin bypass.
+- **Biometric required.** Assertions without the User Verified (UV) flag are rejected on-chain.
+- **Exact payload binding.** The WebAuthn challenge must equal the Soroban signature payload (invocation + nonce + expiry); replay is prevented by host nonces.
+- **Sponsor can never authorize.** The relayer rejects source-account credentials, the sponsor as an authorizer, and any assembly that adds authorization not signed by a passkey. Fees are capped per transaction and endpoints are rate limited per client IP.
+- **No lockout.** The last passkey on a wallet cannot be removed.
+
+**Static analysis:** `cargo clippy -p smart_wallet -p smart-wallet-factory --all-targets` reports no warnings. **Tests:** 42 contract tests (real P-256 signatures, no mocked crypto), 14 relayer unit tests, 10 frontend unit tests, and a browser end-to-end test against testnet.
+
+**Status:** testnet only. Mainnet passkey wallets stay disabled until an independent audit.
+
 ### Reporting a Vulnerability
 Please reach out to the core team directly before disclosing any vulnerability publicly. See the main repository for contact information.
