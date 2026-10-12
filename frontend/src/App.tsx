@@ -101,12 +101,23 @@ import ParticleBurst from './components/ParticleBurst';
 import MagneticButton from './components/MagneticButton';
 import { capturePostHogEvent, isPostHogEnabled, posthog } from './lib/posthog';
 import { analytics, isInAppWalletId, walletTypeFromId } from './lib/analytics';
-import { clearPasskeySession, getLinkedAccount, loadPasskeySession, type PasskeySession } from './lib/passkey';
+import {
+  clearPasskeySession,
+  getApprovalMode,
+  getLinkedAccount,
+  getLinkedWallet,
+  loadPasskeySession,
+  onApprovalModeChange,
+  signInWithPasskey,
+  type PasskeySession,
+} from './lib/passkey';
 import { PasskeyLinkCard } from './components/PasskeyLinkCard';
 import { PasskeyDevicesPanel } from './components/PasskeyDevicesPanel';
 
 /** Value stored in typhoon_vault_walletId for seedless passkey sessions. */
 const PASSKEY_WALLET_ID = 'passkey';
+/** Last extension wallet used, so we can switch back when passkey approval is turned off. */
+const EXTENSION_WALLET_ID_KEY = 'typhoon_vault_extensionWalletId';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -277,6 +288,14 @@ function App() {
       // without a prompt; each transaction still asks for the biometric.
       if (savedWalletId === PASSKEY_WALLET_ID) {
         const session = loadPasskeySession();
+        const extensionWalletId = localStorage.getItem(EXTENSION_WALLET_ID_KEY);
+        if (session && network === 'testnet' && getApprovalMode() === 'extension' && extensionWalletId) {
+          const linked = await getLinkedAccount(session.walletAddress).catch(() => null);
+          if (linked) {
+            await handleConnectWallet(extensionWalletId);
+            return;
+          }
+        }
         if (session && network === 'testnet') {
           setWalletAddress(session.walletAddress);
           setIsWalletConnected(true);
@@ -293,6 +312,7 @@ function App() {
           
           if (!isWalletConnected) {
             const address = await connectWallet(network, savedWalletId);
+            if (address && (await switchToLinkedPasskeyWallet(address, savedWalletId, { prompt: false }))) return;
             if (address) {
               setWalletAddress(address);
               setIsWalletConnected(true);
@@ -308,6 +328,26 @@ function App() {
     };
     checkAutoReconnect();
   }, [network]);
+
+  // Apply the "approve with passkey" toggle live (it lives on the /passkey page,
+  // usually in another tab): switch between the extension account and its
+  // linked passkey wallet without asking the user to reconnect.
+  useEffect(() => onApprovalModeChange(async mode => {
+    if (!isWalletConnected || network !== 'testnet') return;
+    const walletId = localStorage.getItem('typhoon_vault_walletId') || '';
+    if (mode === 'extension' && walletId === PASSKEY_WALLET_ID) {
+      const extensionWalletId = localStorage.getItem(EXTENSION_WALLET_ID_KEY);
+      const linked = await getLinkedAccount(walletAddress).catch(() => null);
+      if (extensionWalletId && linked) {
+        addNotification('Passkey approval turned off — switching back to your extension account.', 'info');
+        await handleConnectWallet(extensionWalletId);
+      }
+    } else if (mode === 'passkey' && walletId && walletId !== PASSKEY_WALLET_ID) {
+      if (await switchToLinkedPasskeyWallet(walletAddress, walletId, { prompt: false })) {
+        addNotification('Passkey approval turned on — transactions now use your passkey wallet.', 'info');
+      }
+    }
+  }), [isWalletConnected, walletAddress, network]);
 
   // Profile Dashboard State
   const [isProfileDashboardOpen, setIsProfileDashboardOpen] = useState(false);
@@ -883,6 +923,37 @@ function App() {
     }
   };
 
+  /**
+   * "Approve transactions with passkey" (set on the /passkey page): when an
+   * extension account is linked to a passkey wallet, act as the passkey wallet
+   * so every transaction is approved with a biometric and fee-sponsored.
+   * Returns true if the app switched to the passkey wallet.
+   */
+  const switchToLinkedPasskeyWallet = async (account: string, extensionWalletId: string, { prompt }: { prompt: boolean }): Promise<boolean> => {
+    if (network !== 'testnet' || getApprovalMode() !== 'passkey' || isInAppWalletId(account)) return false;
+    const linked = await getLinkedWallet(account).catch(() => null);
+    if (!linked) return false;
+
+    let session = loadPasskeySession();
+    if (session?.walletAddress !== linked) {
+      if (!prompt) return false;
+      addNotification('Passkey approval is on — confirm with your fingerprint or face to use your passkey wallet.', 'info');
+      try {
+        session = await signInWithPasskey();
+      } catch {
+        addNotification('Staying on your extension account. Turn off passkey approval on the Passkey page to stop this prompt.', 'warning');
+        return false;
+      }
+      if (session.walletAddress !== linked) {
+        addNotification('That passkey belongs to a different wallet. Staying on your extension account.', 'warning');
+        return false;
+      }
+    }
+    localStorage.setItem(EXTENSION_WALLET_ID_KEY, extensionWalletId);
+    await handlePasskeyConnected(session);
+    return true;
+  };
+
   /** A seedless passkey wallet was created or signed in (see PasskeyOnboarding). */
   const handlePasskeyConnected = async (session: PasskeySession) => {
     localStorage.setItem('typhoon_vault_walletId', PASSKEY_WALLET_ID);
@@ -916,6 +987,7 @@ function App() {
       }
       const address = await connectWallet(network, walletId);
       analytics.trackWalletConnectionSuccessful({ stellar_address: address, wallet_type: walletType, network });
+      if (await switchToLinkedPasskeyWallet(address, walletId, { prompt: true })) return;
       setWalletAddress(address);
       setIsWalletConnected(true);
       localStorage.setItem('typhoon_vault_walletId', walletId);
@@ -2849,6 +2921,23 @@ function App() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+              {/* Shortcut to the full passkey page: approval toggle, devices, wallet */}
+              {isTestnet && (
+                <a
+                  href="/passkey"
+                  className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.12] transition-colors"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-300"><Fingerprint size={18} /></span>
+                    <span>
+                      <span className="block text-sm font-black text-white">Passkey settings</span>
+                      <span className="block text-xs text-slate-400">Approve transactions with passkey, manage devices, your passkey wallet</span>
+                    </span>
+                  </span>
+                  <ChevronRight size={18} className="text-slate-400" />
+                </a>
+              )}
+
               {/* Passkey sign-in: link an extension account, or show a passkey wallet's link */}
               {isTestnet && isWalletConnected && !isInAppWalletId(walletAddress) && (
                 <PasskeyLinkCard
@@ -2858,6 +2947,10 @@ function App() {
                   onLinked={async (session, account) => {
                     await carryProfileToPasskeyWallet(account, session.walletAddress);
                     addNotification('Passkey linked. Next time, sign in with your fingerprint or face — your profile comes with you.', 'success');
+                    const extensionWalletId = localStorage.getItem('typhoon_vault_walletId') || '';
+                    if (getApprovalMode() === 'passkey' && extensionWalletId && extensionWalletId !== PASSKEY_WALLET_ID) {
+                      await switchToLinkedPasskeyWallet(account, extensionWalletId, { prompt: false });
+                    }
                   }}
                 />
               )}
