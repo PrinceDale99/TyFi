@@ -63,28 +63,49 @@ export async function invokeWithPasskey(
   }
 
   onStage('wallet_signing');
-  const expiration = (await server.getLatestLedger()).sequence + SIGNATURE_VALIDITY_LEDGERS;
-  const signed: xdr.SorobanAuthorizationEntry[] = [];
+  const signed = await signWalletAuthEntries(session, entries, config.networkPassphrase);
+
+  onStage('submission');
+  return relayerApi.submit(hostFunction.toXDR('base64'), signed.map(e => e.toXDR('base64')));
+}
+
+/**
+ * Sign every authorization entry that belongs to the passkey wallet (one
+ * biometric prompt each). Entries for other parties are returned unchanged
+ * when `allowOthers` is set (e.g. a co-signing classic account that signs the
+ * envelope itself); otherwise they are rejected.
+ */
+export async function signWalletAuthEntries(
+  session: PasskeySession,
+  entries: xdr.SorobanAuthorizationEntry[],
+  networkPassphrase: string,
+  { allowOthers = false }: { allowOthers?: boolean } = {},
+): Promise<xdr.SorobanAuthorizationEntry[]> {
+  const expiration = (await passkeyRpc().getLatestLedger()).sequence + SIGNATURE_VALIDITY_LEDGERS;
+  const out: xdr.SorobanAuthorizationEntry[] = [];
   for (const entry of entries) {
     const credentials = entry.credentials();
-    if (credentials.switch() !== xdr.SorobanCredentialsType.sorobanCredentialsAddress()) {
-      throw new PasskeyAuthorizationError('simulation', 'This action needs a classic account signature and cannot be sponsored.');
-    }
-    const signer = Address.fromScAddress(credentials.address().address()).toString();
+    const isAddress = credentials.switch() === xdr.SorobanCredentialsType.sorobanCredentialsAddress();
+    const signer = isAddress ? Address.fromScAddress(credentials.address().address()).toString() : null;
     if (signer !== session.walletAddress) {
-      throw new PasskeyAuthorizationError('simulation', `This action also needs authorization from ${signer}.`);
+      if (allowOthers) {
+        out.push(entry);
+        continue;
+      }
+      throw new PasskeyAuthorizationError(
+        'simulation',
+        isAddress ? `This action also needs authorization from ${signer}.` : 'This action needs a classic account signature and cannot be sponsored.',
+      );
     }
 
-    const payload = authorizationPayload(entry, config.networkPassphrase, expiration);
+    const payload = authorizationPayload(entry, networkPassphrase, expiration);
     const assertion = await assertPasskey(payload, session.keyId);
     if (assertion.keyId !== session.keyId) {
       throw new PasskeyAuthorizationError('wallet_signing', 'A different passkey was used. Please use the passkey for this wallet.');
     }
     credentials.address().signatureExpirationLedger(expiration);
     credentials.address().signature(encodeSignatures([assertion]));
-    signed.push(entry);
+    out.push(entry);
   }
-
-  onStage('submission');
-  return relayerApi.submit(hostFunction.toXDR('base64'), signed.map(e => e.toXDR('base64')));
+  return out;
 }
