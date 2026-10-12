@@ -40,9 +40,10 @@ impl SmartWallet {
     /// Runs exactly once, atomically with deployment, so there is no window in
     /// which an uninitialized wallet could be claimed by someone else.
     pub fn __constructor(env: Env, key_id: Bytes, public_key: BytesN<65>) -> Result<(), Error> {
-        insert_signer(&env, &key_id, &public_key)?;
-        storage::bump_instance(&env);
-        Ok(())
+        // No TTL extension here: new entries start at the network minimum and are
+        // extended on use (see __check_auth), so creating a wallet costs as little
+        // rent as possible for the fee sponsor.
+        insert_signer(&env, &key_id, &public_key)
     }
 
     /// Register an additional passkey (e.g. a second device).

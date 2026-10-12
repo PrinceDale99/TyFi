@@ -38,7 +38,6 @@ pub fn has_signer(env: &Env, key_id: &Bytes) -> bool {
 pub fn set_signer(env: &Env, key_id: &Bytes, signer: &PasskeySigner) {
     let key = DataKey::Signer(key_id.clone());
     env.storage().persistent().set(&key, signer);
-    env.storage().persistent().extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
 }
 
 pub fn remove_signer(env: &Env, key_id: &Bytes) {
