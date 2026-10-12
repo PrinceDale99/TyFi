@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { hash, xdr } from '@stellar/stellar-sdk';
 
 /**
