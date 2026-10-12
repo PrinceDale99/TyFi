@@ -118,3 +118,31 @@ The factory gained linking through an **in-place upgrade** (`scripts/upgrade_pas
 ## Backend cold starts
 
 The backend host sleeps when idle; while waking, its proxy returns 502/503/429 **without CORS headers**, which browsers report as a CORS failure. The frontend relayer client treats those (and network errors) as retryable with backoff (~60s) and shows "Waking up TyFi's servers…". Retrying is safe: deployment and funding are idempotent and a signed call's Soroban nonce can only be used once.
+
+## Multiple devices: pairing, review and removal
+
+**A passkey cannot be copied.** Its private key never leaves the device's secure hardware, so "using my wallet on another device" means giving that device **its own passkey** and adding it to the wallet as an extra signer (`add_signer`, up to 10).
+
+```
+Device A (signed in)                    TyFi relayer                         Device B (new)
+  "Confirm it's you"  ── challenge ──▶  issues single-use challenge
+  passkey assertion   ───────────────▶  verifies against wallet.get_signer (on-chain) → 15-min session
+  "Add another device" ──────────────▶  one-time code: tyfi-pair-<256-bit base64url>, 10 min, single use,
+                                          only its SHA-256 hash is kept
+                                                                    ◀── code + new passkey public key
+  "A new device wants…" ◀── poll ─────  shows device name/type + IP (hidden behind an eye)
+  Approve (biometric) ── add_signer, authorized by A's passkey ──▶ on-chain
+                       ── /complete ─▶  re-reads get_signer(B) on-chain before marking approved
+                                                                    ──▶ B polls with a private claim token,
+                                                                         re-verifies on-chain, signs in
+```
+
+Security properties:
+- **The code alone grants nothing.** Only an existing passkey can authorize `add_signer`; the relayer has no wallet authority. A stolen code produces an approval prompt the owner can decline.
+- **One use, short-lived, unguessable:** 256 bits of entropy, 10-minute window, spent on first claim; creating a new code cancels the previous one; claim attempts are rate-limited per IP.
+- **The device list is private.** Viewing devices, IP addresses or creating codes requires a session proven by a fresh WebAuthn assertion that the server verifies against the signer key read from the wallet contract (UP + UV flags, RP ID hash, origin, challenge). Sessions are HMAC-signed and last 15 minutes.
+- **IPs are hidden by default** in the UI and revealed per device with the eye button. Only the creation IP and the last-seen IP are stored (Firestore `passkey_devices`).
+- **Removal is on-chain** (`remove_signer`, biometric-approved). The server only marks a device removed after confirming the key is gone on-chain, and the contract refuses to remove the last passkey.
+- **Signing in on a paired device:** the factory only indexes each wallet's first passkey, so the relayer answers "which wallet has this credential?" — and the client re-verifies the answer on-chain against the public key recovered from the passkey signature, so a wrong answer cannot redirect a device to someone else's wallet.
+
+Verified end to end on testnet by `scripts/e2e/passkey-devices-e2e.mjs` (two browser profiles with separate virtual authenticators).
