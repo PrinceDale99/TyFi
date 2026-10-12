@@ -53,7 +53,6 @@ impl SmartWallet {
     pub fn add_signer(env: Env, key_id: Bytes, public_key: BytesN<65>) -> Result<(), Error> {
         env.current_contract_address().require_auth();
         insert_signer(&env, &key_id, &public_key)?;
-        storage::bump_instance(&env);
         Ok(())
     }
 
@@ -71,7 +70,6 @@ impl SmartWallet {
         storage::remove_signer(&env, &key_id);
         storage::set_signer_count(&env, count - 1);
         events::SignerRemoved { key_id }.publish(&env);
-        storage::bump_instance(&env);
         Ok(())
     }
 
@@ -135,8 +133,6 @@ impl CustomAccountInterface for SmartWallet {
             let signer = storage::get_signer(&env, &key_id).ok_or(Error::UnknownSigner)?;
             webauthn::verify(&env, &signature_payload, &assertion, &signer.public_key)?;
         }
-
-        storage::bump_instance(&env);
         Ok(())
     }
 }

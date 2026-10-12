@@ -2,8 +2,11 @@ use soroban_sdk::{contracttype, Bytes, Env};
 
 use crate::types::PasskeySigner;
 
-const TTL_THRESHOLD: u32 = 120_960; // ~7 days at 5s ledgers: refresh once below this
-const TTL_EXTEND_TO: u32 = 518_400; // ~30 days: keeps per-wallet rent low; any use refreshes it
+// Rent policy: the wallet never extends TTLs on the user's transaction path.
+// Doing so made a wallet's first payment also pay to keep the *shared* wallet
+// code alive (~28 XLM on testnet). Entries live at the network minimum TTL; the
+// operator extends shared code via scripts/extend_passkey_ttl.sh, and the
+// relayer restores any archived wallet entries automatically before a call.
 
 /// Maximum number of passkeys a single wallet may hold (bounds storage and
 /// the cost of signer enumeration).
@@ -18,17 +21,8 @@ pub enum DataKey {
     SignerCount,
 }
 
-pub fn bump_instance(env: &Env) {
-    env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
-}
-
 pub fn get_signer(env: &Env, key_id: &Bytes) -> Option<PasskeySigner> {
-    let key = DataKey::Signer(key_id.clone());
-    let signer: Option<PasskeySigner> = env.storage().persistent().get(&key);
-    if signer.is_some() {
-        env.storage().persistent().extend_ttl(&key, TTL_THRESHOLD, TTL_EXTEND_TO);
-    }
-    signer
+    env.storage().persistent().get(&DataKey::Signer(key_id.clone()))
 }
 
 pub fn has_signer(env: &Env, key_id: &Bytes) -> bool {
