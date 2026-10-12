@@ -175,3 +175,195 @@ fn constructor_rejects_oversized_key_id() {
     let pk = TestPasskey::new(7);
     env.register(SmartWallet, (Bytes::from_slice(&env, &[1u8; 256]), pk.public_key(&env)));
 }
+
+// ─── __check_auth: success ───────────────────────────────────────────────────
+
+#[test]
+fn valid_biometric_assertion_authorizes() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [42u8; 32];
+
+    let sigs = pk.signatures(&env, pk.assert(&env, &payload, AssertOpts::default()));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Ok(()));
+}
+
+#[test]
+fn client_data_field_order_and_extra_fields_are_accepted() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [9u8; 32];
+    let challenge = String::from_utf8(base64url::encode_32(&payload).to_vec()).unwrap();
+    // Some authenticators put `challenge` first and append extra fields.
+    let client_data = format!(
+        r#"{{"challenge":"{}","origin":"https://www.tyfi.site","type":"webauthn.get","other_keys_can_be_added_here":"do not compare clientDataJSON against a template"}}"#,
+        challenge
+    );
+    let sigs = pk.signatures(&env, pk.assert(&env, &payload, AssertOpts { client_data: Some(client_data), ..Default::default() }));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Ok(()));
+}
+
+#[test]
+fn any_registered_passkey_can_authorize() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let first = TestPasskey::new(7);
+    let second = TestPasskey::new(8);
+    let (wallet, client) = setup(&env, &first);
+    client.add_signer(&second.key_id(&env), &second.public_key(&env));
+
+    let payload = [3u8; 32];
+    let sigs = second.signatures(&env, second.assert(&env, &payload, AssertOpts::default()));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Ok(()));
+}
+
+// ─── __check_auth: rejections ────────────────────────────────────────────────
+
+#[test]
+fn rejects_empty_signature_map() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let empty = Signatures(Map::new(&env));
+    assert_eq!(check_auth(&env, &wallet, &[1u8; 32], empty), Err(Ok(Error::NoSignatures)));
+}
+
+#[test]
+fn rejects_unregistered_passkey() {
+    let env = Env::default();
+    let owner = TestPasskey::new(7);
+    let stranger = TestPasskey::new(9);
+    let (wallet, _) = setup(&env, &owner);
+    let payload = [1u8; 32];
+    let sigs = stranger.signatures(&env, stranger.assert(&env, &payload, AssertOpts::default()));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Err(Ok(Error::UnknownSigner)));
+}
+
+#[test]
+fn rejects_assertion_for_a_different_payload() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    // Signed for payload A, replayed against payload B.
+    let assertion = pk.assert(&env, &[1u8; 32], AssertOpts::default());
+    assert_eq!(
+        check_auth(&env, &wallet, &[2u8; 32], pk.signatures(&env, assertion)),
+        Err(Ok(Error::ChallengeMismatch))
+    );
+}
+
+#[test]
+fn rejects_registration_ceremony_type() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [1u8; 32];
+    let sigs = pk.signatures(&env, pk.assert(&env, &payload, AssertOpts { kind: "webauthn.create", ..Default::default() }));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Err(Ok(Error::InvalidClientDataType)));
+}
+
+#[test]
+fn rejects_missing_user_presence() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [1u8; 32];
+    let sigs = pk.signatures(&env, pk.assert(&env, &payload, AssertOpts { flags: FLAG_UV, ..Default::default() }));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Err(Ok(Error::UserNotPresent)));
+}
+
+#[test]
+fn rejects_missing_user_verification_biometric() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [1u8; 32];
+    let sigs = pk.signatures(&env, pk.assert(&env, &payload, AssertOpts { flags: FLAG_UP, ..Default::default() }));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Err(Ok(Error::UserNotVerified)));
+}
+
+#[test]
+fn rejects_truncated_authenticator_data() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [1u8; 32];
+    let sigs = pk.signatures(&env, pk.assert(&env, &payload, AssertOpts { auth_data_len: Some(36), ..Default::default() }));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Err(Ok(Error::AuthenticatorDataTooShort)));
+}
+
+#[test]
+fn rejects_malformed_client_data() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [1u8; 32];
+    let sigs = pk.signatures(&env, pk.assert(&env, &payload, AssertOpts { client_data: Some(String::from("{not json")), ..Default::default() }));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Err(Ok(Error::ClientDataMalformed)));
+}
+
+#[test]
+fn rejects_oversized_client_data() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [1u8; 32];
+    let padding = "x".repeat(1100);
+    let challenge = String::from_utf8(base64url::encode_32(&payload).to_vec()).unwrap();
+    let client_data = format!(r#"{{"type":"webauthn.get","challenge":"{}","pad":"{}"}}"#, challenge, padding);
+    let sigs = pk.signatures(&env, pk.assert(&env, &payload, AssertOpts { client_data: Some(client_data), ..Default::default() }));
+    assert_eq!(check_auth(&env, &wallet, &payload, sigs), Err(Ok(Error::ClientDataTooLarge)));
+}
+
+#[test]
+fn rejects_signature_from_wrong_private_key() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let attacker = TestPasskey::new(11);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [1u8; 32];
+    // Correct key id, but signed by a different private key.
+    let assertion = pk.assert(&env, &payload, AssertOpts { signing_key: Some(&attacker.signing_key), ..Default::default() });
+    assert!(check_auth(&env, &wallet, &payload, pk.signatures(&env, assertion)).is_err());
+}
+
+#[test]
+fn rejects_tampered_authenticator_data() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [1u8; 32];
+    let mut assertion = pk.assert(&env, &payload, AssertOpts::default());
+    // Flip a byte of the rpIdHash after signing: the flags still pass, the signature must not.
+    assertion.authenticator_data.set(0, 0x00);
+    assert!(check_auth(&env, &wallet, &payload, pk.signatures(&env, assertion)).is_err());
+}
+
+#[test]
+fn rejects_malleable_high_s_signature() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (wallet, _) = setup(&env, &pk);
+    let payload = [1u8; 32];
+    let assertion = pk.assert(&env, &payload, AssertOpts { high_s: true, ..Default::default() });
+    assert!(check_auth(&env, &wallet, &payload, pk.signatures(&env, assertion)).is_err());
+}
+
+#[test]
+fn every_signature_in_the_map_must_verify() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let first = TestPasskey::new(7);
+    let second = TestPasskey::new(8);
+    let (wallet, client) = setup(&env, &first);
+    client.add_signer(&second.key_id(&env), &second.public_key(&env));
+
+    let payload = [5u8; 32];
+    let mut map = Map::new(&env);
+    map.set(SignerKey::Secp256r1(first.key_id(&env)), Signature::Secp256r1(first.assert(&env, &payload, AssertOpts::default())));
+    // A valid first signature must not carry an invalid second one.
+    map.set(SignerKey::Secp256r1(second.key_id(&env)), Signature::Secp256r1(second.assert(&env, &payload, AssertOpts { flags: FLAG_UP, ..Default::default() })));
+    assert_eq!(check_auth(&env, &wallet, &payload, Signatures(map)), Err(Ok(Error::UserNotVerified)));
+}
