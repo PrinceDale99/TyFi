@@ -12,6 +12,7 @@ import {
   type PasskeySession,
 } from '../lib/passkey';
 import { capturePostHogEvent } from '../lib/posthog';
+import { PasskeyDevicesPanel } from './PasskeyDevicesPanel';
 
 interface PasskeyWalletCardProps {
   session: PasskeySession;
@@ -139,6 +140,8 @@ export const PasskeyWalletCard: React.FC<PasskeyWalletCardProps> = ({ session, e
         {stage && <p className="text-sm text-sky-200" aria-live="polite">{STAGE_LABEL[stage]}</p>}
         {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
       </div>
+
+      <PasskeyDevicesPanel session={session} />
 
       {txLinks.length > 0 && (
         <div className="space-y-2">
