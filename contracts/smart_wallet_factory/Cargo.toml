@@ -1,7 +1,8 @@
 [package]
 name = "smart-wallet-factory"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "TyFi factory that deploys seedless passkey smart wallets (one per WebAuthn credential)"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -11,3 +12,6 @@ soroban-sdk = "27.0.0-rc.1"
 
 [dev-dependencies]
 soroban-sdk = { version = "27.0.0-rc.1", features = ["testutils"] }
+# Tests deploy the real smart_wallet WASM and authorize with real secp256r1 signatures.
+p256 = { version = "0.13", default-features = false, features = ["ecdsa", "std"] }
+sha2 = { version = "0.10", default-features = false }
