@@ -133,5 +133,16 @@
     "walletCreationFeeXlm": 0.0357625,
     "passkeyPaymentFeeXlm": 0.0024021,
     "paidBy": "sponsor GDUF46FCQFNBHNWNENYSDSQPDP3PSL2S7CTKLJELGBOC6SJC62JPKMJ7"
+  },
+  "accountLinking": {
+    "verifiedBy": "scripts/e2e/passkey-link-e2e.mjs (real frontend modules; virtual authenticator for the passkey; a fresh funded G-account signs the envelope as Freighter would)",
+    "account": "GCQFQNNKO5ASYPGOTQR6ESINIX4IF4QUNS5VNEIMD4QOLRPM5GWVFHHU",
+    "wallet": "CAUJO3CLCA7RPWZE4NOLBQGNZCMPQEGTWBG6X3HHDL2JODACPPTUTKMW",
+    "transactions": {
+      "createWallet": "https://stellar.expert/explorer/testnet/tx/3aeccc73426d0386b676788267f9e57d8b11b43dfaaad32842e97ee1480bcc5c",
+      "link": "https://stellar.expert/explorer/testnet/tx/7874272049b87cba32c7bce0a9c48fd648ea1ba159a194352ef1d3ccd9e511ee",
+      "unlink": "https://stellar.expert/explorer/testnet/tx/796f7635bab27d2e6dcd45a5f33499b14cc04ebf52cafc6ceb70d6dbcfb13bde",
+      "relink": "https://stellar.expert/explorer/testnet/tx/6667f9c6c5c1d0abe825b6228475aa1f4f01f74b9bb3103d11199640b7a13980"
+    }
   }
 }
