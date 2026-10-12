@@ -112,3 +112,18 @@ describe('parseXlmAmount', async () => {
     for (const bad of ['0', '-1', '1.00000001', 'abc', '']) expect(() => parseXlmAmount(bad)).toThrow();
   });
 });
+
+describe('base64url helpers (browser-safe)', async () => {
+  const { fromBase64Url, toBase64Url } = await import('./base64url');
+  it('round-trips arbitrary bytes and matches Node’s encoding', () => {
+    for (const len of [0, 1, 2, 3, 16, 31, 32, 65]) {
+      const bytes = crypto.getRandomValues(new Uint8Array(len));
+      const encoded = toBase64Url(bytes);
+      expect(encoded).toBe(Buffer.from(bytes).toString('base64url'));
+      expect(Array.from(fromBase64Url(encoded))).toEqual(Array.from(bytes));
+    }
+  });
+  it('rejects non-base64url input', () => {
+    expect(() => fromBase64Url('a+b/')).toThrow();
+  });
+});
