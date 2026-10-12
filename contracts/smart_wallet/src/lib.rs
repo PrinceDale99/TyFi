@@ -6,6 +6,14 @@
 //! `secp256r1_verify`). There is no Ed25519 key and no seed phrase: every
 //! authorization is a biometric assertion from the user's device.
 
+mod base64url;
+mod error;
+mod storage;
+mod types;
+
+pub use error::Error;
+pub use types::{PasskeySigner, Secp256r1Signature, Signature, SignerKey, Signatures};
+
 use soroban_sdk::{contract, contractimpl, Env};
 
 #[contract]
