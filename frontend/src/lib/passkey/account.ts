@@ -1,6 +1,7 @@
 import { fromBase64Url, toBase64Url } from './base64url';
 import { getRelayerConfig, relayerApi } from './api';
 import { findWallet, getWalletSignerKey } from './chain';
+import { lookupWalletForKey } from './devices';
 import { savePasskeySession, type PasskeySession } from './session';
 import { assertPasskey, recoverPublicKeys, registerPasskey } from './webauthn';
 
@@ -77,8 +78,17 @@ export async function signInWithPasskey(onStage: (s: SignInStage) => void = () =
 
   onStage('locating');
   const keyIdBytes = fromBase64Url(assertion.keyId);
-  for (const candidate of await recoverPublicKeys(assertion)) {
-    const wallet = await findWallet(keyIdBytes, candidate);
+  const candidates = await recoverPublicKeys(assertion);
+  // Passkeys added by device pairing are not in the factory registry (it only
+  // knows each wallet's first passkey); ask the relayer where they belong. Its
+  // answer is untrusted: the signer is re-checked on-chain below.
+  let pairedWallet: string | null | undefined;
+  for (const candidate of candidates) {
+    let wallet = await findWallet(keyIdBytes, candidate);
+    if (!wallet) {
+      if (pairedWallet === undefined) pairedWallet = await lookupWalletForKey(assertion.keyId).catch(() => null);
+      wallet = pairedWallet;
+    }
     if (!wallet) continue;
     const registered = await getWalletSignerKey(wallet, keyIdBytes);
     if (!registered || !equalBytes(registered, candidate)) continue;
