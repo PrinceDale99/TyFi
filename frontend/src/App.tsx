@@ -103,6 +103,7 @@ import { capturePostHogEvent, isPostHogEnabled, posthog } from './lib/posthog';
 import { analytics, isInAppWalletId, walletTypeFromId } from './lib/analytics';
 import { clearPasskeySession, getLinkedAccount, loadPasskeySession, type PasskeySession } from './lib/passkey';
 import { PasskeyLinkCard } from './components/PasskeyLinkCard';
+import { PasskeyDevicesPanel } from './components/PasskeyDevicesPanel';
 
 /** Value stored in typhoon_vault_walletId for seedless passkey sessions. */
 const PASSKEY_WALLET_ID = 'passkey';
@@ -2860,6 +2861,12 @@ function App() {
                   }}
                 />
               )}
+
+              {/* Passkey devices: review, remove, and pair another device */}
+              {isTestnet && isWalletConnected && (() => {
+                const passkeySession = loadPasskeySession();
+                return passkeySession?.walletAddress === walletAddress ? <PasskeyDevicesPanel session={passkeySession} /> : null;
+              })()}
 
               {/* Wallet Info Section — Live Balance */}
               <div className={`glass-panel p-5 border ${
