@@ -13,6 +13,7 @@ import { safeInitiatePayout } from './payoutService';
 import { getXlmRates } from './pdax';
 import { supabase } from './supabase';
 import { oracleRouter } from './oracle';
+import { createPasskeyRouter } from './passkey/router';
 import { calculateBondYield } from './bondService';
 import { flushOfflineQueue } from './offlineQueue';
 import { executeMicroloanPipeline } from './loanService';
@@ -93,6 +94,8 @@ const microloanLimiter = rateLimit({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/oracle', oracleRouter);
+// Seedless passkey smart wallets: sponsored deployment + passkey-authorized calls.
+app.use('/api/passkey', createPasskeyRouter());
 
 // Health check endpoint for frontend smart-routing
 app.get('/api/health', (req, res) => res.status(200).send('OK'));
