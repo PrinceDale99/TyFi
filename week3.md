@@ -285,3 +285,9 @@ Users can now use their seedless wallet on more than one device without ever exp
 | Payment signed by the *paired* device's own passkey | [be73b50b…dcc80f4](https://stellar.expert/explorer/testnet/tx/be73b50b0120a3ee6c1cc4ca04e84ca743174e9e402fed9b13136f782dcc80f4) |
 
 Tests: 29 relayer unit tests in total (WebAuthn verification, sessions, pairing codes, user-agent parsing, self-admin policy) and `scripts/e2e/passkey-devices-e2e.mjs`, which pairs a second virtual device, signs in on it with only its passkey, pays with it, and removes it — confirming on-chain that its key is gone.
+
+## 14. ➕ Addendum: Approve Transactions with Passkey
+
+- **Toggle on `/passkey`** ("Approve transactions with passkey", on by default). When an extension account (Freighter / WalletConnect) is linked to a passkey wallet, TyFi acts as the passkey wallet, so **every** transaction (deposits, policy registration, claims, subsidies, DAO votes and proposals, XLM payments) is approved with a fingerprint, face or device PIN and the fees are sponsored. Turned off, the extension approves instead. A classic G-account cannot itself be authorized by a passkey (it only accepts Ed25519 keys), which is why approval runs through the linked passkey wallet.
+- **Coverage:** all on-chain actions in the app go through one path (`executeTrackedTx`), which routes to biometric authorization whenever the active wallet is a passkey wallet.
+- **Settings → Passkey settings** links to the passkey page (approval toggle, devices, wallet).
