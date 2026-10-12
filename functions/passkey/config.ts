@@ -21,11 +21,21 @@ export interface PasskeyConfig {
   maxFeeStroops: number;
   /** Testnet only: XLM sent to each new wallet so it can be used immediately. */
   welcomeFundingStroops: bigint;
+  /** WebAuthn relying-party ids and origins accepted for server-side passkey proofs. */
+  allowedRpIds: string[];
+  allowedOrigins: string[];
+  /** HMAC secret for device-management sessions (random per process if unset). */
+  sessionSecret?: string;
 }
 
 const DEFAULT_MAX_FEE_STROOPS = 5_000_000; // 0.5 XLM
 
 export type ConfigResult = { ok: true; config: PasskeyConfig } | { ok: false; reason: string };
+
+const list = (value: string | undefined, fallback: string[]) => {
+  const items = (value || '').split(',').map(s => s.trim()).filter(Boolean);
+  return items.length ? items : fallback;
+};
 
 const isContractId = (value: string | undefined): value is string => !!value && StrKey.isValidContract(value);
 
@@ -85,6 +95,9 @@ export function loadPasskeyConfig(env: NodeJS.ProcessEnv = process.env): ConfigR
       allowedContracts: new Set([factoryId, ...extraContracts]),
       maxFeeStroops,
       welcomeFundingStroops: BigInt(Math.round(welcomeXlm * 10_000_000)),
+      allowedRpIds: list(env.PASSKEY_RP_IDS, ['www.tyfi.site', 'tyfi.site', 'localhost']),
+      allowedOrigins: list(env.PASSKEY_ALLOWED_ORIGINS, ['https://www.tyfi.site', 'https://tyfi.site', 'http://localhost:5173']),
+      sessionSecret: env.PASSKEY_SESSION_SECRET,
     },
   };
 }
