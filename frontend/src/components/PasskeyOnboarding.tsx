@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, Fingerprint, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Fingerprint, KeyRound, Loader2, ShieldCheck, Smartphone } from 'lucide-react';
 
 import {
   createSeedlessWallet,
   describePasskeyError,
   isPasskeySupported,
   onServiceWaking,
+  joinWithPairingCode,
   signInWithPasskey,
+  type ClaimStage,
   type CreateStage,
   type CreatedWallet,
   type PasskeySession,
@@ -31,7 +33,18 @@ const SIGN_IN_LABEL: Record<SignInStage, string> = {
   done: 'Signed in',
 };
 
-type Busy = { kind: 'create'; stage: CreateStage } | { kind: 'signin'; stage: SignInStage } | null;
+const JOIN_LABEL: Record<ClaimStage, string> = {
+  biometric: 'Create this device’s passkey — confirm with your fingerprint, face or PIN',
+  waiting: 'Now approve this device on your other device…',
+  verifying: 'Confirming on Stellar…',
+  done: 'Signed in',
+};
+
+type Busy =
+  | { kind: 'create'; stage: CreateStage }
+  | { kind: 'signin'; stage: SignInStage }
+  | { kind: 'join'; stage: ClaimStage }
+  | null;
 
 /**
  * "Continue with Face ID / fingerprint" — seedless onboarding.
@@ -43,6 +56,8 @@ export const PasskeyOnboarding: React.FC<PasskeyOnboardingProps> = ({ onConnecte
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
   const [nickname, setNickname] = useState('');
+  const [showJoin, setShowJoin] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
   const [waking, setWaking] = useState(false);
   const supported = isPasskeySupported();
 
@@ -83,6 +98,19 @@ export const PasskeyOnboarding: React.FC<PasskeyOnboardingProps> = ({ onConnecte
     }
   };
 
+  const join = async () => {
+    setError(null);
+    try {
+      const session = await joinWithPairingCode(joinCode, stage => setBusy({ kind: 'join', stage }));
+      capturePostHogEvent('passkey_device_joined');
+      onConnected(session);
+    } catch (err) {
+      setError(describePasskeyError(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   if (!supported) {
     return (
       <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm">
@@ -102,6 +130,20 @@ export const PasskeyOnboarding: React.FC<PasskeyOnboardingProps> = ({ onConnecte
           </div>
         ))}
         {busy.stage === 'checking' && !waking && <p className="text-xs text-slate-400">Connecting to TyFi…</p>}
+        {wakingNotice}
+      </div>
+    );
+  }
+
+  if (busy?.kind === 'join') {
+    return (
+      <div className="p-5 rounded-2xl bg-sky-500/5 border border-sky-500/20 space-y-2" aria-live="polite">
+        <div className="flex items-center gap-3 text-sm text-white font-bold">
+          <Loader2 size={18} className="animate-spin text-sky-400" /> {JOIN_LABEL[busy.stage]}
+        </div>
+        {busy.stage === 'waiting' && (
+          <p className="text-xs text-slate-400">Keep this screen open. On the device that made the code, tap Approve and confirm with your biometric.</p>
+        )}
         {wakingNotice}
       </div>
     );
@@ -145,6 +187,34 @@ export const PasskeyOnboarding: React.FC<PasskeyOnboardingProps> = ({ onConnecte
       >
         <KeyRound size={16} /> I already have a passkey wallet — sign in
       </button>
+
+      {!showJoin ? (
+        <button onClick={() => setShowJoin(true)} className="w-full flex items-center justify-center gap-2 p-2 text-xs font-bold text-slate-400 hover:text-white">
+          <Smartphone size={14} /> Use a code from another device
+        </button>
+      ) : (
+        <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+          <p className="text-xs text-slate-400">
+            On a device that already has your wallet, open <b>Your devices → Add another device</b> and copy the code here.
+          </p>
+          <textarea
+            value={joinCode}
+            onChange={e => setJoinCode(e.target.value)}
+            rows={2}
+            spellCheck={false}
+            autoComplete="off"
+            placeholder="tyfi-pair-…"
+            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 focus:border-sky-500 outline-none break-all"
+          />
+          <button
+            onClick={join}
+            disabled={!joinCode.trim()}
+            className="w-full p-2.5 rounded-lg bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white text-sm font-black"
+          >
+            Set up this device
+          </button>
+        </div>
+      )}
 
       <p className="flex items-start gap-2 text-[11px] text-slate-500 leading-relaxed">
         <ShieldCheck size={14} className="shrink-0 mt-0.5 text-emerald-400" />
