@@ -15,3 +15,7 @@ export { clearPasskeySession, isPasskeyWalletAddress, loadPasskeySession, type P
 export { isPasskeySupported } from './webauthn';
 export { describePasskeyError } from './errors';
 export { getLinkedAccount, getLinkedWallet, linkPasskeyToAccount, unlinkFromAccount, type LinkStage } from './link';
+export {
+  approvePairing, createPairingCode, getPairingState, joinWithPairingCode, listDevices, lookupWalletForKey, rejectPairing, removeDevice, startDeviceSession,
+  type ClaimStage, type DeviceInfo, type DeviceSession, type PairingRequestInfo, type PairingState,
+} from './devices';
