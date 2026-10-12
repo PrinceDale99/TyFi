@@ -548,6 +548,7 @@ dependencies = [
  "elliptic-curve",
  "rfc6979",
  "signature",
+ "spki",
 ]
 
 [[package]]
@@ -605,6 +606,7 @@ dependencies = [
  "ff",
  "generic-array",
  "group",
+ "pkcs8",
  "rand_core",
  "sec1",
  "subtle",
@@ -1209,6 +1211,7 @@ dependencies = [
  "base16ct",
  "der",
  "generic-array",
+ "pkcs8",
  "subtle",
  "zeroize",
 ]
@@ -1365,8 +1368,10 @@ dependencies = [
 name = "smart_wallet"
 version = "0.1.0"
 dependencies = [
+ "p256",
  "serde",
  "serde-json-core",
+ "sha2",
  "soroban-sdk",
 ]
 
