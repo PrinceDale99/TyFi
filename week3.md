@@ -254,3 +254,20 @@ The superseded factories are listed in `contracts/deployments/testnet-passkey.js
 - `functions/passkey/`: `config.ts`, `policy.ts`, `keys.ts`, `relayer.ts`, `router.ts` (+ tests); `functions/scripts/passkey-smoke.ts`
 - `frontend/src/lib/passkey/*`, `frontend/src/components/PasskeyOnboarding.tsx`, `PasskeyWalletCard.tsx`, `PasskeyLab.tsx`
 - `docs/passkey-architecture.md`, `SECURITY.md`, `README.md`, `week3.md`, `pr_body_week3.md`
+
+---
+
+## 12. ➕ Addendum: Linking Existing Accounts & Cold-Start Resilience
+
+**Account linking.** Users connected with Freighter, WalletConnect or Albedo can link their account to a seedless passkey wallet (**Settings → Passkey sign-in**). `smart_wallet_factory.link_account(wallet, account)` requires *both* signatures — the account's (envelope) and the passkey's (`__check_auth`). Links are one-to-one, either party can unlink, and the TyFi profile carries over to the passkey wallet so the user can switch to biometric sign-in without losing their farms or verification.
+
+| Item | Link |
+|---|---|
+| Factory upgraded in place (same address) | [upload](https://stellar.expert/explorer/testnet/tx/bea4f302ace1ffc8540dc519ad8b33240d31e0e5e6fcdb340227e5d56f485709) · [upgrade](https://stellar.expert/explorer/testnet/tx/549a1ae3c8f56fc44b15cbd48853e3fbf5cf335e2412f23ef15d9c11adb0dbd8) — `wallet_count` 5 → 5 |
+| Link (account + passkey) | [7874272…511ee](https://stellar.expert/explorer/testnet/tx/7874272049b87cba32c7bce0a9c48fd648ea1ba159a194352ef1d3ccd9e511ee) |
+| Unlink (account side) | [796f763…13bde](https://stellar.expert/explorer/testnet/tx/796f7635bab27d2e6dcd45a5f33499b14cc04ebf52cafc6ceb70d6dbcfb13bde) |
+| Re-link | [6667f9c…13980](https://stellar.expert/explorer/testnet/tx/6667f9c6c5c1d0abe825b6228475aa1f4f01f74b9bb3103d11199640b7a13980) |
+
+Tests: 4 new factory tests (16 total) and `scripts/e2e/passkey-link-e2e.mjs`, which runs the real frontend link/unlink code against testnet.
+
+**Cold starts.** The Render backend sleeps when idle and its wake-up responses lack CORS headers, which surfaced as "blocked by CORS policy" in browsers. The passkey client now retries those transparently and tells the user the servers are waking up.
