@@ -1,0 +1,28 @@
+name: Keep backend awake
+
+# Render's free web services sleep after ~15 minutes without traffic, and the
+# first requests while waking fail without CORS headers (users see "blocked by
+# CORS policy"). A light health ping every 10 minutes keeps the instance warm;
+# one always-on service fits within Render's free 750 instance-hours/month.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Ping /api/health
+        run: |
+          for attempt in 1 2 3 4; do
+            if curl -fsS -m 60 https://tyfi-yzbn.onrender.com/api/health; then
+              echo " — backend is awake"; exit 0
+            fi
+            echo "attempt ${attempt} failed, retrying (instance may be waking)…"
+            sleep 30
+          done
+          echo "::warning::Backend did not answer /api/health"
