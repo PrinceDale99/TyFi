@@ -13,7 +13,12 @@ interface GovernancePortalProps {
   network: 'testnet' | 'mainnet';
 }
 
-import { NETWORK_CONFIGS, voteOnDaoProposal, createDaoProposal, isUserRejection } from '../lib/stellar';
+import {
+  NETWORK_CONFIGS, voteOnDaoProposal, createDaoProposal, isUserRejection, describeDaoError,
+  DAO_ADMIN_ONLY_ACTIONS, DAO_MIN_PROPOSAL_SHARES,
+  type DaoActionType, type DaoProposalStatus, type DaoRole,
+} from '../lib/stellar';
+import { PHILIPPINE_REGIONS } from '../constants';
 import { capturePostHogEvent } from '../lib/posthog';
 
 // Newer freighter-api versions return { error } on rejection instead of throwing,
@@ -27,12 +32,73 @@ const signWithFreighter = async (xdr: string, networkPassphrase: string): Promis
   return result.signedTxXdr;
 };
 
+/** QUORUM_BPS in the DAO contract: 30% of the LP-share snapshot must vote. */
+const DAO_QUORUM_BPS = 3_000;
+const STROOPS_PER_SHARE = 10_000_000;
+
+/**
+ * Mirrors get_proposal_status in contracts/tyfi_dao/src/lib.rs, computed locally so the
+ * live poll doesn't need an extra RPC call per proposal.
+ */
+const proposalStatus = (p: any, currentLedger: number): DaoProposalStatus => {
+  if (p.vetoed) return 'Vetoed';
+  if (p.executed) return 'Executed';
+  if (currentLedger <= Number(p.deadline)) return 'Active';
+  const votesFor = BigInt(p.votes_for ?? 0);
+  const totalVotes = votesFor + BigInt(p.votes_against ?? 0);
+  const quorumRequired = (BigInt(p.quorum_snapshot ?? 0) * BigInt(DAO_QUORUM_BPS)) / 10_000n;
+  const thresholdMet = totalVotes > 0n && (votesFor * 10_000n) / totalVotes >= BigInt(p.required_threshold_bps ?? 0);
+  if (totalVotes < quorumRequired || !thresholdMet) return 'Failed';
+  return currentLedger < Number(p.timelock_until) ? 'TimelockPending' : 'Passed';
+};
+
+const STATUS_STYLES: Record<DaoProposalStatus, { label: string; className: string }> = {
+  Active:          { label: 'Active',            className: 'bg-sky-500/20 text-sky-400 border border-sky-500/30' },
+  TimelockPending: { label: 'Passed · Timelock', className: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' },
+  Passed:          { label: 'Passed',            className: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' },
+  Executed:        { label: 'Executed',          className: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' },
+  Failed:          { label: 'Failed',            className: 'bg-rose-500/20 text-rose-400 border border-rose-500/30' },
+  Vetoed:          { label: 'Vetoed',            className: 'bg-rose-500/20 text-rose-400 border border-rose-500/30' },
+};
+
+const ACTION_OPTIONS: { value: DaoActionType; label: string; valueLabel?: string; min?: number; max?: number; hint?: string }[] = [
+  { value: 'UpdatePremiumRate', label: 'Update Premium Rate', valueLabel: 'Premium multiplier (%)', min: 1, max: 1000, hint: '100 = 1.0× base premium for the region' },
+  { value: 'UpdateQuorumThreshold', label: 'Update Oracle Quorum', valueLabel: 'Oracle quorum threshold', min: 1, max: 100, hint: 'Number of oracle reports required for consensus' },
+  { value: 'UpdateSolvencyCap', label: 'Update Solvency Cap', valueLabel: 'Solvency cap (bps)', min: 100, max: 9500, hint: '100–9500 basis points of the pool' },
+  { value: 'RegisterOracle', label: 'Register / Remove Oracle' },
+];
+
+/** One-line summary of what a proposal will change, e.g. "Premium rate · Luzon → 125%". */
+const describeAction = (p: Proposal): string => {
+  switch (p.actionType) {
+    case 'UpdatePremiumRate': return `Premium rate · ${p.paramRegion} → ${p.paramValue}%`;
+    case 'UpdateQuorumThreshold': return `Oracle quorum → ${p.paramValue}`;
+    case 'UpdateSolvencyCap': return `Solvency cap → ${((p.paramValue ?? 0) / 100).toFixed(2)}%`;
+    case 'RegisterOracle': return `${p.paramOracleActive ? 'Register' : 'Remove'} oracle ${p.paramOracle?.slice(0, 6)}…${p.paramOracle?.slice(-4)}`;
+    default: return p.actionType;
+  }
+};
+
+const formatShares = (stroops: number) =>
+  (stroops / STROOPS_PER_SHARE).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
 export function GovernancePortal({ walletAddress, network }: GovernancePortalProps) {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'active' | 'executed' | 'failed'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'passed' | 'executed' | 'failed'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [votingPower, setVotingPower] = useState('0');
+  const [daoRole, setDaoRole] = useState<DaoRole | null>(null);
+  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
+  const [proposalForm, setProposalForm] = useState({
+    description: '',
+    actionType: 'UpdatePremiumRate' as DaoActionType,
+    value: '',
+    region: '',
+    oracle: '',
+    oracleActive: true,
+    endDate: '',
+  });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [daoMetrics, setDaoMetrics] = useState({
     total_members: 1248,
@@ -134,39 +200,89 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       const fetchedProposals: Proposal[] = [];
       for (const propResult of results) {
         if (!(propResult && rpc.Api.isSimulationSuccess(propResult) && propResult.result)) continue;
+        // get_proposal returns Option<Proposal>; unit enums decode as ['VariantName'].
         const p = scValToNative(propResult.result.retval);
+        if (!p) continue;
 
-        // Convert soroban Symbol or String to JS string
-        const actionTypeStr = typeof p.action_type === 'string' ? p.action_type : String(p.action_type);
-        const descStr = typeof p.description === 'string' ? p.description : String(p.description);
+        const votesFor = Number(p.votes_for ?? 0);
+        const votesAgainst = Number(p.votes_against ?? 0);
+        const quorumRequired = (Number(p.quorum_snapshot ?? 0) * DAO_QUORUM_BPS) / 10_000;
 
         fetchedProposals.push({
-          id: Number(p.id || p[0]),
-          creator: p.creator || p[1],
-          description: descStr || p[2],
-          actionType: actionTypeStr || p[3],
-          votesFor: Number(p.votes_for || p[4] || 0),
-          votesAgainst: Number(p.votes_against || p[5] || 0),
-          executed: p.executed || p[6] || false,
+          id: Number(p.id),
+          creator: String(p.creator),
+          description: String(p.description),
+          actionType: Array.isArray(p.action_type) ? String(p.action_type[0]) : String(p.action_type),
+          votesFor,
+          votesAgainst,
+          executed: Boolean(p.executed),
           // Convert ledger sequence deadline to an approximate timestamp (~5s per ledger)
           deadline: Date.now() + (Number(p.deadline) - currentLedger) * 5000,
+          status: proposalStatus(p, currentLedger),
+          paramValue: Number(p.param_value ?? 0),
+          paramRegion: String(p.param_region ?? ''),
+          paramOracle: String(p.param_oracle ?? ''),
+          paramOracleActive: Number(p.param_oracle_active ?? 0) === 1,
+          requiredThresholdBps: Number(p.required_threshold_bps ?? 0),
+          quorumRequired,
         });
+      }
+
+      // Look up the connected wallet's votes on open proposals so we can show them
+      // and hide the vote buttons instead of letting the contract reject a repeat vote.
+      if (walletAddress && !walletAddress.startsWith("DEMO_")) {
+        const voter = nativeToScVal(Address.fromString(walletAddress), { type: 'address' });
+        await Promise.all(fetchedProposals.filter(p => p.status === 'Active').map(async p => {
+          try {
+            const rec = await simulateRead('get_vote_record', nativeToScVal(p.id, { type: 'u64' }), voter);
+            if (rpc.Api.isSimulationSuccess(rec) && rec.result) {
+              const record = scValToNative(rec.result.retval);
+              if (record) p.myVote = record.support ? 'for' : 'against';
+            }
+          } catch (err) {
+            console.error(`Failed to fetch vote record for proposal ${p.id}`, err);
+          }
+        }));
       }
 
       // Drop results from a request started before the network/wallet changed.
       if (generation !== fetchGenerationRef.current) return;
-      setProposals(fetchedProposals);
+      setProposals(fetchedProposals.reverse()); // newest first
       setLastSyncedAt(Date.now());
     } catch (e) {
       console.error("Failed to fetch proposals", e);
     } finally {
       isPollingRef.current = false;
     }
-  }, [network]);
+  }, [network, walletAddress]);
+
+  const loadRole = useCallback(async () => {
+    if (!walletAddress || walletAddress.startsWith("DEMO_")) {
+      setDaoRole(null);
+      return;
+    }
+    try {
+      const config = NETWORK_CONFIGS[network];
+      const server = new rpc.Server(config.sorobanRpcUrl);
+      const dummyAccount = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
+      const result = await server.simulateTransaction(
+        new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
+          .addOperation(new Contract(config.daoContractId).call('get_role', nativeToScVal(Address.fromString(walletAddress), { type: 'address' })))
+          .setTimeout(30)
+          .build()
+      );
+      if (rpc.Api.isSimulationSuccess(result) && result.result) {
+        const role = scValToNative(result.result.retval);
+        setDaoRole(Array.isArray(role) ? role[0] as DaoRole : null);
+      }
+    } catch (e) {
+      console.error("Failed to fetch DAO role", e);
+    }
+  }, [network, walletAddress]);
 
   const refreshGovernance = useCallback(async () => {
-    await Promise.all([loadProposals(), loadVotingPower(), loadDaoMetrics()]);
-  }, [loadProposals, loadVotingPower, loadDaoMetrics]);
+    await Promise.all([loadProposals(), loadVotingPower(), loadDaoMetrics(), loadRole()]);
+  }, [loadProposals, loadVotingPower, loadDaoMetrics, loadRole]);
 
   useEffect(() => {
     fetchGenerationRef.current += 1;
@@ -190,9 +306,10 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
   const filteredProposals = proposals.filter(p => {
     if (filter === 'all') return true;
-    if (filter === 'active') return p.deadline > Date.now();
-    if (filter === 'executed') return p.executed;
-    if (filter === 'failed') return p.deadline <= Date.now() && !p.executed && p.votesFor <= p.votesAgainst;
+    if (filter === 'active') return p.status === 'Active';
+    if (filter === 'passed') return p.status === 'Passed' || p.status === 'TimelockPending';
+    if (filter === 'executed') return p.status === 'Executed';
+    if (filter === 'failed') return p.status === 'Failed' || p.status === 'Vetoed';
     return true;
   });
 
@@ -202,11 +319,14 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       return;
     }
     
-    // Pre-flight checks: the DAO contract rejects these cases with an opaque VM trap,
-    // so catch them here with a clear message before opening the wallet.
+    // Pre-flight checks so common rejections never open the wallet popup.
     const proposal = proposals.find(p => p.id === id);
-    if (proposal && proposal.deadline <= Date.now()) {
+    if (proposal && proposal.status !== 'Active') {
       showToast(`Voting on proposal ${id} has ended.`, "error");
+      return;
+    }
+    if (proposal?.myVote) {
+      showToast(`You have already voted ${proposal.myVote.toUpperCase()} on proposal ${id}.`, "error");
       return;
     }
     const power = await loadVotingPower();
@@ -231,15 +351,87 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       refreshGovernance();
     } catch (e) {
       console.error("Voting failed", e);
-      const message = String((e as any)?.message ?? e);
-      if (isUserRejection(e)) {
-        showToast("Vote cancelled in wallet.", "error");
-      } else if (/UnreachableCodeReached|InvalidAction/.test(message)) {
-        // The contract panicked: after the pre-checks above, the remaining cause is a repeat vote.
-        showToast(`You have already voted on proposal ${id}.`, "error");
-      } else {
-        showToast("Voting failed. Check console for details.", "error");
-      }
+      showToast(
+        isUserRejection(e) ? "Vote cancelled in wallet." : describeDaoError(e) ?? "Voting failed. Check console for details.",
+        "error"
+      );
+    }
+  };
+
+  const selectedAction = ACTION_OPTIONS.find(a => a.value === proposalForm.actionType)!;
+  const isAdmin = daoRole === 'Admin';
+  const canProposeSelected = DAO_ADMIN_ONLY_ACTIONS.includes(proposalForm.actionType)
+    ? isAdmin
+    : isAdmin || daoRole === 'Proposer' || Number(votingPower) * STROOPS_PER_SHARE >= DAO_MIN_PROPOSAL_SHARES;
+
+  const handleCreateProposal = async () => {
+    if (!walletAddress) {
+      showToast("Please connect your wallet first.", "error");
+      return;
+    }
+    const { description, actionType, value, region, oracle, oracleActive, endDate } = proposalForm;
+    if (!description.trim() || !endDate) {
+      showToast("Please add a description and an end date.", "error");
+      return;
+    }
+    if (!canProposeSelected) {
+      showToast(DAO_ADMIN_ONLY_ACTIONS.includes(actionType)
+        ? "Only DAO admins can propose this action."
+        : "You need the Proposer role or LP shares in the vault to create proposals.", "error");
+      return;
+    }
+
+    const numericValue = Number(value);
+    if (selectedAction.min !== undefined && (!Number.isInteger(numericValue) || numericValue < selectedAction.min || numericValue > selectedAction.max!)) {
+      showToast(`${selectedAction.valueLabel} must be a whole number from ${selectedAction.min} to ${selectedAction.max}.`, "error");
+      return;
+    }
+    if (actionType === 'UpdatePremiumRate' && !region.trim()) {
+      showToast("Please choose the region this premium rate applies to.", "error");
+      return;
+    }
+    if (actionType === 'RegisterOracle' && !/^G[A-Z2-7]{55}$/.test(oracle.trim())) {
+      showToast("Please enter a valid Stellar address (G…) for the oracle.", "error");
+      return;
+    }
+
+    // Voting window in ledgers (1 ledger ≈ 5 seconds), ending at the end of the chosen day.
+    const end = new Date(`${endDate}T23:59:59`);
+    const durationLedgers = Math.floor((end.getTime() - Date.now()) / 5000);
+    if (durationLedgers <= 0) {
+      showToast("End date must be in the future.", "error");
+      return;
+    }
+
+    setIsSubmittingProposal(true);
+    try {
+      showToast("Submitting proposal via smart contract... Please check Freighter.", "info");
+      const passphrase = NETWORK_CONFIGS[network].passphrase;
+      await createDaoProposal(
+        walletAddress,
+        description.trim(),
+        { actionType, value: numericValue || 0, region: region.trim(), oracle: oracle.trim(), oracleActive },
+        durationLedgers,
+        network,
+        xdr => signWithFreighter(xdr, passphrase)
+      );
+
+      capturePostHogEvent('governance_proposal_submitted', {
+        action_type: actionType,
+        network,
+      });
+      showToast("Proposal confirmed on-chain!", "success");
+      setShowCreateModal(false);
+      setProposalForm(f => ({ ...f, description: '', value: '', region: '', oracle: '', endDate: '' }));
+      refreshGovernance();
+    } catch (e) {
+      console.error("Create proposal failed", e);
+      showToast(
+        isUserRejection(e) ? "Proposal cancelled in wallet." : describeDaoError(e) ?? "Failed to create proposal. Check console for details.",
+        "error"
+      );
+    } finally {
+      setIsSubmittingProposal(false);
     }
   };
 
@@ -277,7 +469,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
             <Vote size={48} />
           </div>
           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Active Proposals</p>
-          <div className="text-3xl font-black text-white">{proposals.filter(p => p.deadline > Date.now()).length}</div>
+          <div className="text-3xl font-black text-white">{proposals.filter(p => p.status === 'Active').length}</div>
           <div className="text-xs text-sky-400 font-bold mt-2">Voting in progress</div>
         </div>
 
@@ -286,7 +478,9 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
             <div>
               <p className="text-sm font-bold text-indigo-300 uppercase tracking-widest mb-1">Your Voting Power</p>
               <div className="text-4xl font-black text-white mb-1">{walletAddress ? votingPower : '0'} <span className="text-lg text-indigo-300">vTYFI</span></div>
-              <p className="text-xs text-indigo-200/60">Read dynamically from LP Shares contract</p>
+              <p className="text-xs text-indigo-200/60">
+                Read dynamically from LP Shares contract{daoRole ? ` · Role: ${daoRole}` : ''}
+              </p>
             </div>
             <button 
               onClick={() => setShowCreateModal(true)}
@@ -306,7 +500,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
               <Filter size={14} /> Filters
             </h3>
             <div className="space-y-2">
-              {(['all', 'active', 'executed', 'failed'] as const).map(f => (
+              {(['all', 'active', 'passed', 'executed', 'failed'] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
@@ -356,28 +550,29 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           ) : (
             <div className="space-y-4">
               {filteredProposals.map(proposal => {
-                const isActive = proposal.deadline > Date.now();
-                const isPassed = proposal.votesFor > proposal.votesAgainst;
+                const status = proposal.status ?? 'Active';
+                const isActive = status === 'Active';
                 const totalVotes = proposal.votesFor + proposal.votesAgainst;
                 const forPercent = totalVotes > 0 ? (proposal.votesFor / totalVotes) * 100 : 0;
-                
+                const quorumPercent = proposal.quorumRequired
+                  ? Math.min(100, (totalVotes / proposal.quorumRequired) * 100)
+                  : 100;
+
                 return (
                   <div key={proposal.id} className="p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-sky-500/30 transition-all group relative overflow-hidden">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
                           <span className="text-xs font-black text-slate-500 uppercase">TIP-{proposal.id}</span>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            isActive ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' :
-                            proposal.executed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                            isPassed ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
-                            'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                          }`}>
-                            {isActive ? 'Active' : proposal.executed ? 'Executed' : isPassed ? 'Passed - Pending' : 'Failed'}
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[status].className}`}>
+                            {STATUS_STYLES[status].label}
+                          </span>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            {describeAction(proposal)}
                           </span>
                         </div>
                         <h3 className="text-lg font-bold text-white mb-2 leading-tight pr-12">{proposal.description}</h3>
-                        <p className="text-xs font-mono text-slate-500">By {proposal.creator}</p>
+                        <p className="text-xs font-mono text-slate-500 break-all">By {proposal.creator}</p>
                       </div>
                       
                       <div className="text-right">
@@ -392,15 +587,29 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
                     <div className="mt-6 space-y-3">
                       <div className="flex justify-between text-xs font-bold mb-1">
-                        <span className="text-emerald-400">For: {(proposal.votesFor / 1000).toFixed(1)}k</span>
-                        <span className="text-rose-400">Against: {(proposal.votesAgainst / 1000).toFixed(1)}k</span>
+                        <span className="text-emerald-400">For: {formatShares(proposal.votesFor)} vTYFI</span>
+                        <span className="text-rose-400">Against: {formatShares(proposal.votesAgainst)} vTYFI</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-rose-500/20 overflow-hidden flex">
                         <div className="h-full bg-emerald-500" style={{ width: `${forPercent}%` }}></div>
                       </div>
+                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        <span>
+                          Quorum {quorumPercent.toFixed(0)}% ({formatShares(totalVotes)} / {formatShares(proposal.quorumRequired ?? 0)})
+                        </span>
+                        <span>Needs {((proposal.requiredThresholdBps ?? 5001) / 100).toFixed(0)}% for</span>
+                      </div>
                     </div>
 
-                    {isActive && (
+                    {isActive && proposal.myVote && (
+                      <div className={`mt-6 pt-6 border-t border-white/5 text-xs font-black uppercase tracking-wider flex items-center gap-2 ${
+                        proposal.myVote === 'for' ? 'text-emerald-400' : 'text-rose-400'
+                      }`}>
+                        <CheckCircle2 size={16} /> You voted {proposal.myVote}
+                      </div>
+                    )}
+
+                    {isActive && !proposal.myVote && (
                       <div className="mt-6 flex gap-3 pt-6 border-t border-white/5">
                         <button 
                           onClick={() => handleVote(proposal.id, true)}
@@ -438,7 +647,8 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label>
                 <textarea 
-                  id="proposalDesc"
+                  value={proposalForm.description}
+                  onChange={e => setProposalForm(f => ({ ...f, description: e.target.value }))}
                   className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 outline-none"
                   rows={3}
                   placeholder="Describe your proposal..."
@@ -448,82 +658,112 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Action Type</label>
                 <div className="relative">
                   <select 
-                    id="proposalAction"
+                    value={proposalForm.actionType}
+                    onChange={e => setProposalForm(f => ({ ...f, actionType: e.target.value as DaoActionType, value: '' }))}
                     className="w-full appearance-none bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none cursor-pointer"
                   >
-                    <option value="" disabled selected>Select an action type</option>
-                    <option value="UPDATE_PREMIUM_RATE">Update Premium Rate</option>
-                    <option value="UPDATE_PAYOUT_THRESHOLD">Update Payout Threshold</option>
-                    <option value="UPGRADE_CONTRACT_WASM">Upgrade Contract WASM</option>
-                    <option value="UPDATE_DAO_QUORUM">Update DAO Quorum Requirement</option>
-                    <option value="UPDATE_DAO_VOTING_PERIOD">Update Voting Period</option>
-                    <option value="ADD_AUTHORIZED_ORACLE">Add Authorized Oracle</option>
-                    <option value="REMOVE_AUTHORIZED_ORACLE">Remove Authorized Oracle</option>
-                    <option value="TRANSFER_TREASURY_FUNDS">Transfer Treasury Funds</option>
-                    <option value="PAUSE_PROTOCOL">Emergency Pause Protocol</option>
-                    <option value="UNPAUSE_PROTOCOL">Unpause Protocol</option>
-                    <option value="UPDATE_FEE_BUMP_SPONSOR">Update Gas Sponsor Account</option>
+                    {ACTION_OPTIONS.map(a => (
+                      <option key={a.value} value={a.value}>
+                        {a.label}{DAO_ADMIN_ONLY_ACTIONS.includes(a.value) ? ' (admin only)' : ''}
+                      </option>
+                    ))}
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
                     <ChevronDown size={16} />
                   </div>
                 </div>
               </div>
+
+              {proposalForm.actionType === 'UpdatePremiumRate' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Region</label>
+                  <input
+                    list="dao-region-options"
+                    value={proposalForm.region}
+                    onChange={e => setProposalForm(f => ({ ...f, region: e.target.value }))}
+                    className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
+                    placeholder="e.g. Central Luzon"
+                  />
+                  <datalist id="dao-region-options">
+                    {PHILIPPINE_REGIONS.map(r => <option key={r.name} value={r.name} />)}
+                  </datalist>
+                </div>
+              )}
+
+              {selectedAction.valueLabel && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">{selectedAction.valueLabel}</label>
+                  <input
+                    type="number"
+                    min={selectedAction.min}
+                    max={selectedAction.max}
+                    step={1}
+                    value={proposalForm.value}
+                    onChange={e => setProposalForm(f => ({ ...f, value: e.target.value }))}
+                    className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
+                    placeholder={`${selectedAction.min}–${selectedAction.max}`}
+                  />
+                  {selectedAction.hint && <p className="text-[11px] text-slate-500 mt-1">{selectedAction.hint}</p>}
+                </div>
+              )}
+
+              {proposalForm.actionType === 'RegisterOracle' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Oracle Address</label>
+                    <input
+                      value={proposalForm.oracle}
+                      onChange={e => setProposalForm(f => ({ ...f, oracle: e.target.value }))}
+                      className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white font-mono text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
+                      placeholder="G..."
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    {[true, false].map(active => (
+                      <button
+                        key={String(active)}
+                        type="button"
+                        onClick={() => setProposalForm(f => ({ ...f, oracleActive: active }))}
+                        className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider border transition-all ${
+                          proposalForm.oracleActive === active
+                            ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                            : 'text-slate-400 border-white/10 hover:text-white'
+                        }`}
+                      >
+                        {active ? 'Register' : 'Remove'}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Voting Ends On (Month, Day, Year)</label>
                 <div className="relative">
                   <input 
                     type="date"
-                    id="proposalEndDate"
+                    value={proposalForm.endDate}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={e => setProposalForm(f => ({ ...f, endDate: e.target.value }))}
                     className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none"
                   />
                 </div>
               </div>
+
+              {walletAddress && !canProposeSelected && (
+                <p className="text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                  {DAO_ADMIN_ONLY_ACTIONS.includes(proposalForm.actionType)
+                    ? 'Only DAO admins can propose this action.'
+                    : 'You need the Proposer role or LP shares in the vault to create proposals.'}
+                </p>
+              )}
+
               <button 
-                onClick={async () => {
-                  if (!walletAddress) {
-                    showToast("Please connect your wallet first.", "error");
-                    return;
-                  }
-                  try {
-                    const desc = (document.getElementById('proposalDesc') as HTMLTextAreaElement).value;
-                    const action = (document.getElementById('proposalAction') as HTMLSelectElement).value;
-                    const endDateStr = (document.getElementById('proposalEndDate') as HTMLInputElement).value;
-                    
-                    if (!desc || !action || !endDateStr) {
-                      showToast("Please fill all fields, including the end date", "error");
-                      return;
-                    }
-
-                    const endDate = new Date(endDateStr);
-                    const now = new Date();
-                    if (endDate <= now) {
-                      showToast("End date must be in the future", "error");
-                      return;
-                    }
-
-                    // Calculate duration in ledgers (1 ledger ~ 5 seconds)
-                    const diffSeconds = Math.floor((endDate.getTime() - now.getTime()) / 1000);
-                    const durationLedgers = Math.floor(diffSeconds / 5);
-
-                    showToast(`Submitting Proposal via Smart Contract... Please check Freighter.`, "info");
-                    const passphrase = NETWORK_CONFIGS[network].passphrase;
-                    await createDaoProposal(walletAddress, desc, action, durationLedgers, network, xdr => signWithFreighter(xdr, passphrase));
-
-                    capturePostHogEvent('governance_proposal_submitted', {
-                      action_type: action,
-                      network,
-                    });
-                    showToast("Proposal confirmed on-chain!", "success");
-                    setShowCreateModal(false);
-                    refreshGovernance();
-                  } catch (e) {
-                    console.error("Create proposal failed", e);
-                    showToast(isUserRejection(e) ? "Proposal cancelled in wallet." : "Failed to create proposal. Check console for details.", "error");
-                  }
-                }}
-                className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-black uppercase tracking-wider text-sm transition-all"
+                onClick={handleCreateProposal}
+                disabled={isSubmittingProposal}
+                className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black uppercase tracking-wider text-sm transition-all flex items-center justify-center gap-2"
               >
+                {isSubmittingProposal && <Loader2 size={16} className="animate-spin" />}
                 Submit Proposal
               </button>
             </div>
