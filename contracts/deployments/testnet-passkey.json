@@ -144,5 +144,19 @@
       "unlink": "https://stellar.expert/explorer/testnet/tx/796f7635bab27d2e6dcd45a5f33499b14cc04ebf52cafc6ceb70d6dbcfb13bde",
       "relink": "https://stellar.expert/explorer/testnet/tx/6667f9c6c5c1d0abe825b6228475aa1f4f01f74b9bb3103d11199640b7a13980"
     }
+  },
+  "devicePairing": {
+    "verifiedBy": "scripts/e2e/passkey-devices-e2e.mjs (two browser profiles, each with its own virtual authenticator)",
+    "wallet": "CD5RBZFYK7JYT7DBMUXOIDLZTBFGK2GX5ZKC4PHX4OGBYYKAWEHPPQZU",
+    "steps": [
+      "device A creates wallet and unlocks device list (server-verified passkey proof)",
+      "IP addresses hidden by default, revealed on demand",
+      "one-time 53-char pairing code; device B creates its own passkey and claims it",
+      "device A approves: wallet add_signer authorized by A’s passkey",
+      "device B signs out and signs back in with only its own passkey",
+      "device B sends 1 XLM authorized by its own passkey",
+      "device A removes device B: remove_signer; B’s key verified absent on-chain"
+    ],
+    "deviceBPayment": "https://stellar.expert/explorer/testnet/tx/be73b50b0120a3ee6c1cc4ca04e84ca743174e9e402fed9b13136f782dcc80f4"
   }
 }
