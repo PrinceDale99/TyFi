@@ -1,0 +1,14 @@
+[package]
+name = "smart_wallet"
+version = "0.1.0"
+edition = "2021"
+description = "TyFi seedless smart wallet: a Soroban custom account authorized by WebAuthn secp256r1 passkeys"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = "27.0.0-rc.1"
+
+[dev-dependencies]
+soroban-sdk = { version = "27.0.0-rc.1", features = ["testutils"] }
