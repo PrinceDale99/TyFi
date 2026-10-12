@@ -96,3 +96,25 @@ Replay protection comes from the Soroban host: the nonce and expiration ledger a
 - Mainnet is intentionally disabled for passkey wallets until an external audit (the relayer refuses `PASSKEY_NETWORK=mainnet` unless explicitly overridden).
 - Account recovery requires a second registered passkey (synced passkeys via iCloud Keychain / Google Password Manager also carry over to new devices).
 - The welcome XLM faucet is testnet-only.
+
+## Linking an existing account (Freighter / WalletConnect / Albedo)
+
+Users who already have a classic `G…` account can link it to a passkey wallet from **Settings → Passkey sign-in** (either by creating a new passkey or by choosing one they already have).
+
+```
+factory.link_account(wallet, account)
+  ├─ account.require_auth()  → the account is the transaction source; its extension signs the envelope (and pays ~0.01 XLM)
+  └─ wallet.require_auth()   → passkey assertion over the Soroban payload, verified by __check_auth
+```
+
+- **Dual consent:** neither side can be linked without the other's signature (`link_fails_with_only_the_accounts_signature`).
+- **One-to-one:** an account links to at most one wallet and vice versa (`AccountAlreadyLinked`, `WalletAlreadyLinked`); factory wallets cannot be linked to each other (`InvalidLink`).
+- **Unlinking:** either party can unlink alone (`unlink_account(wallet, caller)`); nobody else can (`NotLinkParty`).
+- **Profile continuity:** after linking, the off-chain TyFi profile (farms, verification, consent, role) is copied to the passkey wallet, never overwriting an existing populated profile. Signing in with the passkey later finds the link on-chain and loads that profile.
+- **Funds are not moved:** the linked account keeps its balance and its own keys; the passkey wallet is a separate smart account.
+
+The factory gained linking through an **in-place upgrade** (`scripts/upgrade_passkey_factory.sh`): same address, all wallet registrations preserved.
+
+## Backend cold starts
+
+The backend host sleeps when idle; while waking, its proxy returns 502/503/429 **without CORS headers**, which browsers report as a CORS failure. The frontend relayer client treats those (and network errors) as retryable with backoff (~60s) and shows "Waking up TyFi's servers…". Retrying is safe: deployment and funding are idempotent and a signed call's Soroban nonce can only be used once.
