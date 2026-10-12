@@ -1,7 +1,7 @@
 use soroban_sdk::{contracttype, Address, BytesN, Env};
 
-const TTL_THRESHOLD: u32 = 518_400; // ~30 days
-const TTL_EXTEND_TO: u32 = 2_073_600; // ~120 days
+const TTL_THRESHOLD: u32 = 120_960; // ~7 days at 5s ledgers: refresh once below this
+const TTL_EXTEND_TO: u32 = 518_400; // ~30 days: keeps per-wallet rent low; any use refreshes it
 
 #[contracttype]
 #[derive(Clone)]
