@@ -166,3 +166,6 @@ fn wallet_salt(env: &Env, key_id: &Bytes, public_key: &BytesN<65>) -> BytesN<32>
     preimage.append(key_id);
     env.crypto().sha256(&preimage).into()
 }
+
+#[cfg(test)]
+mod test;
