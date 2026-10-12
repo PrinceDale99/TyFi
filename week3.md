@@ -284,4 +284,4 @@ Users can now use their seedless wallet on more than one device without ever exp
 |---|---|
 | Payment signed by the *paired* device's own passkey | [be73b50b…dcc80f4](https://stellar.expert/explorer/testnet/tx/be73b50b0120a3ee6c1cc4ca04e84ca743174e9e402fed9b13136f782dcc80f4) |
 
-Tests: 33 relayer unit tests (WebAuthn verification, sessions, pairing codes, user-agent parsing, self-admin policy) and `scripts/e2e/passkey-devices-e2e.mjs`, which pairs a second virtual device, signs in on it with only its passkey, pays with it, and removes it — confirming on-chain that its key is gone.
+Tests: 29 relayer unit tests in total (WebAuthn verification, sessions, pairing codes, user-agent parsing, self-admin policy) and `scripts/e2e/passkey-devices-e2e.mjs`, which pairs a second virtual device, signs in on it with only its passkey, pays with it, and removes it — confirming on-chain that its key is gone.
