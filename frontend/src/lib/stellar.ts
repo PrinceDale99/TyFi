@@ -20,6 +20,7 @@ import {
   Transaction,
   Account,
 } from "@stellar/stellar-sdk";
+import { getRelayerConfig, hostFunctionOf, invokeWithPasskey, loadPasskeySession } from "./passkey";
 import { analytics, type TxAction, type TxEventContext, type TxStage, type VaultDepositInitiatedProps } from "./analytics";
 
 export interface NetworkConfig {
@@ -163,7 +164,9 @@ const txError = (message: string, code: string) => Object.assign(new Error(messa
 // Freighter / wallets-kit surface rejections as messages like "User declined access"
 // or "The user rejected this request" (Freighter API code -4).
 export const isUserRejection = (error: any) =>
-  error?.code === -4 || /reject|declin|denied|cancel/i.test(String(error?.message ?? error ?? ''));
+  error?.code === -4 ||
+  error?.name === 'NotAllowedError' ||
+  /reject|declin|denied|cancel|not allowed/i.test(String(error?.message ?? error ?? ''));
 
 export const executeTrackedTx = async (
   meta: TrackedTxMeta,
@@ -187,6 +190,41 @@ export const executeTrackedTx = async (
   }
 
   try {
+    // Seedless passkey wallets: authorize with a device biometric and submit
+    // through the fee-sponsoring relayer instead of an extension signature.
+    const passkey = loadPasskeySession();
+    if (passkey && passkey.walletAddress === meta.walletAddress) {
+      if (meta.network !== 'testnet') {
+        throw new Error('Passkey wallets are available on testnet only for now.');
+      }
+      const relayer = await getRelayerConfig();
+      // Contract builders call server.getAccount(user); a smart wallet has no
+      // classic account, so the sponsor stands in as the (fee-paying) source.
+      const sponsorSourced = Object.create(server, {
+        getAccount: { value: () => server.getAccount(relayer.sponsor) },
+      }) as rpc.Server;
+      const tx = await buildTx(sponsorSourced, config);
+
+      const result = await invokeWithPasskey(passkey, hostFunctionOf(tx), next => {
+        if (next === 'submission') {
+          analytics.trackTransactionSigned({ ...context, action: meta.action, contract_id: contractId, wallet_address: meta.walletAddress, network: meta.network });
+        }
+        stage = next;
+      });
+      stage = 'on_chain_confirmation';
+      analytics.trackTransactionConfirmed({
+        ...context,
+        tx_hash: result.hash,
+        action: meta.action,
+        amount_xlm: meta.amountXlm,
+        sponsored_fee: true,
+        sponsor_provider: 'tyfi_relayer',
+        ledger_sequence: result.ledger,
+        network: meta.network,
+      });
+      return result.hash;
+    }
+
     const preparedTx = await server.prepareTransaction(await buildTx(server, config)) as Transaction;
 
     stage = 'wallet_signing';
