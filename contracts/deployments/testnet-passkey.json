@@ -62,5 +62,66 @@
       "walletWasmHash": "b1bd3f95c1f461bfe612751aad6b139e600c5507cec5dbd3b8afbfd47e3254c0",
       "reason": "__check_auth extended shared code TTL, so a wallet’s first payment cost ~28.6 XLM"
     }
-  ]
+  ],
+  "smartAccounts": [
+    {
+      "account": 1,
+      "wallet": "CBF4KRNXMZWV5FW4OT5MWHKTGYM52MBSY7V2DL6LCF3AEHQ5K7INW35B",
+      "walletExplorerUrl": "https://stellar.expert/explorer/testnet/contract/CBF4KRNXMZWV5FW4OT5MWHKTGYM52MBSY7V2DL6LCF3AEHQ5K7INW35B",
+      "passkeyCredentialId": "dx/RfvBXLMwNaYoDSgrJe0l+HTAz/9jC/dWjxGXVBqg=",
+      "authenticator": "Chrome DevTools virtual authenticator (CTAP2, internal transport, user verification = true) driving the real /passkey UI via scripts/e2e/passkey-e2e.mjs",
+      "signInWithOnlyPasskeyRecoveredSameWallet": true,
+      "transactions": [
+        {
+          "action": "factory.deploy (sponsored, seedless)",
+          "txHash": "59bc1451b23880e2c47b506917c2c233bde60385c3f7cdba2f93c701380c4f03",
+          "explorerUrl": "https://stellar.expert/explorer/testnet/tx/59bc1451b23880e2c47b506917c2c233bde60385c3f7cdba2f93c701380c4f03",
+          "feeXlm": 0.0357625
+        },
+        {
+          "action": "testnet welcome funding 5 XLM",
+          "txHash": "18b59842a33131d84f957ac1b572b9371be3709ea585843ab5c880e3e0ff9c5a",
+          "explorerUrl": "https://stellar.expert/explorer/testnet/tx/18b59842a33131d84f957ac1b572b9371be3709ea585843ab5c880e3e0ff9c5a"
+        },
+        {
+          "action": "native SAC transfer 1 XLM authorized by passkey (__check_auth secp256r1)",
+          "txHash": "ef1beec636f93c2f1f994832485a2a86f9935dba83dc35b34c7fa9aebf8d37a5",
+          "explorerUrl": "https://stellar.expert/explorer/testnet/tx/ef1beec636f93c2f1f994832485a2a86f9935dba83dc35b34c7fa9aebf8d37a5",
+          "feeXlm": 0.0024021
+        }
+      ]
+    },
+    {
+      "account": 2,
+      "wallet": "CDJBGVJLYSHSUR2AJOINQIM6CG3WIQOUW62GIYRDRELUVU35YVB6J6AX",
+      "walletExplorerUrl": "https://stellar.expert/explorer/testnet/contract/CDJBGVJLYSHSUR2AJOINQIM6CG3WIQOUW62GIYRDRELUVU35YVB6J6AX",
+      "passkeyCredentialId": "QIZoadIkjWKquwrJGziHZETBLcl4LrwNwdbaSDSedTc=",
+      "authenticator": "Chrome DevTools virtual authenticator (CTAP2, internal transport, user verification = true) driving the real /passkey UI via scripts/e2e/passkey-e2e.mjs",
+      "signInWithOnlyPasskeyRecoveredSameWallet": true,
+      "transactions": [
+        {
+          "action": "factory.deploy (sponsored, seedless)",
+          "txHash": "5eb2ad96d4cd99e19efb6d2e2e51c92a8a048aef667de9eb2aa1b899510f2b85",
+          "explorerUrl": "https://stellar.expert/explorer/testnet/tx/5eb2ad96d4cd99e19efb6d2e2e51c92a8a048aef667de9eb2aa1b899510f2b85",
+          "feeXlm": 0.0357625
+        },
+        {
+          "action": "testnet welcome funding 5 XLM",
+          "txHash": "1e358a96ce72d7ea548341ebd610635422539b2db120b5d468592becee793b21",
+          "explorerUrl": "https://stellar.expert/explorer/testnet/tx/1e358a96ce72d7ea548341ebd610635422539b2db120b5d468592becee793b21"
+        },
+        {
+          "action": "native SAC transfer 1 XLM authorized by passkey (__check_auth secp256r1)",
+          "txHash": "22d6d010beb2e45b6ae628c9434365a84a4a5e85a0cc5a070a7189c9871c97b1",
+          "explorerUrl": "https://stellar.expert/explorer/testnet/tx/22d6d010beb2e45b6ae628c9434365a84a4a5e85a0cc5a070a7189c9871c97b1",
+          "feeXlm": 0.0024021
+        }
+      ]
+    }
+  ],
+  "costs": {
+    "walletCreationFeeXlm": 0.0357625,
+    "passkeyPaymentFeeXlm": 0.0024021,
+    "paidBy": "sponsor GDUF46FCQFNBHNWNENYSDSQPDP3PSL2S7CTKLJELGBOC6SJC62JPKMJ7"
+  }
 }
