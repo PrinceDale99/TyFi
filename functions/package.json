@@ -6,8 +6,8 @@
   "scripts": {
     "test": "node -r ts-node/register/transpile-only --test \"passkey/**/*.test.ts\"",
     "dev": "ts-node server.ts",
-    "start": "concurrently \"ts-node --transpile-only server.ts\" \"ts-node listener.ts\"",
-    "listener": "ts-node listener.ts",
+    "start": "node --max-old-space-size=384 -r ts-node/register/transpile-only server.ts",
+    "listener": "ts-node --transpile-only listener.ts",
     "build": "tsc || exit 0"
   },
   "keywords": [],
