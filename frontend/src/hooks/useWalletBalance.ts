@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { StrKey } from '@stellar/stellar-sdk';
+import { getXlmBalance } from '../lib/passkey';
 
 const HORIZON_MAINNET = 'https://horizon.stellar.org';
 const HORIZON_TESTNET = 'https://horizon-testnet.stellar.org';
@@ -22,6 +24,15 @@ export const useWalletBalance = (address: string, network: 'testnet' | 'mainnet'
     setIsLoading(true);
     setError(null);
     try {
+      // Smart wallets (C… contract addresses) have no Horizon account record;
+      // their XLM lives in the native asset contract.
+      if (StrKey.isValidContract(address)) {
+        if (network !== 'testnet') throw new Error('Smart wallets are testnet-only');
+        setBalance({ xlm: await getXlmBalance(address), assets: [] });
+        setLastUpdated(new Date());
+        setCountdown(30);
+        return;
+      }
       const res = await fetch(`${horizon}/accounts/${address}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -47,7 +58,7 @@ export const useWalletBalance = (address: string, network: 'testnet' | 'mainnet'
     } finally {
       setIsLoading(false);
     }
-  }, [address, horizon]);
+  }, [address, horizon, network]);
 
   // Initial fetch + 30-second polling
   useEffect(() => {
