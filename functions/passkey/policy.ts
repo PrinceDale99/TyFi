@@ -22,6 +22,13 @@ import { Address, xdr } from '@stellar/stellar-sdk';
 
 export const MAX_AUTH_ENTRIES = 4;
 
+/**
+ * A passkey wallet managing its own devices calls itself. These are the only
+ * self-calls the relayer sponsors, and only when the wallet is the sole
+ * authorizer (the contract then requires its own passkey signature).
+ */
+export const WALLET_SELF_ADMIN_FUNCTIONS: ReadonlySet<string> = new Set(['add_signer', 'remove_signer']);
+
 export type PolicyErrorCode =
   | 'INVALID_XDR'
   | 'UNSUPPORTED_HOST_FUNCTION'
@@ -84,7 +91,8 @@ export function validateInvocation(
   const contractId = Address.fromScAddress(args.contractAddress()).toString();
   const functionName = args.functionName().toString();
 
-  if (ctx.blockedContracts.has(contractId) || !ctx.allowedContracts.has(contractId)) {
+  const selfAdmin = WALLET_SELF_ADMIN_FUNCTIONS.has(functionName) && contractId.startsWith('C');
+  if (!selfAdmin && (ctx.blockedContracts.has(contractId) || !ctx.allowedContracts.has(contractId))) {
     throw new PolicyError('CONTRACT_NOT_ALLOWED', `Contract ${contractId} cannot be invoked through the relayer`);
   }
   if (auth.length === 0) {
@@ -108,6 +116,10 @@ export function validateInvocation(
       throw new PolicyError('NON_CONTRACT_SIGNER', 'Only smart-wallet (contract) authorizations are sponsored');
     }
     signers.push(signer);
+  }
+
+  if (selfAdmin && signers.some(s => s !== contractId)) {
+    throw new PolicyError('CONTRACT_NOT_ALLOWED', 'Wallet device management must be authorized by the wallet itself');
   }
 
   return { hostFunction, auth, contractId, functionName, signers };

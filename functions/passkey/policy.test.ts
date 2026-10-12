@@ -107,3 +107,14 @@ test('decodeInvocation round-trips valid XDR', () => {
   assert.equal(decoded.auth.length, 1);
   assert.equal(validateInvocation(decoded.hostFunction, decoded.auth, ctx).contractId, VAULT);
 });
+
+test('allows a wallet to manage its own passkeys when it is the only authorizer', () => {
+  const result = validateInvocation(invoke(WALLET, 'add_signer'), [addressAuth(WALLET)], ctx);
+  assert.equal(result.functionName, 'add_signer');
+  validateInvocation(invoke(WALLET, 'remove_signer'), [addressAuth(WALLET)], ctx);
+});
+
+test('rejects self-admin calls authorized by another wallet, and other self-calls', () => {
+  expectCode(() => validateInvocation(invoke(WALLET, 'add_signer'), [addressAuth(OTHER)], ctx), 'CONTRACT_NOT_ALLOWED');
+  expectCode(() => validateInvocation(invoke(WALLET, 'upgrade'), [addressAuth(WALLET)], ctx), 'CONTRACT_NOT_ALLOWED');
+});
