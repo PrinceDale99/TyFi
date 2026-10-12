@@ -1,0 +1,36 @@
+{
+  "network": "testnet",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "deployedAt": "2026-10-12T06:57:03Z",
+  "admin": "GC4GMBGK7DUGXJWGFEJFWGENX3MG3KOZAHJ3W2GGN2J3YRAO3QFCHNGC",
+  "smartWallet": {
+    "wasmHash": "67bae589c75ea11145abc56373173c86f216bd056304bf02b23e647465a1a3e3",
+    "wasmSizeBytes": 16956
+  },
+  "smartWalletFactory": {
+    "address": "CCL4ENKSYR3CMRWTKUL3HIK3DJRZFTHE3IYY6RV63V6R7X5K6NBBVTBY",
+    "wasmSizeBytes": 8801,
+    "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CCL4ENKSYR3CMRWTKUL3HIK3DJRZFTHE3IYY6RV63V6R7X5K6NBBVTBY"
+  },
+  "transactions": [
+    {
+      "step": 1,
+      "action": "upload_smart_wallet_wasm",
+      "txHash": "e618da0aa3bbbf2d8039e6fb5c9c8a233cc2fbcb6f6cf5bf6ec03dd894f1f4cd",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/e618da0aa3bbbf2d8039e6fb5c9c8a233cc2fbcb6f6cf5bf6ec03dd894f1f4cd"
+    },
+    {
+      "step": 2,
+      "action": "upload_smart_wallet_factory_wasm",
+      "txHash": "59cfc9b31bfad4980ce9e3a20a7866de4a386511d08799db2c71b25cc2109d40",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/59cfc9b31bfad4980ce9e3a20a7866de4a386511d08799db2c71b25cc2109d40"
+    },
+    {
+      "step": 3,
+      "action": "deploy_smart_wallet_factory (constructor: admin, wallet_wasm_hash)",
+      "txHash": "cdf93401537b961929cd5a4a2ee504ee95d7755a5e7b2d3ede09cfce101e6948",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/cdf93401537b961929cd5a4a2ee504ee95d7755a5e7b2d3ede09cfce101e6948"
+    }
+  ]
+}
