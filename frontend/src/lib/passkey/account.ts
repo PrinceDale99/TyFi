@@ -1,7 +1,6 @@
 import { fromBase64Url, toBase64Url } from './base64url';
-import { relayerApi } from './api';
+import { getRelayerConfig, relayerApi } from './api';
 import { findWallet, getWalletSignerKey } from './chain';
-import { getRelayerConfig } from './config';
 import { savePasskeySession, type PasskeySession } from './session';
 import { assertPasskey, recoverPublicKeys, registerPasskey } from './webauthn';
 

@@ -1,8 +1,7 @@
 import { Address, BASE_FEE, Operation, rpc, TransactionBuilder, xdr, type Transaction } from '@stellar/stellar-sdk';
 
-import { relayerApi, type SubmitResponse } from './api';
+import { getRelayerConfig, relayerApi, type SubmitResponse } from './api';
 import { passkeyRpc } from './chain';
-import { getRelayerConfig } from './config';
 import { authorizationPayload, encodeSignatures } from './encoding';
 import type { PasskeySession } from './session';
 import { assertPasskey } from './webauthn';
