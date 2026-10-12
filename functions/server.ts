@@ -23,6 +23,11 @@ dotenv.config();
 
 export const app = express();
 
+// Render (and most PaaS) sit behind one reverse proxy hop. Trusting it makes
+// req.ip the real client IP, so per-IP rate limits apply per user instead of
+// to everyone sharing the proxy address.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
+
 // ── CORS: only allow known frontend origins ────────────────────────────────
 // Extra origins (e.g. preview deployments) can be added via a comma-separated CORS_ORIGINS env var.
 const ALLOWED_ORIGINS = [
