@@ -50,17 +50,14 @@ impl SmartWalletFactory {
         }
         validate(&key_id, &public_key)?;
 
-        let salt = wallet_salt(&env, &key_id, &public_key);
-        if storage::wallet_for_salt(&env, &salt).is_some() {
+        let deployer = env.deployer().with_current_contract(wallet_salt(&env, &key_id, &public_key));
+        if storage::is_wallet(&env, &deployer.deployed_address()) {
             return Err(Error::WalletAlreadyDeployed);
         }
 
-        let wallet = env
-            .deployer()
-            .with_current_contract(salt.clone())
-            .deploy_v2(storage::wallet_wasm_hash(&env), (key_id.clone(), public_key.clone()));
+        let wallet = deployer.deploy_v2(storage::wallet_wasm_hash(&env), (key_id.clone(), public_key.clone()));
 
-        storage::record_wallet(&env, &salt, &wallet);
+        storage::record_wallet(&env, &wallet);
         storage::bump_instance(&env);
         events::WalletCreated { wallet: wallet.clone(), key_id, public_key }.publish(&env);
         Ok(wallet)
@@ -76,7 +73,11 @@ impl SmartWalletFactory {
 
     /// The deployed wallet for a passkey, or `None` if it does not exist yet.
     pub fn get_wallet(env: Env, key_id: Bytes, public_key: BytesN<65>) -> Option<Address> {
-        storage::wallet_for_salt(&env, &wallet_salt(&env, &key_id, &public_key))
+        let address = env
+            .deployer()
+            .with_current_contract(wallet_salt(&env, &key_id, &public_key))
+            .deployed_address();
+        storage::is_wallet(&env, &address).then_some(address)
     }
 
     /// Whether `wallet` was deployed by this factory.
