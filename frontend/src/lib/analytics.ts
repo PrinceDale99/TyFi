@@ -3,7 +3,7 @@ import { posthog, isPostHogEnabled } from './posthog';
 // ─── Strongly Typed Event Payloads ──────────────────────────────────────────
 
 export type StellarNetwork = 'testnet' | 'mainnet';
-export type WalletType = 'freighter' | 'albedo' | 'walletconnect' | 'rabet' | 'xbull' | 'in_app' | 'other';
+export type WalletType = 'freighter' | 'albedo' | 'walletconnect' | 'rabet' | 'xbull' | 'passkey' | 'in_app' | 'other';
 export type TxAction =
   | 'subscribe_policy'
   | 'deposit_reinsurance'

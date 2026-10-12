@@ -13,6 +13,7 @@ import { safeInitiatePayout } from './payoutService';
 import { getXlmRates } from './pdax';
 import { supabase } from './supabase';
 import { oracleRouter } from './oracle';
+import { createPasskeyRouter } from './passkey/router';
 import { calculateBondYield } from './bondService';
 import { flushOfflineQueue } from './offlineQueue';
 import { executeMicroloanPipeline } from './loanService';
@@ -22,6 +23,11 @@ import { logPostHog } from './posthogLogs';
 dotenv.config();
 
 export const app = express();
+
+// Render (and most PaaS) sit behind one reverse proxy hop. Trusting it makes
+// req.ip the real client IP, so per-IP rate limits apply per user instead of
+// to everyone sharing the proxy address.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
 
 // ── CORS: only allow known frontend origins ────────────────────────────────
 // Extra origins (e.g. preview deployments) can be added via a comma-separated CORS_ORIGINS env var.
@@ -88,6 +94,8 @@ const microloanLimiter = rateLimit({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/oracle', oracleRouter);
+// Seedless passkey smart wallets: sponsored deployment + passkey-authorized calls.
+app.use('/api/passkey', createPasskeyRouter());
 
 // Health check endpoint for frontend smart-routing
 app.get('/api/health', (req, res) => res.status(200).send('OK'));

@@ -4,15 +4,19 @@ import { FREIGHTER_ID } from '@creit.tech/stellar-wallets-kit/modules/freighter'
 import { ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
 import { WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
 import { capturePostHogEvent, logPostHogInfo } from '../lib/posthog';
+import { PasskeyOnboarding } from './PasskeyOnboarding';
+import type { PasskeySession } from '../lib/passkey';
 
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConnect: (walletId: string) => void;
+  /** Called when a seedless passkey wallet is created or signed in (testnet). */
+  onPasskeyConnected?: (session: PasskeySession) => void;
   network?: 'testnet' | 'mainnet';
 }
 
-const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, network = 'testnet' }) => {
+const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, onPasskeyConnected, network = 'testnet' }) => {
   // Hooks must run before the early return so the hook order is stable across open/close.
   const [error, setError] = React.useState<string | null>(null);
 
@@ -42,7 +46,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="relative w-full max-w-lg bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 md:p-10 border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-6 md:p-10 border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300">
         
         {/* Animated Glow Backdrops */}
         <div className={`absolute -top-32 -right-32 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none ${isMainnet ? 'bg-emerald-500' : 'bg-sky-500'}`} />
@@ -78,6 +82,20 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
               </div>
             )}
           </div>
+
+          {!isMainnet && onPasskeyConnected && (
+            <div className="w-full text-left">
+              <PasskeyOnboarding
+                onConnected={session => {
+                  onPasskeyConnected(session);
+                  onClose();
+                }}
+              />
+              <div className="flex items-center gap-3 mt-6 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <span className="flex-1 h-px bg-white/10" /> or use a wallet extension <span className="flex-1 h-px bg-white/10" />
+              </div>
+            </div>
+          )}
 
           <div className="w-full flex flex-col gap-4 mt-2">
             <button
