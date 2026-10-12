@@ -19,3 +19,4 @@ export {
   approvePairing, createPairingCode, getPairingState, joinWithPairingCode, listDevices, lookupWalletForKey, rejectPairing, removeDevice, startDeviceSession,
   type ClaimStage, type DeviceInfo, type DeviceSession, type PairingRequestInfo, type PairingState,
 } from './devices';
+export { getApprovalMode, onApprovalModeChange, setApprovalMode, type ApprovalMode } from './preferences';
