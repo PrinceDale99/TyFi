@@ -45,6 +45,9 @@ impl SmartWalletFactory {
     /// passkey whose public key is baked into its constructor, so a sponsor (or
     /// anyone) can pay for the deployment on the user's behalf.
     pub fn deploy(env: Env, key_id: Bytes, public_key: BytesN<65>) -> Result<Address, Error> {
+        if storage::is_paused(&env) {
+            return Err(Error::DeploymentsPaused);
+        }
         validate(&key_id, &public_key)?;
 
         let salt = wallet_salt(&env, &key_id, &public_key);
@@ -93,6 +96,41 @@ impl SmartWalletFactory {
 
     pub fn admin(env: Env) -> Address {
         storage::admin(&env)
+    }
+
+    pub fn is_paused(env: Env) -> bool {
+        storage::is_paused(&env)
+    }
+
+    // ── Admin ────────────────────────────────────────────────────────────────
+
+    /// Emergency stop for new wallet creation. Existing wallets are unaffected:
+    /// the factory has no authority over deployed wallets.
+    pub fn set_paused(env: Env, paused: bool) {
+        storage::admin(&env).require_auth();
+        storage::set_paused(&env, paused);
+        storage::bump_instance(&env);
+        events::DeploymentsPausedChanged { paused }.publish(&env);
+    }
+
+    /// Start a two-step admin transfer. The new admin must call `accept_admin`,
+    /// so a typo can never hand the factory to an unreachable address.
+    pub fn propose_admin(env: Env, new_admin: Address) {
+        storage::admin(&env).require_auth();
+        storage::set_pending_admin(&env, Some(&new_admin));
+        storage::bump_instance(&env);
+        events::AdminTransferStarted { pending_admin: new_admin }.publish(&env);
+    }
+
+    /// Complete a pending admin transfer.
+    pub fn accept_admin(env: Env) -> Result<(), Error> {
+        let pending = storage::pending_admin(&env).ok_or(Error::NoPendingAdmin)?;
+        pending.require_auth();
+        storage::set_admin(&env, &pending);
+        storage::set_pending_admin(&env, None);
+        storage::bump_instance(&env);
+        events::AdminTransferred { admin: pending }.publish(&env);
+        Ok(())
     }
 }
 
