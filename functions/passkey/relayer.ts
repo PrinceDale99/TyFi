@@ -188,13 +188,23 @@ export class PasskeyRelayer {
    */
   private submit(hostFunction: xdr.HostFunction, auth: xdr.SorobanAuthorizationEntry[] | null): Promise<SubmissionResult> {
     const run = async (): Promise<SubmissionResult> => {
-      const source = await this.server.getAccount(this.sponsorPublicKey);
-      const tx = new TransactionBuilder(source, { fee: BASE_FEE, networkPassphrase: this.config.networkPassphrase })
-        .addOperation(Operation.invokeHostFunction({ func: hostFunction, auth: auth ?? [] }))
-        .setTimeout(TX_TIMEOUT_SECONDS)
-        .build();
+      const build = async () => {
+        const source = await this.server.getAccount(this.sponsorPublicKey);
+        return new TransactionBuilder(source, { fee: BASE_FEE, networkPassphrase: this.config.networkPassphrase })
+          .addOperation(Operation.invokeHostFunction({ func: hostFunction, auth: auth ?? [] }))
+          .setTimeout(TX_TIMEOUT_SECONDS)
+          .build();
+      };
 
-      const sim = await this.server.simulateTransaction(tx);
+      let tx = await build();
+      let sim = await this.server.simulateTransaction(tx);
+      if (rpc.Api.isSimulationRestore(sim)) {
+        // Entries of a dormant wallet were archived (they live at the network
+        // minimum TTL until used). Restore them first, then re-simulate.
+        await this.restore(sim.restorePreamble);
+        tx = await build();
+        sim = await this.server.simulateTransaction(tx);
+      }
       if (rpc.Api.isSimulationError(sim)) {
         throw new RelayerError('SIMULATION_FAILED', 'The network rejected this transaction during simulation', sim.error);
       }
@@ -223,6 +233,26 @@ export class PasskeyRelayer {
     const next = this.queue.then(run, run);
     this.queue = next.catch(() => undefined);
     return next;
+  }
+
+  /** Submit a RestoreFootprint operation for archived entries (sponsor-paid). */
+  private async restore(preamble: { minResourceFee: string; transactionData: { build(): xdr.SorobanTransactionData } }): Promise<void> {
+    const fee = Number(BASE_FEE) + Number(preamble.minResourceFee);
+    if (fee > this.config.maxFeeStroops) {
+      throw new RelayerError('FEE_LIMIT_EXCEEDED', `Restoring archived wallet state would cost ${fee} stroops`);
+    }
+    const source = await this.server.getAccount(this.sponsorPublicKey);
+    const restoreTx = new TransactionBuilder(source, { fee: String(fee), networkPassphrase: this.config.networkPassphrase })
+      .setSorobanData(preamble.transactionData.build())
+      .addOperation(Operation.restoreFootprint({}))
+      .setTimeout(TX_TIMEOUT_SECONDS)
+      .build();
+    restoreTx.sign(this.config.sponsor);
+    const sent = await this.server.sendTransaction(restoreTx);
+    if (sent.status !== 'PENDING') {
+      throw new RelayerError('SUBMISSION_FAILED', `State restore returned ${sent.status}`);
+    }
+    await this.waitForConfirmation(sent.hash);
   }
 
   private async waitForConfirmation(hash: string): Promise<SubmissionResult> {
