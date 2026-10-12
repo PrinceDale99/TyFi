@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Fingerprint, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 
 import {
   createSeedlessWallet,
   describePasskeyError,
   isPasskeySupported,
+  onServiceWaking,
   signInWithPasskey,
   type CreateStage,
   type CreatedWallet,
@@ -42,7 +43,16 @@ export const PasskeyOnboarding: React.FC<PasskeyOnboardingProps> = ({ onConnecte
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
   const [nickname, setNickname] = useState('');
+  const [waking, setWaking] = useState(false);
   const supported = isPasskeySupported();
+
+  useEffect(() => onServiceWaking(setWaking), []);
+
+  const wakingNotice = waking && (
+    <p className="text-xs text-amber-200" aria-live="polite">
+      Waking up TyFi’s servers — the first request after a quiet period can take up to a minute.
+    </p>
+  );
 
   const create = async () => {
     setError(null);
@@ -91,7 +101,8 @@ export const PasskeyOnboarding: React.FC<PasskeyOnboardingProps> = ({ onConnecte
             {step.label}
           </div>
         ))}
-        {busy.stage === 'checking' && <p className="text-xs text-slate-400">Connecting to TyFi…</p>}
+        {busy.stage === 'checking' && !waking && <p className="text-xs text-slate-400">Connecting to TyFi…</p>}
+        {wakingNotice}
       </div>
     );
   }
@@ -100,6 +111,7 @@ export const PasskeyOnboarding: React.FC<PasskeyOnboardingProps> = ({ onConnecte
     return (
       <div className="p-5 rounded-2xl bg-sky-500/5 border border-sky-500/20 flex items-center gap-3 text-sm text-white font-bold" aria-live="polite">
         <Loader2 size={18} className="animate-spin text-sky-400" /> {SIGN_IN_LABEL[busy.stage]}
+        {wakingNotice}
       </div>
     );
   }
