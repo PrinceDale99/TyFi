@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { relayerApi } from './api';
 import { findWallet, getWalletSignerKey } from './chain';
 import { getRelayerConfig } from './config';

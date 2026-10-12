@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { Account, Address, Asset, BASE_FEE, Contract, rpc, scValToNative, TransactionBuilder, xdr } from '@stellar/stellar-sdk';
 
 import { PASSKEY_STATIC_CONFIG } from './config';
