@@ -74,6 +74,24 @@ impl SmartWallet {
         Ok(())
     }
 
+    /// Replace the wallet's code. Only the wallet itself (a passkey assertion)
+    /// can upgrade it; the wallet address and storage are preserved.
+    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        env.current_contract_address().require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        events::WalletUpgraded { new_wasm_hash }.publish(&env);
+    }
+
+    /// The registered signer for a credential id, if any.
+    pub fn get_signer(env: Env, key_id: Bytes) -> Option<PasskeySigner> {
+        storage::get_signer(&env, &key_id)
+    }
+
+    /// Number of registered passkey signers.
+    pub fn signer_count(env: Env) -> u32 {
+        storage::signer_count(&env)
+    }
+
     /// Contract version, bumped on every interface or behaviour change.
     pub fn version(_env: Env) -> u32 {
         1
