@@ -19,39 +19,3 @@ export const PASSKEY_STATIC_CONFIG = {
   appName: 'TyFi Vault',
   explorerUrl: 'https://stellar.expert/explorer/testnet',
 };
-
-export interface RelayerConfig {
-  enabled: boolean;
-  network: 'testnet' | 'mainnet';
-  networkPassphrase: string;
-  rpcUrl: string;
-  factoryId: string;
-  walletWasmHash: string;
-  sponsor: string;
-  allowedContracts: string[];
-  welcomeFundingXlm: number;
-}
-
-let cached: Promise<RelayerConfig> | null = null;
-
-/**
- * Load the relayer configuration once. Fails loudly if the backend points at a
- * different factory than this build: signing for one deployment and submitting
- * to another would only produce confusing on-chain failures.
- */
-export function getRelayerConfig(): Promise<RelayerConfig> {
-  cached ??= (async () => {
-    const res = await fetch(`${PASSKEY_STATIC_CONFIG.relayerUrl}/config`);
-    if (!res.ok) throw new Error(`Passkey service unavailable (HTTP ${res.status})`);
-    const config = (await res.json()) as RelayerConfig;
-    if (!config.enabled) throw new Error('Passkey wallets are not enabled on this server yet');
-    if (config.factoryId !== PASSKEY_STATIC_CONFIG.factoryId) {
-      throw new Error('Passkey configuration mismatch between app and server (factory id)');
-    }
-    return config;
-  })().catch(err => {
-    cached = null; // allow a retry after a transient failure
-    throw err;
-  });
-  return cached;
-}
