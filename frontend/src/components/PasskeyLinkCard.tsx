@@ -9,7 +9,6 @@ import {
   getLinkedWallet,
   isPasskeySupported,
   linkPasskeyToAccount,
-  loadPasskeySession,
   PASSKEY_STATIC_CONFIG,
   signInWithPasskey,
   unlinkFromAccount,
