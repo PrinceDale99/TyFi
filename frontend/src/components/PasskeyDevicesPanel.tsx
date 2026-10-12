@@ -86,15 +86,17 @@ export const PasskeyDevicesPanel: React.FC<PasskeyDevicesPanelProps> = ({ sessio
     }
   }, [handleError]);
 
-  const unlock = async () => {
+  const unlock = async (): Promise<DeviceSession | null> => {
     setError(null);
     setBusy('unlock');
     try {
       const next = await startDeviceSession(session);
       setDs(next);
       await refresh(next);
+      return next;
     } catch (err) {
       handleError(err);
+      return null;
     } finally {
       setBusy(null);
     }
@@ -131,12 +133,13 @@ export const PasskeyDevicesPanel: React.FC<PasskeyDevicesPanelProps> = ({ sessio
   }, [ds, pairing, handleError]);
 
   const startPairing = async () => {
-    if (!ds) return;
     setError(null);
     setNotice(null);
+    const current = ds ?? (await unlock());
+    if (!current) return;
     setBusy('pair');
     try {
-      setPairing(await createPairingCode(ds));
+      setPairing(await createPairingCode(current));
       setPairingState({ status: 'open' });
       capturePostHogEvent('passkey_pairing_code_created');
     } catch (err) {
@@ -208,7 +211,7 @@ export const PasskeyDevicesPanel: React.FC<PasskeyDevicesPanelProps> = ({ sessio
           <ShieldCheck size={18} className="text-emerald-300" />
           <div className="text-sm font-black text-white">Your devices</div>
         </div>
-        {ds && (
+        {ds && !pairing && (
           <button
             onClick={startPairing}
             disabled={!!busy || (devices?.length ?? 0) >= 10}
@@ -225,7 +228,14 @@ export const PasskeyDevicesPanel: React.FC<PasskeyDevicesPanelProps> = ({ sessio
             See every device that can sign for this wallet, where it was used from, and remove any you don’t recognise.
           </p>
           <button
-            onClick={unlock}
+            onClick={startPairing}
+            disabled={!!busy}
+            className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-sm font-black text-white disabled:opacity-60"
+          >
+            <Plus size={16} /> Add another device (phone, tablet, laptop)
+          </button>
+          <button
+            onClick={() => unlock()}
             disabled={busy === 'unlock'}
             className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-sm font-bold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-60"
           >
