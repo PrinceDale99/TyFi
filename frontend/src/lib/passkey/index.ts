@@ -14,3 +14,4 @@ export { parseXlmAmount, xlmTransfer } from './payments';
 export { clearPasskeySession, isPasskeyWalletAddress, loadPasskeySession, type PasskeySession } from './session';
 export { isPasskeySupported } from './webauthn';
 export { describePasskeyError } from './errors';
+export { getLinkedAccount, getLinkedWallet, linkPasskeyToAccount, unlinkFromAccount, type LinkStage } from './link';
