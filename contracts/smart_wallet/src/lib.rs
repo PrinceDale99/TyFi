@@ -10,6 +10,7 @@ mod base64url;
 mod error;
 mod storage;
 mod types;
+mod webauthn;
 
 pub use error::Error;
 pub use types::{PasskeySigner, Secp256r1Signature, Signature, SignerKey, Signatures};
