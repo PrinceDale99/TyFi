@@ -42,3 +42,6 @@ export async function getXlmBalance(wallet: string): Promise<number> {
   const stroops = (await read(sac, 'balance', new Address(wallet).toScVal())) as bigint;
   return Number(stroops ?? 0n) / 1e7;
 }
+
+/** Generic read-only contract call (used by the linking registry). */
+export const readContract = read;
