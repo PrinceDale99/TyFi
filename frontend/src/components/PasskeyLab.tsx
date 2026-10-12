@@ -3,6 +3,7 @@ import { ArrowLeft, ExternalLink, Fingerprint, Layers, ServerCog, ShieldCheck } 
 
 import { PasskeyOnboarding } from './PasskeyOnboarding';
 import { PasskeyWalletCard } from './PasskeyWalletCard';
+import { PasskeyApprovalToggle } from './PasskeyApprovalToggle';
 import { clearPasskeySession, loadPasskeySession, PASSKEY_STATIC_CONFIG, type CreatedWallet, type PasskeySession } from '../lib/passkey';
 
 /**
@@ -43,6 +44,8 @@ export const PasskeyLab: React.FC = () => {
         <div className="grid md:grid-cols-[1.1fr_1fr] gap-8 items-start">
           <section className="glass-panel p-6 rounded-3xl border border-white/10 bg-slate-900/60">
             {session ? (
+              <div className="space-y-5">
+              <PasskeyApprovalToggle session={session} />
               <PasskeyWalletCard
                 session={session}
                 extraTxs={created?.fundingTxHash ? [{ label: 'Welcome test XLM (sponsor → wallet)', hash: created.fundingTxHash }] : []}
@@ -52,6 +55,7 @@ export const PasskeyLab: React.FC = () => {
                   setCreated(undefined);
                 }}
               />
+              </div>
             ) : (
               <PasskeyOnboarding
                 onConnected={(s, c) => {
