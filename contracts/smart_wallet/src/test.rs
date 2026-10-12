@@ -427,3 +427,99 @@ fn upgrade_requires_wallet_authorization() {
     let (_, client) = setup(&env, &pk);
     client.upgrade(&BytesN::from_array(&env, &[0u8; 32]));
 }
+
+// ─── End to end: the host invokes __check_auth for a real auth entry ─────────
+
+fn to_sc_val<T: IntoVal<Env, Val>>(env: &Env, v: T) -> ScVal {
+    ScVal::try_from_val(env, &v.into_val(env)).unwrap()
+}
+
+/// Sign a Soroban authorization entry for `wallet.function(args)` with a
+/// passkey and install it, exactly as a client + relayer would on-chain.
+fn authorize_with_passkey(env: &Env, wallet: &Address, pk: &TestPasskey, function: &str, args: std::vec::Vec<ScVal>) {
+    let ScVal::Address(sc_address) = to_sc_val(env, wallet.clone()) else { panic!() };
+    let invocation = SorobanAuthorizedInvocation {
+        function: SorobanAuthorizedFunction::ContractFn(InvokeContractArgs {
+            contract_address: sc_address.clone(),
+            function_name: function.try_into().unwrap(),
+            args: args.try_into().unwrap(),
+        }),
+        sub_invocations: Default::default(),
+    };
+    let nonce = 1234;
+    let expiration = env.ledger().sequence() + 100;
+    let preimage = HashIdPreimage::SorobanAuthorization(HashIdPreimageSorobanAuthorization {
+        network_id: xdr::Hash(env.ledger().network_id().to_array()),
+        nonce,
+        signature_expiration_ledger: expiration,
+        invocation: invocation.clone(),
+    });
+    let payload: [u8; 32] = Sha256::digest(preimage.to_xdr(Limits::none()).unwrap()).into();
+
+    let sigs = pk.signatures(env, pk.assert(env, &payload, AssertOpts::default()));
+    env.set_auths(&[SorobanAuthorizationEntry {
+        credentials: SorobanCredentials::Address(SorobanAddressCredentials {
+            address: sc_address,
+            nonce,
+            signature_expiration_ledger: expiration,
+            signature: to_sc_val(env, sigs),
+        }),
+        root_invocation: invocation,
+    }]);
+}
+
+#[test]
+fn host_authorizes_add_signer_with_real_passkey_signature() {
+    let env = Env::default();
+    let owner = TestPasskey::new(7);
+    let new_device = TestPasskey::new(8);
+    let (wallet, client) = setup(&env, &owner);
+
+    authorize_with_passkey(
+        &env,
+        &wallet,
+        &owner,
+        "add_signer",
+        std::vec![to_sc_val(&env, new_device.key_id(&env)), to_sc_val(&env, new_device.public_key(&env))],
+    );
+    client.add_signer(&new_device.key_id(&env), &new_device.public_key(&env));
+    assert_eq!(client.signer_count(), 2);
+}
+
+#[test]
+#[should_panic]
+fn host_rejects_auth_entry_signed_by_unregistered_passkey() {
+    let env = Env::default();
+    let owner = TestPasskey::new(7);
+    let attacker = TestPasskey::new(66);
+    let (wallet, client) = setup(&env, &owner);
+
+    authorize_with_passkey(
+        &env,
+        &wallet,
+        &attacker,
+        "add_signer",
+        std::vec![to_sc_val(&env, attacker.key_id(&env)), to_sc_val(&env, attacker.public_key(&env))],
+    );
+    client.add_signer(&attacker.key_id(&env), &attacker.public_key(&env));
+}
+
+#[test]
+#[should_panic]
+fn host_rejects_auth_entry_reused_for_different_arguments() {
+    let env = Env::default();
+    let owner = TestPasskey::new(7);
+    let approved = TestPasskey::new(8);
+    let swapped = TestPasskey::new(9);
+    let (wallet, client) = setup(&env, &owner);
+
+    // The owner approves adding `approved`; the relayer tries to add `swapped` instead.
+    authorize_with_passkey(
+        &env,
+        &wallet,
+        &owner,
+        "add_signer",
+        std::vec![to_sc_val(&env, approved.key_id(&env)), to_sc_val(&env, approved.public_key(&env))],
+    );
+    client.add_signer(&swapped.key_id(&env), &swapped.public_key(&env));
+}
