@@ -123,6 +123,24 @@ async function pollEvents(network: 'testnet' | 'mainnet') {
   }
 }
 
-// Start listeners for both networks concurrently
-pollEvents('testnet');
-pollEvents('mainnet');
+let started = false;
+
+/**
+ * Start the Soroban event listeners. Networks come from LISTENER_NETWORKS
+ * (comma separated, default "testnet": mainnet is locked in the app, and every
+ * extra poller costs memory on the small backend instance).
+ */
+export function startEventListeners(): void {
+  if (started) return;
+  started = true;
+  const networks = (process.env.LISTENER_NETWORKS || 'testnet')
+    .split(',')
+    .map(n => n.trim())
+    .filter((n): n is 'testnet' | 'mainnet' => n === 'testnet' || n === 'mainnet');
+  for (const network of networks) pollEvents(network);
+}
+
+// Still runnable on its own: `npm run listener`.
+if (require.main === module) {
+  startEventListeners();
+}
