@@ -37,7 +37,7 @@ async function initMainnet() {
         nativeToScVal(1, { type: 'u32' }), // admin_threshold
         Address.fromString(XLM_TOKEN).toScVal(), // xlm_token
         nativeToScVal(1, { type: 'u32' }), // quorum
-        nativeToScVal(true, { type: 'bool' }), // is_mainnet_mode
+        xdr.ScVal.scvBool(true), // is_mainnet_mode
         Address.fromString(address).toScVal() // single_oracle
       )
     )

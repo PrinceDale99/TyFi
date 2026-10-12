@@ -627,7 +627,7 @@ export async function voteOnDaoProposal(
             'vote',
             nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
             nativeToScVal(proposalId, { type: 'u64' }),
-            nativeToScVal(support, { type: 'bool' })
+            xdr.ScVal.scvBool(support)
           )
         )
         .setTimeout(300)
