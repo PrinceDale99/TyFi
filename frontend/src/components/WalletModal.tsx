@@ -46,7 +46,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, o
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="relative w-full max-w-lg bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-8 md:p-10 border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto bg-slate-900/60 backdrop-blur-2xl rounded-3xl p-6 md:p-10 border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300">
         
         {/* Animated Glow Backdrops */}
         <div className={`absolute -top-32 -right-32 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none ${isMainnet ? 'bg-emerald-500' : 'bg-sky-500'}`} />
