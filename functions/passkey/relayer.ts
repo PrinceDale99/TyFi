@@ -155,6 +155,12 @@ export class PasskeyRelayer {
     return result === true;
   }
 
+  /** The public key registered on `wallet` for credential `keyId` (on-chain), or null. */
+  async getWalletSigner(wallet: string, keyId: Buffer): Promise<Buffer | null> {
+    const signer = (await this.read(new Contract(wallet), 'get_signer', [xdr.ScVal.scvBytes(keyId)])) as { public_key?: Uint8Array } | undefined;
+    return signer?.public_key ? Buffer.from(signer.public_key) : null;
+  }
+
   async health(): Promise<{ sponsorBalanceXlm: number; latestLedger: number }> {
     const [account, latest] = await Promise.all([
       this.server.getAccountEntry(this.sponsorPublicKey),
