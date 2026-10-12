@@ -189,8 +189,11 @@ export const PasskeyOnboarding: React.FC<PasskeyOnboardingProps> = ({ onConnecte
       </button>
 
       {!showJoin ? (
-        <button onClick={() => setShowJoin(true)} className="w-full flex items-center justify-center gap-2 p-2 text-xs font-bold text-slate-400 hover:text-white">
-          <Smartphone size={14} /> Use a code from another device
+        <button
+          onClick={() => setShowJoin(true)}
+          className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-white/10 text-sm font-bold text-slate-200 hover:bg-white/5 hover:text-white transition-all"
+        >
+          <Smartphone size={16} /> Use a code from another device
         </button>
       ) : (
         <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
