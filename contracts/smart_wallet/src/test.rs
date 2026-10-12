@@ -367,3 +367,63 @@ fn every_signature_in_the_map_must_verify() {
     map.set(SignerKey::Secp256r1(second.key_id(&env)), Signature::Secp256r1(second.assert(&env, &payload, AssertOpts { flags: FLAG_UP, ..Default::default() })));
     assert_eq!(check_auth(&env, &wallet, &payload, Signatures(map)), Err(Ok(Error::UserNotVerified)));
 }
+
+// ─── Signer management ───────────────────────────────────────────────────────
+
+#[test]
+#[should_panic]
+fn add_signer_requires_wallet_authorization() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (_, client) = setup(&env, &pk);
+    let other = TestPasskey::new(8);
+    client.add_signer(&other.key_id(&env), &other.public_key(&env));
+}
+
+#[test]
+fn add_signer_rejects_duplicates_and_enforces_cap() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let pk = TestPasskey::new(1);
+    let (_, client) = setup(&env, &pk);
+
+    assert_eq!(
+        client.try_add_signer(&pk.key_id(&env), &pk.public_key(&env)),
+        Err(Ok(Error::SignerAlreadyExists))
+    );
+    for seed in 2..=10u8 {
+        let extra = TestPasskey::new(seed);
+        client.add_signer(&extra.key_id(&env), &extra.public_key(&env));
+    }
+    assert_eq!(client.signer_count(), 10);
+    let eleventh = TestPasskey::new(11);
+    assert_eq!(
+        client.try_add_signer(&eleventh.key_id(&env), &eleventh.public_key(&env)),
+        Err(Ok(Error::TooManySigners))
+    );
+}
+
+#[test]
+fn remove_signer_never_removes_the_last_passkey() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let first = TestPasskey::new(7);
+    let second = TestPasskey::new(8);
+    let (_, client) = setup(&env, &first);
+
+    assert_eq!(client.try_remove_signer(&first.key_id(&env)), Err(Ok(Error::LastSigner)));
+    client.add_signer(&second.key_id(&env), &second.public_key(&env));
+    client.remove_signer(&first.key_id(&env));
+    assert_eq!(client.signer_count(), 1);
+    assert!(client.get_signer(&first.key_id(&env)).is_none());
+    assert_eq!(client.try_remove_signer(&first.key_id(&env)), Err(Ok(Error::UnknownSigner)));
+}
+
+#[test]
+#[should_panic]
+fn upgrade_requires_wallet_authorization() {
+    let env = Env::default();
+    let pk = TestPasskey::new(7);
+    let (_, client) = setup(&env, &pk);
+    client.upgrade(&BytesN::from_array(&env, &[0u8; 32]));
+}
