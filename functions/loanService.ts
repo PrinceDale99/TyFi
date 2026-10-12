@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logEvent } from './logger';
 import { safeInitiatePayout } from './payoutService';
+import { captureGeminiGeneration, createAiTraceId } from './aiObservability';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -12,6 +13,10 @@ export interface LoanPrediction {
     reasoning: string;
 }
 
+type AiConversationContext = {
+    distinctId?: string;
+};
+
 /**
  * Uses Gemini AI to analyze a farmer's situation and predict their upcoming crop yield
  * after a storm. Determines if a rebuilding microloan is viable.
@@ -21,7 +26,8 @@ export async function predictCropYieldAndLoan(
     cropType: string, 
     region: string, 
     historicalYield: number,
-    damagePercentage: number
+    damagePercentage: number,
+    context: AiConversationContext = {}
 ): Promise<LoanPrediction> {
     if (!GEMINI_API_KEY) {
         throw new Error("GEMINI_API_KEY is not set.");
@@ -47,14 +53,33 @@ export async function predictCropYieldAndLoan(
     }
     `;
 
+    const traceId = createAiTraceId();
+    const startedAt = Date.now();
+
     try {
         const result = await model.generateContent(prompt);
         const responseText = result.response.text().trim().replace(/```json/g, '').replace(/```/g, '');
+        await captureGeminiGeneration({
+            ...context,
+            traceId,
+            model: 'gemini-2.5-flash',
+            input: [{ role: 'user', content: prompt }],
+            output: responseText,
+            latencyMs: Date.now() - startedAt,
+        });
         
         const prediction: LoanPrediction = JSON.parse(responseText);
         await logEvent('INFO', 'AI Microloan Prediction generated', prediction);
         return prediction;
     } catch (error: any) {
+        await captureGeminiGeneration({
+            ...context,
+            traceId,
+            model: 'gemini-2.5-flash',
+            input: [{ role: 'user', content: prompt }],
+            latencyMs: Date.now() - startedAt,
+            error: error.message,
+        });
         await logEvent('ERROR', 'AI Microloan Prediction failed', { error: error.message });
         throw new Error('Failed to generate loan prediction');
     }
@@ -75,7 +100,8 @@ export async function executeMicroloanPipeline(
         farmData.cropType,
         farmData.region,
         farmData.historicalYield,
-        farmData.damagePercentage
+        farmData.damagePercentage,
+        { distinctId: address }
     );
 
     if (!prediction.approved) {

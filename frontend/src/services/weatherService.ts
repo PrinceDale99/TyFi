@@ -14,7 +14,8 @@ export const fetchWeather = async (lat: number, lon: number): Promise<WeatherDat
     const openWeatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric`;
 
     // 3. GDACS for Real-time Tropical Cyclone Tracking
-    const gdacsUrl = 'https://www.gdacs.org/gdacsapi/api/events/geteventlist/MAP?eventlist=TC';
+    // (The old /MAP endpoint now returns 400; /SEARCH also lists past storms, filtered below.)
+    const gdacsUrl = 'https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=TC';
 
     // 4. TyFi Oracle Scraper data (PAGASA + Panahon + AccuWeather + ZoomEarth consensus)
     const [meteoRes, owRes, gdacsRes, oracleData] = await Promise.all([
@@ -47,6 +48,8 @@ export const fetchWeather = async (lat: number, lon: number): Promise<WeatherDat
     if (gdacsData && gdacsData.features) {
       const storms = gdacsData.features.filter((f: any) =>
         f.properties.eventtype === 'TC' &&
+        String(f.properties.iscurrent) === 'true' &&
+        f.geometry?.type === 'Point' &&
         (f.geometry.coordinates[0] > 110 && f.geometry.coordinates[0] < 140) &&
         (f.geometry.coordinates[1] > 5 && f.geometry.coordinates[1] < 25)
       );

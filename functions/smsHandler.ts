@@ -1,9 +1,11 @@
+import { createHash } from 'crypto';
 import axios from 'axios';
 import admin from 'firebase-admin';
 import { logEvent } from './logger';
 import { processImageClaim } from './imageAssessor';
 import { enqueueSms, dequeueSms } from './offlineQueue';
 import { safeInitiatePayout } from './payoutService';
+import { captureGeminiGeneration, createAiTraceId } from './aiObservability';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
@@ -125,8 +127,14 @@ export async function sendSms(to: string, text: string) {
   return { success: true };
 }
 
+type AiConversationContext = {
+  traceId: string;
+  sessionId: string;
+  distinctId: string;
+};
+
 // Call Gemini
-async function callGemini(messages: any[]) {
+async function callGemini(messages: any[], context: AiConversationContext) {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is missing');
   
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
@@ -145,27 +153,70 @@ async function callGemini(messages: any[]) {
     { role: 'model', parts: [{ text: 'Understood. I will act as the TyFi Emergency SMS Assistant and enforce the Oracle verification.' }] },
     ...messages
   ];
+  const startedAt = Date.now();
 
-  const response = await axios.post(API_URL, { contents });
-  return response.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  try {
+    const response = await axios.post(API_URL, { contents });
+    const reply = response.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    await captureGeminiGeneration({
+      ...context,
+      model: 'gemini-2.5-flash',
+      input: contents,
+      output: reply,
+      latencyMs: Date.now() - startedAt,
+      status: response.status,
+    });
+    return reply;
+  } catch (error: any) {
+    await captureGeminiGeneration({
+      ...context,
+      model: 'gemini-2.5-flash',
+      input: contents,
+      latencyMs: Date.now() - startedAt,
+      status: error.response?.status,
+      error: error.message,
+    });
+    throw error;
+  }
 }
 
 // Extract Claim Data using Gemini JSON mode
-async function extractClaimData(messages: any[]) {
+async function extractClaimData(messages: any[], context: AiConversationContext) {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is missing');
   
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
   
   const transcript = messages.map((m: any) => `${m.role}: ${m.parts[0].text}`).join('\\n');
   const prompt = `Here is a transcript of an SMS conversation with a typhoon victim. Extract the user's location, damage_description, payment_method (GCash, Maya, or TyFi), and payment_account into a strict JSON object. Transcript:\\n\\n${transcript}`;
-
-  const response = await axios.post(API_URL, {
+  const request = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: "application/json" }
-  });
-  
-  const rawText = response.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';
-  return JSON.parse(rawText);
+    generationConfig: { responseMimeType: "application/json" },
+  };
+  const startedAt = Date.now();
+
+  try {
+    const response = await axios.post(API_URL, request);
+    const rawText = response.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';
+    await captureGeminiGeneration({
+      ...context,
+      model: 'gemini-2.5-flash',
+      input: request.contents,
+      output: rawText,
+      latencyMs: Date.now() - startedAt,
+      status: response.status,
+    });
+    return JSON.parse(rawText);
+  } catch (error: any) {
+    await captureGeminiGeneration({
+      ...context,
+      model: 'gemini-2.5-flash',
+      input: request.contents,
+      latencyMs: Date.now() - startedAt,
+      status: error.response?.status,
+      error: error.message,
+    });
+    throw error;
+  }
 }
 
 export async function handleIncomingSms(req: any, res: any, db: admin.firestore.Firestore | null, isRetry: boolean = false) {
@@ -178,6 +229,13 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
     if (!isRetry) res.status(400).json({ error: 'Missing from' });
     return;
   }
+
+  const smsIdentity = createHash('sha256').update(String(fromNumber)).digest('hex');
+  const aiContext: AiConversationContext = {
+    traceId: createAiTraceId(),
+    sessionId: `sms-${smsIdentity}`,
+    distinctId: `sms-${smsIdentity}`,
+  };
 
   // 1. Enqueue in Offline Mesh if it's a new message
   let queueId = '';
@@ -339,7 +397,7 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
     // Process image if sent
     let messageText = messageTextRaw;
     if (mediaUrl) {
-        const assessment = await processImageClaim(mediaUrl);
+        const assessment = await processImageClaim(mediaUrl, aiContext);
         imageAnalysisData = assessment;
         messageText += `\n[SYSTEM NOTE: User attached an image. AI Vision Analysis states -> Damage Score: ${assessment.damage_score}%, Description: ${assessment.description}]`;
     }
@@ -348,7 +406,7 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
     messages.push({ role: 'user', parts: [{ text: messageText }] });
 
     // Get Gemini's response
-    const geminiReply = await callGemini(messages);
+    const geminiReply = await callGemini(messages, aiContext);
     await logEvent('INFO', '🤖 AI RESPONSE:', { text: geminiReply });
 
     if (geminiReply.includes('[CLAIM_REJECTED]')) {
@@ -360,7 +418,7 @@ export async function handleIncomingSms(req: any, res: any, db: admin.firestore.
 
     if (geminiReply.includes('[CLAIM_COMPLETE]')) {
       // Claim is done, extract data
-      const claimData = await extractClaimData(messages);
+      const claimData = await extractClaimData(messages, aiContext);
       
       const farmersQuery = await db.collection('farmers').where('phoneNumber', '==', fromNumber).limit(1).get();
       const farmerDoc = !farmersQuery.empty ? farmersQuery.docs[0] : null;

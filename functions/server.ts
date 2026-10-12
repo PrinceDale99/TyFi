@@ -16,23 +16,33 @@ import { oracleRouter } from './oracle';
 import { calculateBondYield } from './bondService';
 import { flushOfflineQueue } from './offlineQueue';
 import { executeMicroloanPipeline } from './loanService';
+import { captureGeminiGeneration, createAiTraceId } from './aiObservability';
+import { logPostHog } from './posthogLogs';
 
 dotenv.config();
 
 export const app = express();
 
 // ── CORS: only allow known frontend origins ────────────────────────────────
+// Extra origins (e.g. preview deployments) can be added via a comma-separated CORS_ORIGINS env var.
 const ALLOWED_ORIGINS = [
+  'https://www.tyfi.site',
+  'https://tyfi.site',
+  'https://tyfi.vercel.app',
   'https://tyfi-yzbn.onrender.com',
   'https://tyfi.onrender.com',
   'http://localhost:5173',
   'http://localhost:3000',
+  ...(process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
 ];
 app.use(cors({
   origin: (origin, callback) => {
     // Allow no-origin requests (Render health checks, mobile, curl tools)
     if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    return callback(new Error(`CORS: Origin '${origin}' not allowed`));
+    // Reject without throwing: an Error here becomes a 500 with no CORS headers,
+    // which hides the real cause in the browser console.
+    console.warn(`CORS: Origin '${origin}' not allowed`);
+    return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
@@ -500,6 +510,10 @@ app.post('/api/notify-alert', async (req, res) => {
 });
 
 app.post('/api/ai/analyze-weather', aiLimiter, async (req, res) => {
+  logPostHog('info', 'weather analysis requested', {
+    route: 'ai_analyze_weather',
+  });
+
   // Support both raw `contents` (direct Gemini payload) and structured {location, metrics} payload
   const { contents, location, metrics, system_instruction } = req.body;
   const API_KEY = process.env.GEMINI_API_KEY;
@@ -527,19 +541,32 @@ Provide: 1) Risk Level (LOW/MEDIUM/HIGH/CRITICAL), 2) Whether the parametric tri
     geminiContents = [{ role: 'user', parts: [{ text: prompt }] }];
   }
 
+  const traceId = createAiTraceId();
+  const startedAt = Date.now();
+  const geminiRequest = {
+    contents: geminiContents,
+    ...(system_instruction ? { system_instruction } : {}),
+  };
+
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        contents: geminiContents,
-        ...(system_instruction ? { system_instruction } : {})
-      }),
+      body: JSON.stringify(geminiRequest),
     });
 
     const data = await response.json() as any;
 
     if (!response.ok) {
+      await captureGeminiGeneration({
+        traceId,
+        model: 'gemini-2.5-flash',
+        input: geminiRequest,
+        output: JSON.stringify(data),
+        latencyMs: Date.now() - startedAt,
+        status: response.status,
+        error: data.error || `Gemini returned ${response.status}`,
+      });
       await logEvent('ERROR', 'Gemini API Error Response', { 
         status: response.status,
         errorData: data 
@@ -549,8 +576,23 @@ Provide: 1) Risk Level (LOW/MEDIUM/HIGH/CRITICAL), 2) Whether the parametric tri
 
     // Extract the text for convenience
     const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    await captureGeminiGeneration({
+      traceId,
+      model: 'gemini-2.5-flash',
+      input: geminiRequest,
+      output: analysis,
+      latencyMs: Date.now() - startedAt,
+      status: response.status,
+    });
     res.json({ success: true, analysis, raw: data });
   } catch (error: any) {
+    await captureGeminiGeneration({
+      traceId,
+      model: 'gemini-2.5-flash',
+      input: geminiRequest,
+      latencyMs: Date.now() - startedAt,
+      error: error.message,
+    });
     await logEvent('ERROR', 'Gemini Proxy Exception', { errorMessage: error.message });
     res.status(500).json({ error: 'Failed to communicate with AI service' });
   }
@@ -699,17 +741,37 @@ app.post('/api/ai/translate', async (req, res) => {
 
   const prompt = `Translate the following text to ${targetLanguage}. Maintain the original meaning and formatting. Respond ONLY with the translated text, no markdown blocks, no extra comments.\n\nText:\n${text}`;
 
+  const traceId = createAiTraceId();
+  const startedAt = Date.now();
+  const geminiRequest = { contents: [{ parts: [{ text: prompt }] }] };
+
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      body: JSON.stringify(geminiRequest),
     });
 
     const data = await response.json();
     const translatedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || text;
+    await captureGeminiGeneration({
+      traceId,
+      model: 'gemini-2.5-flash',
+      input: geminiRequest,
+      output: translatedText,
+      latencyMs: Date.now() - startedAt,
+      status: response.status,
+      ...(!response.ok ? { error: data.error || `Gemini returned ${response.status}` } : {}),
+    });
     res.json({ success: true, translation: translatedText });
   } catch (error: any) {
+    await captureGeminiGeneration({
+      traceId,
+      model: 'gemini-2.5-flash',
+      input: geminiRequest,
+      latencyMs: Date.now() - startedAt,
+      error: error.message,
+    });
     await logEvent('ERROR', 'Gemini Translate Error', { errorMessage: error.message });
     res.status(500).json({ error: 'Failed to translate text' });
   }
@@ -874,6 +936,9 @@ app.post('/api/pdax/webhook', async (req, res) => {
 // Only start the server if executed directly (e.g., via ts-node on Render)
 if (require.main === module) {
   app.listen(PORT, async () => {
+    logPostHog('info', 'api server started', {
+      transport: 'express',
+    });
     await logEvent('INFO', `Notification telemetry server successfully launched`, { port: PORT });
   });
 }

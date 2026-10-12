@@ -1,6 +1,7 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import { logEvent } from './logger';
+import { captureGeminiGeneration } from './aiObservability';
 
 const PINATA_API_KEY = process.env.PINATA_API_KEY || '';
 const PINATA_SECRET_API_KEY = process.env.PINATA_SECRET_API_KEY || '';
@@ -46,7 +47,13 @@ async function uploadToIPFS(imageBuffer: Buffer, mimeType: string): Promise<stri
 /**
  * Calls Gemini Vision API to analyze farm damage
  */
-async function analyzeDamageWithGemini(base64Image: string, mimeType: string): Promise<{ score: number, estimate: number, description: string }> {
+type AiConversationContext = {
+    traceId: string;
+    sessionId: string;
+    distinctId: string;
+};
+
+async function analyzeDamageWithGemini(base64Image: string, mimeType: string, context?: AiConversationContext): Promise<{ score: number, estimate: number, description: string }> {
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const prompt = `You are an expert agricultural insurance adjuster. 
@@ -74,12 +81,22 @@ Do not wrap the JSON in markdown blocks, just return the raw JSON object.`;
         ]
     };
 
+    const startedAt = Date.now();
+
     try {
         const response = await axios.post(API_URL, requestBody, {
             headers: { 'Content-Type': 'application/json' }
         });
 
         const textResponse = response.data.candidates[0].content.parts[0].text;
+        await captureGeminiGeneration({
+            ...context,
+            model: 'gemini-2.5-flash',
+            input: requestBody.contents,
+            output: textResponse,
+            latencyMs: Date.now() - startedAt,
+            status: response.status,
+        });
         const cleanJson = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(cleanJson);
         
@@ -89,6 +106,14 @@ Do not wrap the JSON in markdown blocks, just return the raw JSON object.`;
             description: parsed.description || "Damage assessed."
         };
     } catch (error: any) {
+        await captureGeminiGeneration({
+            ...context,
+            model: 'gemini-2.5-flash',
+            input: requestBody.contents,
+            latencyMs: Date.now() - startedAt,
+            status: error.response?.status,
+            error: error.message,
+        });
         await logEvent('ERROR', 'Gemini Vision Analysis Failed', { errorMessage: error.message });
         throw new Error('Failed to analyze image with Gemini');
     }
@@ -97,7 +122,7 @@ Do not wrap the JSON in markdown blocks, just return the raw JSON object.`;
 /**
  * Main Pipeline: Downloads image, uploads to IPFS, and analyzes with Gemini Vision.
  */
-export async function processImageClaim(mediaUrl: string): Promise<AssessmentResult> {
+export async function processImageClaim(mediaUrl: string, context?: AiConversationContext): Promise<AssessmentResult> {
     await logEvent('INFO', 'Starting Multi-Modal Image Assessment', { mediaUrl });
 
     let imageBuffer: Buffer;
@@ -125,7 +150,7 @@ export async function processImageClaim(mediaUrl: string): Promise<AssessmentRes
             logEvent('WARNING', 'IPFS upload skipped/failed', { error: e.message });
             return 'IPFS_UPLOAD_FAILED_OR_SKIPPED';
         }),
-        analyzeDamageWithGemini(base64Image, mimeType)
+        analyzeDamageWithGemini(base64Image, mimeType, context)
     ]);
 
     const result: AssessmentResult = {

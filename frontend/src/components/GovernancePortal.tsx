@@ -66,8 +66,9 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     }
   }, []);
 
-  const loadVotingPower = useCallback(async () => {
-    if (!walletAddress || walletAddress.startsWith("DEMO_")) return;
+  /** Returns the voter's LP-share voting power in XLM, or null if it could not be read. */
+  const loadVotingPower = useCallback(async (): Promise<number | null> => {
+    if (!walletAddress || walletAddress.startsWith("DEMO_")) return null;
     try {
       const config = NETWORK_CONFIGS[network];
       const server = new rpc.Server(config.sorobanRpcUrl);
@@ -82,12 +83,14 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
       const result = await server.simulateTransaction(tx);
       if (result && rpc.Api.isSimulationSuccess(result) && result.result) {
-        const val = scValToNative(result.result.retval);
-        setVotingPower((Number(val) / 10000000).toFixed(2));
+        const power = Number(scValToNative(result.result.retval)) / 10000000;
+        setVotingPower(power.toFixed(2));
+        return power;
       }
     } catch (e) {
       console.error("Failed to fetch voting power", e);
     }
+    return null;
   }, [network, walletAddress]);
 
   const loadProposals = useCallback(async () => {
@@ -199,6 +202,19 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       return;
     }
     
+    // Pre-flight checks: the DAO contract rejects these cases with an opaque VM trap,
+    // so catch them here with a clear message before opening the wallet.
+    const proposal = proposals.find(p => p.id === id);
+    if (proposal && proposal.deadline <= Date.now()) {
+      showToast(`Voting on proposal ${id} has ended.`, "error");
+      return;
+    }
+    const power = await loadVotingPower();
+    if (power === 0) {
+      showToast("You have no voting power. Provide liquidity in the Vault tab to earn LP shares, then vote.", "error");
+      return;
+    }
+
     try {
       showToast(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`, "info");
 
@@ -215,7 +231,15 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
       refreshGovernance();
     } catch (e) {
       console.error("Voting failed", e);
-      showToast(isUserRejection(e) ? "Vote cancelled in wallet." : "Voting failed. Check console for details.", "error");
+      const message = String((e as any)?.message ?? e);
+      if (isUserRejection(e)) {
+        showToast("Vote cancelled in wallet.", "error");
+      } else if (/UnreachableCodeReached|InvalidAction/.test(message)) {
+        // The contract panicked: after the pre-checks above, the remaining cause is a repeat vote.
+        showToast(`You have already voted on proposal ${id}.`, "error");
+      } else {
+        showToast("Voting failed. Check console for details.", "error");
+      }
     }
   };
 
