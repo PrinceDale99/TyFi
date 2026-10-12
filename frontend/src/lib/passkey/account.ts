@@ -1,4 +1,4 @@
-import { Buffer } from 'buffer';
+import { fromBase64Url, toBase64Url } from './base64url';
 import { relayerApi } from './api';
 import { findWallet, getWalletSignerKey } from './chain';
 import { getRelayerConfig } from './config';
@@ -14,7 +14,6 @@ export interface CreatedWallet {
   fundingTxHash?: string;
 }
 
-const toB64Url = (b: Uint8Array) => Buffer.from(b).toString('base64url');
 const equalBytes = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((v, i) => v === b[i]);
 
 /**
@@ -33,11 +32,11 @@ export async function createSeedlessWallet(userName: string, onStage: (s: Create
   const { keyId, publicKey } = await registerPasskey(userName);
 
   onStage('deploying');
-  const deployed = await relayerApi.deployWallet(keyId, toB64Url(publicKey));
+  const deployed = await relayerApi.deployWallet(keyId, toBase64Url(publicKey));
 
   // Never trust the relayer's word for the address: confirm on-chain that the
   // factory bound *this* passkey to the returned wallet.
-  const onChain = await findWallet(Buffer.from(keyId, 'base64url'), publicKey);
+  const onChain = await findWallet(fromBase64Url(keyId), publicKey);
   if (onChain !== deployed.walletAddress) {
     throw new Error('Wallet verification failed: the on-chain wallet does not match this passkey.');
   }
@@ -45,7 +44,7 @@ export async function createSeedlessWallet(userName: string, onStage: (s: Create
   const session: PasskeySession = {
     version: 1,
     keyId,
-    publicKey: toB64Url(publicKey),
+    publicKey: toBase64Url(publicKey),
     walletAddress: deployed.walletAddress,
     createdTxHash: deployed.hash,
     connectedAt: Date.now(),
@@ -78,7 +77,7 @@ export async function signInWithPasskey(onStage: (s: SignInStage) => void = () =
   const assertion = await assertPasskey(challenge, 'any');
 
   onStage('locating');
-  const keyIdBytes = Buffer.from(assertion.keyId, 'base64url');
+  const keyIdBytes = fromBase64Url(assertion.keyId);
   for (const candidate of await recoverPublicKeys(assertion)) {
     const wallet = await findWallet(keyIdBytes, candidate);
     if (!wallet) continue;
@@ -88,7 +87,7 @@ export async function signInWithPasskey(onStage: (s: SignInStage) => void = () =
     const session: PasskeySession = {
       version: 1,
       keyId: assertion.keyId,
-      publicKey: toB64Url(candidate),
+      publicKey: toBase64Url(candidate),
       walletAddress: wallet,
       connectedAt: Date.now(),
     };

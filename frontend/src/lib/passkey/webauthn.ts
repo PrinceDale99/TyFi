@@ -1,4 +1,5 @@
 import { Buffer } from 'buffer';
+import { toBase64Url } from './base64url';
 import {
   startAuthentication,
   startRegistration,
@@ -99,7 +100,7 @@ export async function assertPasskey(payload: Uint8Array, keyId: string | 'any'):
   }
   const sig = prepared.value.values[0];
   return {
-    keyId: Buffer.from(prepared.key.values[0]).toString('base64url'),
+    keyId: toBase64Url(new Uint8Array(prepared.key.values[0])),
     authenticatorData: new Uint8Array(sig.authenticator_data),
     clientDataJson: new Uint8Array(sig.client_data_json),
     signature: new Uint8Array(sig.signature),
