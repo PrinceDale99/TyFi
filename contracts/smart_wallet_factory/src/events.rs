@@ -36,3 +36,23 @@ pub struct AdminTransferred {
     #[topic]
     pub admin: Address,
 }
+
+/// A passkey wallet and an existing account (Freighter / WalletConnect / …)
+/// were linked with the consent of both.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AccountLinked {
+    #[topic]
+    pub wallet: Address,
+    #[topic]
+    pub account: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AccountUnlinked {
+    #[topic]
+    pub wallet: Address,
+    #[topic]
+    pub account: Address,
+}
