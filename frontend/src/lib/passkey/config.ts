@@ -12,8 +12,8 @@ export const PASSKEY_STATIC_CONFIG = {
   network: 'testnet' as const,
   networkPassphrase: Networks.TESTNET,
   rpcUrl: import.meta.env.VITE_PASSKEY_RPC_URL || 'https://soroban-testnet.stellar.org',
-  factoryId: import.meta.env.VITE_PASSKEY_FACTORY_ID || 'CBN5WLCDEIMPGDIXCDTF6PI2TZF7GWLMLOQ2FECC4EKMPFNIY4DE2T4M',
-  walletWasmHash: import.meta.env.VITE_PASSKEY_WALLET_WASM_HASH || 'b1bd3f95c1f461bfe612751aad6b139e600c5507cec5dbd3b8afbfd47e3254c0',
+  factoryId: import.meta.env.VITE_PASSKEY_FACTORY_ID || 'CDL7BZJG6R3HNNVV5XDYR3WJ735DD3P63YCI4VTB2DEDTYS3NAWRV7WM',
+  walletWasmHash: import.meta.env.VITE_PASSKEY_WALLET_WASM_HASH || '5d59961865c3bc4a03db146e5a47e361b5eb7f5392fc379e3c2f0457e6dac4b1',
   relayerUrl: `${import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com'}/api/passkey`,
   /** Name shown in the OS passkey prompt. */
   appName: 'TyFi Vault',
