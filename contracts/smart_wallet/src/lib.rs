@@ -8,6 +8,7 @@
 
 mod base64url;
 mod error;
+mod events;
 mod storage;
 mod types;
 mod webauthn;
