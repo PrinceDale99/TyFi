@@ -4,15 +4,19 @@ import { FREIGHTER_ID } from '@creit.tech/stellar-wallets-kit/modules/freighter'
 import { ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
 import { WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
 import { capturePostHogEvent, logPostHogInfo } from '../lib/posthog';
+import { PasskeyOnboarding } from './PasskeyOnboarding';
+import type { PasskeySession } from '../lib/passkey';
 
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConnect: (walletId: string) => void;
+  /** Called when a seedless passkey wallet is created or signed in (testnet). */
+  onPasskeyConnected?: (session: PasskeySession) => void;
   network?: 'testnet' | 'mainnet';
 }
 
-const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, network = 'testnet' }) => {
+const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, onPasskeyConnected, network = 'testnet' }) => {
   // Hooks must run before the early return so the hook order is stable across open/close.
   const [error, setError] = React.useState<string | null>(null);
 
@@ -78,6 +82,20 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
               </div>
             )}
           </div>
+
+          {!isMainnet && onPasskeyConnected && (
+            <div className="w-full text-left">
+              <PasskeyOnboarding
+                onConnected={session => {
+                  onPasskeyConnected(session);
+                  onClose();
+                }}
+              />
+              <div className="flex items-center gap-3 mt-6 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <span className="flex-1 h-px bg-white/10" /> or use a wallet extension <span className="flex-1 h-px bg-white/10" />
+              </div>
+            </div>
+          )}
 
           <div className="w-full flex flex-col gap-4 mt-2">
             <button
