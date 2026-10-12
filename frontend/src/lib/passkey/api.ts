@@ -37,7 +37,7 @@ const notifyWaking = (waking: boolean) => wakeListeners.forEach(l => l(waking));
 
 class RetryableError extends Error {}
 
-async function attempt<T>(path: string, body?: unknown): Promise<T> {
+async function attempt<T>(path: string, body?: unknown, token?: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -45,7 +45,10 @@ async function attempt<T>(path: string, body?: unknown): Promise<T> {
     try {
       res = await fetch(`${PASSKEY_STATIC_CONFIG.relayerUrl}${path}`, {
         method: body === undefined ? 'GET' : 'POST',
-        headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+        headers: {
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: controller.signal,
       });
@@ -67,11 +70,12 @@ async function attempt<T>(path: string, body?: unknown): Promise<T> {
   }
 }
 
-async function request<T>(path: string, body?: unknown): Promise<T> {
+/** `token` = a device-management session token (see devices.ts). */
+export async function request<T>(path: string, body?: unknown, token?: string): Promise<T> {
   try {
     for (let i = 0; ; i++) {
       try {
-        return await attempt<T>(path, body);
+        return await attempt<T>(path, body, token);
       } catch (err) {
         if (!(err instanceof RetryableError)) throw err;
         if (i >= WAKE_RETRY_DELAYS_MS.length) {
