@@ -1,4 +1,6 @@
 import { Buffer } from 'buffer';
+
+import { fromBase64Url } from './base64url';
 import { hash, xdr } from '@stellar/stellar-sdk';
 
 /**
@@ -26,7 +28,7 @@ const entry = (key: xdr.ScVal, val: xdr.ScVal) => new xdr.ScMapEntry({ key, val 
 export function encodeSignatures(assertions: EncodableAssertion[]): xdr.ScVal {
   const entries = assertions.map(a => {
     if (a.signature.length !== 64) throw new Error('Passkey signature must be 64 bytes (compact r‖s)');
-    const signerKey = xdr.ScVal.scvVec([sym('Secp256r1'), bytes(Buffer.from(a.keyId, 'base64url'))]);
+    const signerKey = xdr.ScVal.scvVec([sym('Secp256r1'), bytes(fromBase64Url(a.keyId))]);
     const signature = xdr.ScVal.scvVec([
       sym('Secp256r1'),
       xdr.ScVal.scvMap([
