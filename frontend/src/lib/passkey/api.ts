@@ -2,14 +2,15 @@ import { PASSKEY_STATIC_CONFIG } from './config';
 
 /** Error returned by the TyFi passkey relayer (see functions/passkey/router.ts). */
 export class PasskeyApiError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string,
-    /** Soroban contract error number when the network rejected the call. */
-    public readonly contractError?: number,
-  ) {
+  readonly code: string;
+  /** Soroban contract error number when the network rejected the call. */
+  readonly contractError?: number;
+
+  constructor(code: string, message: string, contractError?: number) {
     super(message);
     this.name = 'PasskeyApiError';
+    this.code = code;
+    this.contractError = contractError;
   }
 }
 
