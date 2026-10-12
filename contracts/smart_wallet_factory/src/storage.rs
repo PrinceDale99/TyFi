@@ -13,6 +13,10 @@ pub enum DataKey {
     WalletCount,
     /// Wallet address → true, for "was this wallet made by this factory?" checks.
     IsWallet(Address),
+    /// Linked classic account → passkey wallet.
+    WalletOf(Address),
+    /// Passkey wallet → linked classic account.
+    AccountOf(Address),
 }
 
 pub fn bump_instance(env: &Env) {
@@ -68,4 +72,22 @@ pub fn is_wallet(env: &Env, wallet: &Address) -> bool {
 pub fn record_wallet(env: &Env, wallet: &Address) {
     env.storage().persistent().set(&DataKey::IsWallet(wallet.clone()), &true);
     env.storage().instance().set(&DataKey::WalletCount, &(wallet_count(env) + 1));
+}
+
+pub fn linked_wallet(env: &Env, account: &Address) -> Option<Address> {
+    env.storage().persistent().get(&DataKey::WalletOf(account.clone()))
+}
+
+pub fn linked_account(env: &Env, wallet: &Address) -> Option<Address> {
+    env.storage().persistent().get(&DataKey::AccountOf(wallet.clone()))
+}
+
+pub fn set_link(env: &Env, wallet: &Address, account: &Address) {
+    env.storage().persistent().set(&DataKey::WalletOf(account.clone()), wallet);
+    env.storage().persistent().set(&DataKey::AccountOf(wallet.clone()), account);
+}
+
+pub fn remove_link(env: &Env, wallet: &Address, account: &Address) {
+    env.storage().persistent().remove(&DataKey::WalletOf(account.clone()));
+    env.storage().persistent().remove(&DataKey::AccountOf(wallet.clone()));
 }
