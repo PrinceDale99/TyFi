@@ -1,5 +1,6 @@
 import { logger } from '../logger';
 import axios from 'axios';
+import { captureGeminiGeneration, createAiTraceId } from '../aiObservability';
 
 export interface VerificationRequest {
     farmerId: string;
@@ -43,6 +44,11 @@ export async function verifyCarbonPractices(req: VerificationRequest): Promise<V
 
 async function simulateGeminiSatelliteAnalysis(urls: string[]): Promise<number> {
     if (!urls || urls.length === 0) return 0;
+
+    const traceId = createAiTraceId();
+    const startedAt = Date.now();
+    let payload: any;
+    let geminiRequested = false;
     
     // Real API call to Google Gemini Vision
     try {
@@ -55,7 +61,7 @@ async function simulateGeminiSatelliteAnalysis(urls: string[]): Promise<number> 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
         
         // Construct the prompt for satellite/image analysis
-        const payload = {
+        payload = {
             contents: [{
                 parts: [
                     { text: "Analyze this satellite/drone imagery of a farm. Provide a confidence score from 0.0 to 1.0 on whether the farm is practicing regenerative agriculture (e.g. crop rotation, healthy mangrove presence). Output ONLY the number." },
@@ -65,13 +71,32 @@ async function simulateGeminiSatelliteAnalysis(urls: string[]): Promise<number> 
             }]
         };
 
+        geminiRequested = true;
         const response = await axios.post(url, payload, { headers: { 'Content-Type': 'application/json' } });
         
         const textOutput = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+        await captureGeminiGeneration({
+            traceId,
+            model: 'gemini-1.5-flash',
+            input: payload.contents,
+            output: textOutput,
+            latencyMs: Date.now() - startedAt,
+            status: response.status,
+        });
         const confidence = parseFloat(textOutput);
         
         return isNaN(confidence) ? 0.5 : confidence;
     } catch (error: any) {
+        if (geminiRequested) {
+            await captureGeminiGeneration({
+                traceId,
+                model: 'gemini-1.5-flash',
+                input: payload.contents,
+                latencyMs: Date.now() - startedAt,
+                status: error.response?.status,
+                error: error.message,
+            });
+        }
         logger.error(`Gemini API failed: ${error.message}`);
         return 0; // Fail safe
     }

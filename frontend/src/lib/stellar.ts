@@ -78,8 +78,9 @@ export const initKit = (network: 'testnet' | 'mainnet' = 'testnet') => {
             metadata: {
               name: "TyFi Vault",
               description: "Parametric Agricultural Insurance Protocol",
-              url: "https://tyfi.vercel.app",
-              icons: ["https://tyfi.vercel.app/logo.png"]
+              // Must match the page origin or WalletConnect warns and wallets may reject the session.
+              url: window.location.origin,
+              icons: [`${window.location.origin}/logo.svg`]
             }
           })
         ] : [])
