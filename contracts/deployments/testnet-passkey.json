@@ -11,7 +11,17 @@
   "smartWalletFactory": {
     "address": "CDL7BZJG6R3HNNVV5XDYR3WJ735DD3P63YCI4VTB2DEDTYS3NAWRV7WM",
     "wasmSizeBytes": 8438,
-    "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CDL7BZJG6R3HNNVV5XDYR3WJ735DD3P63YCI4VTB2DEDTYS3NAWRV7WM"
+    "explorerUrl": "https://stellar.expert/explorer/testnet/contract/CDL7BZJG6R3HNNVV5XDYR3WJ735DD3P63YCI4VTB2DEDTYS3NAWRV7WM",
+    "upgrades": [
+      {
+        "date": "2026-10-12",
+        "change": "Account linking (link_account / unlink_account / linked_wallet / linked_account)",
+        "newWasmHash": "f891bdfa333843373633a1251ff7ce30619bd8a38c61570cc42d38d65faa0811",
+        "uploadTx": "https://stellar.expert/explorer/testnet/tx/bea4f302ace1ffc8540dc519ad8b33240d31e0e5e6fcdb340227e5d56f485709",
+        "upgradeTx": "https://stellar.expert/explorer/testnet/tx/549a1ae3c8f56fc44b15cbd48853e3fbf5cf335e2412f23ef15d9c11adb0dbd8",
+        "statePreserved": "wallet_count = 5 before and after"
+      }
+    ]
   },
   "sponsor": {
     "publicKey": "GDUF46FCQFNBHNWNENYSDSQPDP3PSL2S7CTKLJELGBOC6SJC62JPKMJ7",
