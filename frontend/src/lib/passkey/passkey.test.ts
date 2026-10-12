@@ -100,3 +100,15 @@ describe('authorizationPayload', () => {
     expect(authorizationPayload(entry('1'), Networks.PUBLIC, 100).equals(base)).toBe(false);
   });
 });
+
+describe('parseXlmAmount', async () => {
+  const { parseXlmAmount } = await import('./payments');
+  it('converts decimal XLM to stroops exactly', () => {
+    expect(parseXlmAmount('1')).toBe(10_000_000n);
+    expect(parseXlmAmount('0.0000001')).toBe(1n);
+    expect(parseXlmAmount('12.5')).toBe(125_000_000n);
+  });
+  it('rejects zero, negatives, and excess precision', () => {
+    for (const bad of ['0', '-1', '1.00000001', 'abc', '']) expect(() => parseXlmAmount(bad)).toThrow();
+  });
+});
