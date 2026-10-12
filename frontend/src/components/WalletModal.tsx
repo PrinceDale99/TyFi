@@ -3,6 +3,7 @@ import { X, Shield, Activity, ChevronRight, Smartphone, Globe } from 'lucide-rea
 import { FREIGHTER_ID } from '@creit.tech/stellar-wallets-kit/modules/freighter';
 import { ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
 import { WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
+import { capturePostHogEvent, logPostHogInfo } from '../lib/posthog';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -12,16 +13,26 @@ interface WalletModalProps {
 }
 
 const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, network = 'testnet' }) => {
+  // Hooks must run before the early return so the hook order is stable across open/close.
+  const [error, setError] = React.useState<string | null>(null);
+
   if (!isOpen) return null;
 
   const isMainnet = network === 'mainnet';
-
-  const [error, setError] = React.useState<string | null>(null);
 
   const handleConnect = async (walletId: string) => {
     try {
       setError(null);
       onConnect(walletId);
+      const walletProvider = walletId === FREIGHTER_ID ? 'freighter' : walletId === WALLET_CONNECT_ID ? 'walletconnect' : walletId === ALBEDO_ID ? 'albedo' : 'in_app';
+      capturePostHogEvent('wallet_connection_selected', {
+        wallet_provider: walletProvider,
+        network,
+      });
+      logPostHogInfo('wallet connection selected', {
+        wallet_provider: walletProvider,
+        network,
+      });
       onClose();
     } catch (err) {
       console.error("Connection error:", err);
@@ -135,10 +146,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, n
 
             {!isMainnet && (
               <button
-                onClick={() => {
-                  onConnect(`DEMO_TESTNET_${Math.random().toString(36).substring(7).toUpperCase()}`);
-                  onClose();
-                }}
+                onClick={() => handleConnect(`DEMO_TESTNET_${Math.random().toString(36).substring(7).toUpperCase()}`)}
                 className="w-full flex items-center justify-between p-5 rounded-2xl transition-all group border bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20 hover:border-sky-500/60 shadow-[0_0_20px_rgba(14,165,233,0.1)] relative overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-sky-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

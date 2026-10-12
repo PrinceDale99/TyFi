@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, CheckCircle2, Save, Zap, AlertTriangle, X } from 'lucide-react';
 import axios from 'axios';
+import { capturePostHogEvent } from '../lib/posthog';
 
 interface PaymentSetupProps {
   isMainnet: boolean;
@@ -74,6 +75,9 @@ export const PaymentSetup: React.FC<PaymentSetupProps> = ({ isMainnet, walletAdd
       console.error('Failed to save to backend', error);
     }
 
+    capturePostHogEvent('payout_configuration_saved', {
+      auto_collect_enabled: autoCol,
+    });
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
   };

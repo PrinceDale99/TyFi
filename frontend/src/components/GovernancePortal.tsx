@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Vote, CheckCircle2, XCircle, Clock, Search, 
   Filter, Plus, Shield, ShieldCheck, Users,
@@ -13,7 +13,19 @@ interface GovernancePortalProps {
   network: 'testnet' | 'mainnet';
 }
 
-import { NETWORK_CONFIGS } from '../lib/stellar';
+import { NETWORK_CONFIGS, voteOnDaoProposal, createDaoProposal, isUserRejection } from '../lib/stellar';
+import { capturePostHogEvent } from '../lib/posthog';
+
+// Newer freighter-api versions return { error } on rejection instead of throwing,
+// so surface it as an error that the analytics pipeline can classify.
+const signWithFreighter = async (xdr: string, networkPassphrase: string): Promise<string> => {
+  const result: any = await signTransaction(xdr, { networkPassphrase });
+  if (typeof result === 'string') return result;
+  if (result?.error) {
+    throw Object.assign(new Error(result.error.message ?? String(result.error)), { code: result.error.code });
+  }
+  return result.signedTxXdr;
+};
 
 export function GovernancePortal({ walletAddress, network }: GovernancePortalProps) {
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -33,117 +45,145 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     setTimeout(() => setToast(null), 5000);
   };
 
-  useEffect(() => {
-    const fetchGovernanceData = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch Supabase DAO metrics from backend
-        try {
-          const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
-          const metricsRes = await fetch(`${backendUrl}/api/dao/metrics`);
-          if (metricsRes.ok) {
-            const metrics = await metricsRes.json();
-            setDaoMetrics(metrics);
-          }
-        } catch (e) {
-          console.error("Failed to fetch DAO metrics", e);
-        }
+  // ─── Live Governance Data ──────────────────────────────────────────────────
+  // Soroban RPC has no push subscriptions, so proposals are polled roughly once
+  // per ledger close. Polling pauses while the tab is hidden and refreshes
+  // immediately when it becomes visible again.
+  const PROPOSAL_POLL_MS = 6000;
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const fetchGenerationRef = useRef(0);
+  const isPollingRef = useRef(false);
 
-        const config = NETWORK_CONFIGS[network];
-        const server = new rpc.Server(config.sorobanRpcUrl);
-        const vaultContract = new Contract(config.vaultContractId);
-        const daoContract = new Contract(config.daoContractId);
-        // Always use the zero account for read-only simulations to avoid op_no_source_account errors
-        // if the user's connected wallet is unfunded on testnet.
-        const dummyAccount = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
-
-        // Fetch Voting Power if wallet connected
-        if (walletAddress && !walletAddress.startsWith("DEMO_")) {
-          try {
-            const args = [nativeToScVal(Address.fromString(walletAddress), { type: 'address' })];
-            
-            const tx = new TransactionBuilder(dummyAccount, { fee: "1000000", networkPassphrase: config.passphrase })
-              .addOperation(vaultContract.call('get_lp_shares', ...args))
-              .setTimeout(30)
-              .build();
-
-            const result = await server.simulateTransaction(tx);
-
-            if (result && rpc.Api.isSimulationSuccess(result) && result.result) {
-              const val = scValToNative(result.result.retval);
-              setVotingPower((Number(val) / 10000000).toFixed(2));
-            }
-          } catch (e) {
-            console.error("Failed to fetch voting power", e);
-          }
-        }
-
-        // Fetch actual Proposals from DAO contract
-        try {
-          const txCount = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
-            .addOperation(daoContract.call('get_proposal_count'))
-            .setTimeout(30)
-            .build();
-
-          const countResult = await server.simulateTransaction(txCount);
-
-          if (countResult && rpc.Api.isSimulationSuccess(countResult) && countResult.result) {
-            const countVal = scValToNative(countResult.result.retval);
-            const count = Number(countVal);
-            
-            // Get current ledger for date calculation
-            const latestLedgerResp = await server.getLatestLedger();
-            const currentLedger = latestLedgerResp.sequence;
-            
-            const fetchedProposals: Proposal[] = [];
-
-            for (let i = 1; i <= count; i++) {
-              const txProp = new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
-                .addOperation(daoContract.call('get_proposal', nativeToScVal(i, { type: 'u64' })))
-                .setTimeout(30)
-                .build();
-
-              const propResult = await server.simulateTransaction(txProp);
-
-              if (propResult && rpc.Api.isSimulationSuccess(propResult) && propResult.result) {
-                const p = scValToNative(propResult.result.retval);
-                
-                // Convert soroban Symbol or String to JS string
-                const actionTypeStr = typeof p.action_type === 'string' ? p.action_type : String(p.action_type);
-                const descStr = typeof p.description === 'string' ? p.description : String(p.description);
-                
-                // Convert ledger sequence deadline to approximate JS timestamp
-                // Use current network ledger and multiply the difference by ~5 seconds per ledger
-                const approximateDeadlineTs = Date.now() + (Number(p.deadline) - currentLedger) * 5000; 
-
-                fetchedProposals.push({
-                  id: Number(p.id || p[0]),
-                  creator: p.creator || p[1],
-                  description: descStr || p[2],
-                  actionType: actionTypeStr || p[3],
-                  votesFor: Number(p.votes_for || p[4] || 0),
-                  votesAgainst: Number(p.votes_against || p[5] || 0),
-                  executed: p.executed || p[6] || false,
-                  deadline: approximateDeadlineTs, // Using approximate timestamp for UI compatibility
-                });
-              }
-            }
-            
-            setProposals(fetchedProposals);
-          }
-        } catch (e) {
-          console.error("Failed to fetch proposals", e);
-        }
-        
-      } catch (error) {
-        console.error("Error fetching data", error);
-      } finally {
-        setIsLoading(false);
+  const loadDaoMetrics = useCallback(async () => {
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
+      const metricsRes = await fetch(`${backendUrl}/api/dao/metrics`);
+      if (metricsRes.ok) {
+        setDaoMetrics(await metricsRes.json());
       }
-    };
+    } catch (e) {
+      console.error("Failed to fetch DAO metrics", e);
+    }
+  }, []);
 
-    fetchGovernanceData();
+  const loadVotingPower = useCallback(async () => {
+    if (!walletAddress || walletAddress.startsWith("DEMO_")) return;
+    try {
+      const config = NETWORK_CONFIGS[network];
+      const server = new rpc.Server(config.sorobanRpcUrl);
+      const vaultContract = new Contract(config.vaultContractId);
+      // Always use the zero account for read-only simulations to avoid op_no_source_account errors
+      // if the user's connected wallet is unfunded on testnet.
+      const dummyAccount = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
+      const tx = new TransactionBuilder(dummyAccount, { fee: "1000000", networkPassphrase: config.passphrase })
+        .addOperation(vaultContract.call('get_lp_shares', nativeToScVal(Address.fromString(walletAddress), { type: 'address' })))
+        .setTimeout(30)
+        .build();
+
+      const result = await server.simulateTransaction(tx);
+      if (result && rpc.Api.isSimulationSuccess(result) && result.result) {
+        const val = scValToNative(result.result.retval);
+        setVotingPower((Number(val) / 10000000).toFixed(2));
+      }
+    } catch (e) {
+      console.error("Failed to fetch voting power", e);
+    }
   }, [network, walletAddress]);
+
+  const loadProposals = useCallback(async () => {
+    // Skip if a previous poll is still in flight (slow RPC) to avoid piling up requests.
+    if (isPollingRef.current) return;
+    isPollingRef.current = true;
+    const generation = fetchGenerationRef.current;
+
+    try {
+      const config = NETWORK_CONFIGS[network];
+      const server = new rpc.Server(config.sorobanRpcUrl);
+      const daoContract = new Contract(config.daoContractId);
+      const dummyAccount = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
+      const simulateRead = (method: string, ...args: any[]) =>
+        server.simulateTransaction(
+          new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
+            .addOperation(daoContract.call(method, ...args))
+            .setTimeout(30)
+            .build()
+        );
+
+      const [countResult, latestLedgerResp] = await Promise.all([
+        simulateRead('get_proposal_count'),
+        server.getLatestLedger(),
+      ]);
+      if (!(countResult && rpc.Api.isSimulationSuccess(countResult) && countResult.result)) return;
+
+      const count = Number(scValToNative(countResult.result.retval));
+      const currentLedger = latestLedgerResp.sequence;
+
+      // Fetch all proposals in parallel so each refresh stays well inside the poll interval.
+      const results = await Promise.all(
+        Array.from({ length: count }, (_, idx) =>
+          simulateRead('get_proposal', nativeToScVal(idx + 1, { type: 'u64' })).catch(err => {
+            console.error(`Failed to fetch proposal ${idx + 1}`, err);
+            return null;
+          })
+        )
+      );
+
+      const fetchedProposals: Proposal[] = [];
+      for (const propResult of results) {
+        if (!(propResult && rpc.Api.isSimulationSuccess(propResult) && propResult.result)) continue;
+        const p = scValToNative(propResult.result.retval);
+
+        // Convert soroban Symbol or String to JS string
+        const actionTypeStr = typeof p.action_type === 'string' ? p.action_type : String(p.action_type);
+        const descStr = typeof p.description === 'string' ? p.description : String(p.description);
+
+        fetchedProposals.push({
+          id: Number(p.id || p[0]),
+          creator: p.creator || p[1],
+          description: descStr || p[2],
+          actionType: actionTypeStr || p[3],
+          votesFor: Number(p.votes_for || p[4] || 0),
+          votesAgainst: Number(p.votes_against || p[5] || 0),
+          executed: p.executed || p[6] || false,
+          // Convert ledger sequence deadline to an approximate timestamp (~5s per ledger)
+          deadline: Date.now() + (Number(p.deadline) - currentLedger) * 5000,
+        });
+      }
+
+      // Drop results from a request started before the network/wallet changed.
+      if (generation !== fetchGenerationRef.current) return;
+      setProposals(fetchedProposals);
+      setLastSyncedAt(Date.now());
+    } catch (e) {
+      console.error("Failed to fetch proposals", e);
+    } finally {
+      isPollingRef.current = false;
+    }
+  }, [network]);
+
+  const refreshGovernance = useCallback(async () => {
+    await Promise.all([loadProposals(), loadVotingPower(), loadDaoMetrics()]);
+  }, [loadProposals, loadVotingPower, loadDaoMetrics]);
+
+  useEffect(() => {
+    fetchGenerationRef.current += 1;
+    isPollingRef.current = false;
+    setIsLoading(true);
+    refreshGovernance().finally(() => setIsLoading(false));
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') loadProposals();
+    }, PROPOSAL_POLL_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') loadProposals();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [refreshGovernance, loadProposals]);
 
   const filteredProposals = proposals.filter(p => {
     if (filter === 'all') return true;
@@ -161,59 +201,21 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     
     try {
       showToast(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`, "info");
-      
-      const config = NETWORK_CONFIGS[network];
-      const server = new rpc.Server(config.sorobanRpcUrl);
-      const daoContract = new Contract(config.daoContractId);
-      
-      const accountResp = await server.getAccount(walletAddress);
-      const tx = new TransactionBuilder(
-        new Account(walletAddress, (accountResp as any).sequence.toString()),
-        { fee: '1000000', networkPassphrase: config.passphrase }
-      )
-      .addOperation(
-        daoContract.call('vote', 
-          nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
-          nativeToScVal(id, { type: 'u64' }),
-          nativeToScVal(support, { type: 'bool' })
-        )
-      )
-      .setTimeout(300)
-      .build();
 
-      const preparedTx = await server.prepareTransaction(tx) as Transaction;
-      
-      const signResult = await signTransaction(preparedTx.toXDR(), { 
-        networkPassphrase: config.passphrase 
+      const passphrase = NETWORK_CONFIGS[network].passphrase;
+      await voteOnDaoProposal(id, support, network, walletAddress, xdr => signWithFreighter(xdr, passphrase));
+
+      capturePostHogEvent('governance_vote_submitted', {
+        proposal_id: id,
+        vote: support ? 'for' : 'against',
+        network,
       });
-      const signedXdrStr = typeof signResult === 'string' ? signResult : (signResult as any).signedTxXdr;
-      const signedTx = TransactionBuilder.fromXDR(signedXdrStr, config.passphrase) as Transaction;
-      const sendResult = await server.sendTransaction(signedTx);
-      
-      if (sendResult.status === 'PENDING') {
-        showToast("Vote transaction submitted! It may take a few seconds to confirm.", "success");
-        // Optimistic UI update
-        setProposals(prev => prev.map(p => {
-          if (p.id === id) {
-            return {
-              ...p,
-              votesFor: support ? p.votesFor + Number(votingPower || 0) * 10000000 : p.votesFor,
-              votesAgainst: !support ? p.votesAgainst + Number(votingPower || 0) * 10000000 : p.votesAgainst
-            };
-          }
-          return p;
-        }));
-      } else {
-        console.error("Vote submission rejected by network:", sendResult);
-        let errorReason = sendResult.status;
-        if ((sendResult as any).errorResultXdr) {
-          errorReason += " - Check console for XDR";
-        }
-        showToast(`Failed to submit vote: ${errorReason}`, "error");
-      }
+      showToast("Vote confirmed on-chain!", "success");
+      // Pull the real on-chain tallies right away instead of waiting for the next poll.
+      refreshGovernance();
     } catch (e) {
       console.error("Voting failed", e);
-      showToast("Voting failed. Check console for details.", "error");
+      showToast(isUserRejection(e) ? "Vote cancelled in wallet." : "Voting failed. Check console for details.", "error");
     }
   };
 
@@ -303,6 +305,18 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
               <ShieldCheck className="text-sky-400" />
               Governance Proposals
             </h2>
+            {lastSyncedAt && (
+              <div
+                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-400"
+                title={`Last synced ${new Date(lastSyncedAt).toLocaleTimeString()}`}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                Live
+              </div>
+            )}
           </div>
 
           {isLoading ? (
@@ -469,50 +483,19 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                     const durationLedgers = Math.floor(diffSeconds / 5);
 
                     showToast(`Submitting Proposal via Smart Contract... Please check Freighter.`, "info");
-                    const config = NETWORK_CONFIGS[network];
-                    const server = new rpc.Server(config.sorobanRpcUrl);
-                    const daoContract = new Contract(config.daoContractId);
-                    
-                    const accountResp = await server.getAccount(walletAddress);
-                    const tx = new TransactionBuilder(
-                      new Account(walletAddress, (accountResp as any).sequence.toString()),
-                      { fee: '1000000', networkPassphrase: config.passphrase }
-                    )
-                    .addOperation(
-                      daoContract.call('create_proposal',
-                        nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
-                        nativeToScVal(desc, { type: 'string' }),
-                        nativeToScVal(action, { type: 'symbol' }),
-                        nativeToScVal(durationLedgers, { type: 'u64' })
-                      )
-                    )
-                    .setTimeout(300)
-                    .build();
+                    const passphrase = NETWORK_CONFIGS[network].passphrase;
+                    await createDaoProposal(walletAddress, desc, action, durationLedgers, network, xdr => signWithFreighter(xdr, passphrase));
 
-                    const preparedTx = await server.prepareTransaction(tx) as Transaction;
-                    
-                    const signResult = await signTransaction(preparedTx.toXDR(), {
-                      networkPassphrase: config.passphrase
+                    capturePostHogEvent('governance_proposal_submitted', {
+                      action_type: action,
+                      network,
                     });
-                    
-                    const signedXdrStr = typeof signResult === 'string' ? signResult : (signResult as any).signedTxXdr;
-                    const signedTx = TransactionBuilder.fromXDR(signedXdrStr, config.passphrase);
-                    const sendResult = await server.sendTransaction(signedTx as Transaction);
-                    
-                    if (sendResult.status === 'PENDING') {
-                      showToast("Proposal submitted! Please refresh after a few seconds.", "success");
-                      setShowCreateModal(false);
-                    } else {
-                      console.error("Proposal submission rejected by network:", sendResult);
-                      let errorReason = sendResult.status;
-                      if ((sendResult as any).errorResultXdr) {
-                        errorReason += " - Check console for XDR";
-                      }
-                      showToast(`Failed to submit: ${errorReason}`, "error");
-                    }
+                    showToast("Proposal confirmed on-chain!", "success");
+                    setShowCreateModal(false);
+                    refreshGovernance();
                   } catch (e) {
                     console.error("Create proposal failed", e);
-                    showToast("Failed to create proposal. Check console for details.", "error");
+                    showToast(isUserRejection(e) ? "Proposal cancelled in wallet." : "Failed to create proposal. Check console for details.", "error");
                   }
                 }}
                 className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-black uppercase tracking-wider text-sm transition-all"

@@ -99,6 +99,8 @@ import TiltCard from './components/TiltCard';
 import VaultAnalytics from './components/VaultAnalytics';
 import ParticleBurst from './components/ParticleBurst';
 import MagneticButton from './components/MagneticButton';
+import { capturePostHogEvent, isPostHogEnabled, posthog } from './lib/posthog';
+import { analytics, isInAppWalletId, walletTypeFromId } from './lib/analytics';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -129,6 +131,13 @@ interface Farm extends FarmData {
   isInsured: boolean;
 }
 
+// Mainnet is locked until production launch. Flip to true to re-enable the switch.
+const MAINNET_ENABLED = false;
+
+// Users who previously selected mainnet get moved back to testnet before any state initializes.
+if (!MAINNET_ENABLED && localStorage.getItem('typhoon_vault_network') === 'mainnet') {
+  localStorage.setItem('typhoon_vault_network', 'testnet');
+}
 
 
 function App() {
@@ -154,6 +163,7 @@ function App() {
     return false;
   });
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isMainnetLockOpen, setIsMainnetLockOpen] = useState(false);
 
   const [walletAddress, setWalletAddress] = useState(() => {
     return localStorage.getItem('typhoon_vault_walletAddress') || '';
@@ -209,6 +219,7 @@ function App() {
   // Refs to prevent state leakage between networks
   const lastSyncedNetwork = React.useRef(network);
   const lastSyncedAddress = React.useRef(walletAddress);
+  const identifiedWalletRef = React.useRef<string | null>(null);
 
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -665,6 +676,10 @@ function App() {
       addNotification(`Initiating withdrawal of ${amountXlm.toLocaleString()} XLM on ${network}...`, 'info');
       try {
         const txHash = await contributeLiquidityOnChain(walletAddress, amountXlm, type, stakingMode, network);
+        capturePostHogEvent('liquidity_withdrawal_completed', {
+          amount_xlm: amountXlm,
+          network,
+        });
         addNotification(`Success! Withdrew ${amountXlm.toLocaleString()} XLM from Reinsurance Pool. LP shares burned.`, 'success');
       } catch (err: any) {
         addNotification(err.message, 'warning');
@@ -699,6 +714,11 @@ function App() {
       if (type === 'sponsor' && sponsorRequest) {
         txHash = await contributeLiquidityOnChain(walletAddress, amountXlm, 'subsidy', 'deposit', network);
         if (txHash) {
+          capturePostHogEvent('sponsorship_completed', {
+            amount_xlm: amountXlm,
+            network,
+            crop_type: sponsorRequest.cropType,
+          });
           // Note: In a real app we'd trigger the offchain firebase update here.
           // Since handleSponsorship is in SubsidyMarketplace, we might need a prop or callback.
           addNotification(`Success! Sponsored ${sponsorRequest.farmerName}.`, 'success');
@@ -706,8 +726,16 @@ function App() {
       } else {
         txHash = await contributeLiquidityOnChain(walletAddress, amountXlm, type as 'lp' | 'subsidy', stakingMode as 'deposit' | 'withdraw', network);
         if (type === 'lp') {
+          capturePostHogEvent('liquidity_contribution_completed', {
+            amount_xlm: amountXlm,
+            network,
+          });
           addNotification(`Success! Contributed ${amountXlm.toLocaleString()} XLM to Reinsurance Pool. LP shares issued.`, 'success');
         } else {
+          capturePostHogEvent('subsidy_deposit_completed', {
+            amount_xlm: amountXlm,
+            network,
+          });
           addNotification(`Success! Deposited ${amountXlm.toLocaleString()} XLM to Donor Subsidy Pool.`, 'success');
         }
       }
@@ -848,6 +876,7 @@ function App() {
       
       // Load standard profile for mock
       await loadProfile(mockPasskeyAddress, network);
+      capturePostHogEvent('biometric_passkey_registered', { network });
       addNotification('Biometric Passkey registered successfully! Identity is fully sponsored.', 'success');
       
     } catch (err: any) {
@@ -857,17 +886,21 @@ function App() {
   };
 
   const handleConnectWallet = async (walletId: string) => {
+    const walletType = walletTypeFromId(walletId);
+    analytics.trackWalletConnectionAttempted({ wallet_type: walletType, network, entry_point: 'modal_prompt' });
     try {
-      if (walletId.startsWith("DEMO_TESTNET")) {
+      if (isInAppWalletId(walletId)) {
         // Special case for demo mode bypass
         setWalletAddress(walletId);
         setIsWalletConnected(true);
         setBurstCount(c => c + 1);
         await loadProfile(walletId, network);
+        analytics.trackWalletConnectionSuccessful({ wallet_type: walletType, network });
         addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
         return;
       }
       const address = await connectWallet(network, walletId);
+      analytics.trackWalletConnectionSuccessful({ stellar_address: address, wallet_type: walletType, network });
       setWalletAddress(address);
       setIsWalletConnected(true);
       localStorage.setItem('typhoon_vault_walletId', walletId);
@@ -875,6 +908,15 @@ function App() {
       await loadProfile(address, network);
       addNotification(`Securely connected to Stellar ${isMainnet ? 'Mainnet' : 'Testnet'}`, 'success');
     } catch (error: any) {
+      const errorMessage = String(error?.message ?? error ?? '');
+      const userRejected = /reject|declin|denied|cancel/i.test(errorMessage);
+      analytics.trackWalletConnectionFailed({
+        wallet_type: walletType,
+        network,
+        error_code: userRejected ? 'USER_REJECTED' : errorMessage.split(':')[0] || 'UNKNOWN',
+        error_message: errorMessage,
+        user_rejected: userRejected,
+      });
       if (error.message && error.message === 'MISSING_WC_ID') {
         setWalletError({
           id: 'walletconnect',
@@ -900,6 +942,29 @@ function App() {
       }
     }
   };
+
+  useEffect(() => {
+    if (!isPostHogEnabled) return;
+
+    // In-app wallet sessions stay anonymous: they count like any other visitor,
+    // but their generated ids are never sent as a Stellar identity.
+    if (!isWalletConnected || !walletAddress || isInAppWalletId(walletAddress)) {
+      if (identifiedWalletRef.current) {
+        posthog.reset();
+        identifiedWalletRef.current = null;
+      }
+      return;
+    }
+
+    if (identifiedWalletRef.current === walletAddress) return;
+
+    if (identifiedWalletRef.current) {
+      posthog.reset();
+    }
+
+    posthog.identify(walletAddress);
+    identifiedWalletRef.current = walletAddress;
+  }, [isWalletConnected, walletAddress]);
 
   // Sync state when network, wallet address, or connection status changes
   useEffect(() => {
@@ -1660,6 +1725,35 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#020617] text-slate-200 selection:bg-sky-500/30 relative overflow-hidden">
+      {/* Mainnet lock: shown when the user tries to switch to mainnet before launch */}
+      {isMainnetLockOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setIsMainnetLockOpen(false)}
+        >
+          <div
+            className="glass-panel w-full max-w-md bg-[#0f172a] border border-emerald-500/30 p-8 rounded-2xl relative text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button onClick={() => setIsMainnetLockOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+            <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-emerald-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-2">Mainnet Mode Is Coming Soon</h3>
+            <p className="text-slate-400 mb-6">
+              Production mainnet is locked while we finish audits and launch preparations. For now, please continue using the Testnet Sandbox.
+            </p>
+            <button
+              onClick={() => setIsMainnetLockOpen(false)}
+              className="w-full py-3 rounded-xl font-bold bg-sky-500 hover:bg-sky-400 text-white transition-colors"
+            >
+              Stay on Testnet
+            </button>
+          </div>
+        </div>
+      )}
       {/* Dynamic Ambient Background Mesh */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMSIvPjwvc3ZnPg==')] opacity-[0.03]"></div>
@@ -1707,11 +1801,13 @@ function App() {
               Testnet
             </button>
             <button
-              onClick={() => setNetwork('mainnet')}
-              className={`flex-1 text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-full transition-all duration-300 ${
-                network === 'mainnet' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white'
+              onClick={() => MAINNET_ENABLED ? setNetwork('mainnet') : setIsMainnetLockOpen(true)}
+              title={MAINNET_ENABLED ? undefined : 'Mainnet is coming soon'}
+              className={`flex-1 flex items-center justify-center gap-1 text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-full transition-all duration-300 ${
+                network === 'mainnet' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : MAINNET_ENABLED ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-400'
               }`}
             >
+              {!MAINNET_ENABLED && <Lock size={10} />}
               Mainnet
             </button>
           </div>
