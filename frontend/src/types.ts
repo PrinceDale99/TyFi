@@ -104,5 +104,17 @@ export interface Proposal {
   votesAgainst: number;
   executed: boolean;
   deadline: number;
+  /** On-chain lifecycle status (mirrors get_proposal_status in the DAO contract). */
+  status?: 'Active' | 'Passed' | 'Failed' | 'TimelockPending' | 'Executed' | 'Vetoed';
+  paramValue?: number;
+  paramRegion?: string;
+  paramOracle?: string;
+  paramOracleActive?: boolean;
+  /** Supermajority threshold in basis points (e.g. 6000 = 60%). */
+  requiredThresholdBps?: number;
+  /** Minimum total votes (LP shares) for the proposal to be valid. */
+  quorumRequired?: number;
+  /** The connected wallet's vote on this proposal, if any. */
+  myVote?: 'for' | 'against';
 }
 

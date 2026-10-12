@@ -41,7 +41,7 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
     horizonUrl: 'https://horizon-testnet.stellar.org',
     sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
     passphrase: Networks.TESTNET,
-    daoContractId: 'CCNOLKFAVVGPI665RM2OHOFOTRKAGF572IILENIIVXJK37RKNFPX4KKN', // Deployed testnet DAO
+    daoContractId: 'CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY', // Week 2 testnet DAO (see contracts/deployments/testnet.json)
   },
   mainnet: {
     name: 'Mainnet',
@@ -636,19 +636,78 @@ export async function voteOnDaoProposal(
   );
 };
 
+// ─── TyFi DAO (Week 2 contract) ──────────────────────────────────────────────
+
+/** Mirrors the contract's ActionType enum (contracts/tyfi_dao/src/lib.rs). */
+export type DaoActionType = 'UpdatePremiumRate' | 'UpdateQuorumThreshold' | 'UpdateSolvencyCap' | 'RegisterOracle';
+
+/** Mirrors the contract's ProposalStatus enum. */
+export type DaoProposalStatus = 'Active' | 'Passed' | 'Failed' | 'TimelockPending' | 'Executed' | 'Vetoed';
+
+export type DaoRole = 'Proposer' | 'Voter' | 'Executor' | 'Admin';
+
+/** Actions the contract restricts to the Admin role. */
+export const DAO_ADMIN_ONLY_ACTIONS: DaoActionType[] = ['UpdateSolvencyCap', 'RegisterOracle'];
+
+/** LP shares (stroops) needed to propose without the Proposer role (MIN_PROPOSAL_SHARES). */
+export const DAO_MIN_PROPOSAL_SHARES = 1_000;
+
+export interface DaoProposalParams {
+  actionType: DaoActionType;
+  /** Multiplier 1–1000 (premium rate), threshold 1–100 (quorum) or bps 100–9500 (solvency cap). */
+  value?: number;
+  /** Region symbol for UpdatePremiumRate. */
+  region?: string;
+  /** Oracle address and active flag for RegisterOracle. */
+  oracle?: string;
+  oracleActive?: boolean;
+}
+
+const DAO_ERROR_MESSAGES: Record<number, string> = {
+  1: 'The DAO is already initialized.',
+  2: 'The DAO contract is not initialized.',
+  3: 'You are not authorized to do this.',
+  4: 'This proposal does not exist.',
+  5: 'Voting on this proposal has ended.',
+  6: 'Voting on this proposal is still in progress.',
+  7: 'You have already voted on this proposal.',
+  8: 'You have no voting power. Provide liquidity in the Vault tab to earn LP shares, then vote.',
+  9: 'This proposal has already been executed.',
+  10: 'This proposal did not pass.',
+  11: 'This proposal did not reach quorum.',
+  12: 'This proposal is still in its timelock period.',
+  13: 'This proposal was vetoed.',
+  14: 'Your wallet does not have the role (or LP shares) required for this proposal type.',
+  15: 'The proposal value is outside the allowed range.',
+  16: 'The DAO could not apply this change to the vault.',
+  17: 'The voting period must be longer than zero.',
+};
+
+/** Turns a DaoError (surfaced as "Error(Contract, #N)") into a readable message, or null. */
+export const describeDaoError = (error: any): string | null => {
+  const match = String(error?.message ?? error ?? '').match(/Error\(Contract, #(\d+)\)/);
+  return match ? DAO_ERROR_MESSAGES[Number(match[1])] ?? null : null;
+};
+
+/** Soroban encodes unit enum variants as a single-element vec holding the variant symbol. */
+const enumVariant = (name: string) => xdr.ScVal.scvVec([xdr.ScVal.scvSymbol(name)]);
+
 /**
  * Create a DAO proposal. durationLedgers is the voting window (1 ledger ≈ 5s).
  */
 export async function createDaoProposal(
   walletAddress: string,
   description: string,
-  proposalAction: string,
+  params: DaoProposalParams,
   durationLedgers: number,
   network: 'testnet' | 'mainnet',
   sign?: (xdr: string) => Promise<string>
 ): Promise<string> {
   if (!walletAddress) throw new Error('Wallet not connected');
   const config = NETWORK_CONFIGS[network];
+  // Unused payload fields still need valid values: empty symbol, creator address, 0.
+  const region = params.actionType === 'UpdatePremiumRate' ? sanitizeSymbol(params.region ?? '') : '';
+  const oracle = params.actionType === 'RegisterOracle' && params.oracle ? params.oracle : walletAddress;
 
   return executeTrackedTx(
     {
@@ -656,7 +715,7 @@ export async function createDaoProposal(
       network,
       walletAddress,
       contractId: config.daoContractId,
-      context: { proposal_action: proposalAction, voting_duration_ledgers: durationLedgers },
+      context: { proposal_action: params.actionType, voting_duration_ledgers: durationLedgers },
       sign,
     },
     async (server) => {
@@ -667,7 +726,11 @@ export async function createDaoProposal(
             'create_proposal',
             nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
             nativeToScVal(description, { type: 'string' }),
-            nativeToScVal(proposalAction, { type: 'symbol' }),
+            enumVariant(params.actionType),
+            nativeToScVal(params.value ?? 0, { type: 'u32' }),
+            xdr.ScVal.scvSymbol(region),
+            nativeToScVal(Address.fromString(oracle), { type: 'address' }),
+            nativeToScVal(params.oracleActive ? 1 : 0, { type: 'u32' }),
             nativeToScVal(durationLedgers, { type: 'u64' })
           )
         )
