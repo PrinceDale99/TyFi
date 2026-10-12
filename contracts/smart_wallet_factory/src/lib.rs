@@ -122,6 +122,21 @@ impl SmartWalletFactory {
         events::AdminTransferStarted { pending_admin: new_admin }.publish(&env);
     }
 
+    /// Change the wallet code used for *new* wallets. Existing wallets keep
+    /// their code; each wallet can only be upgraded by its own passkey.
+    pub fn set_wallet_wasm_hash(env: Env, wasm_hash: BytesN<32>) {
+        storage::admin(&env).require_auth();
+        storage::set_wallet_wasm_hash(&env, &wasm_hash);
+        storage::bump_instance(&env);
+        events::WalletWasmUpdated { wasm_hash }.publish(&env);
+    }
+
+    /// Upgrade the factory contract itself.
+    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        storage::admin(&env).require_auth();
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
+
     /// Complete a pending admin transfer.
     pub fn accept_admin(env: Env) -> Result<(), Error> {
         let pending = storage::pending_admin(&env).ok_or(Error::NoPendingAdmin)?;
