@@ -45,6 +45,35 @@ impl SmartWallet {
         Ok(())
     }
 
+    /// Register an additional passkey (e.g. a second device).
+    ///
+    /// Requires the wallet's own authorization, i.e. a WebAuthn assertion from
+    /// an already-registered passkey.
+    pub fn add_signer(env: Env, key_id: Bytes, public_key: BytesN<65>) -> Result<(), Error> {
+        env.current_contract_address().require_auth();
+        insert_signer(&env, &key_id, &public_key)?;
+        storage::bump_instance(&env);
+        Ok(())
+    }
+
+    /// Remove a passkey. The last remaining passkey can never be removed, so
+    /// the wallet can never be locked out by its own signers.
+    pub fn remove_signer(env: Env, key_id: Bytes) -> Result<(), Error> {
+        env.current_contract_address().require_auth();
+        if !storage::has_signer(&env, &key_id) {
+            return Err(Error::UnknownSigner);
+        }
+        let count = storage::signer_count(&env);
+        if count <= 1 {
+            return Err(Error::LastSigner);
+        }
+        storage::remove_signer(&env, &key_id);
+        storage::set_signer_count(&env, count - 1);
+        events::SignerRemoved { key_id }.publish(&env);
+        storage::bump_instance(&env);
+        Ok(())
+    }
+
     /// Contract version, bumped on every interface or behaviour change.
     pub fn version(_env: Env) -> u32 {
         1
