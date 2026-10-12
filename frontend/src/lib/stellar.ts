@@ -20,6 +20,7 @@ import {
   Transaction,
   Account,
 } from "@stellar/stellar-sdk";
+import { analytics, type TxAction, type TxEventContext, type TxStage, type VaultDepositInitiatedProps } from "./analytics";
 
 export interface NetworkConfig {
   name: string;
@@ -128,6 +129,123 @@ export const signTx = async (xdrString: string, network: 'testnet' | 'mainnet') 
   return signResult.signedTxXdr;
 };
 
+// ─── Tracked Soroban Transaction Pipeline ────────────────────────────────────
+// Every vault and DAO write goes through executeTrackedTx so the analytics funnel
+// (initiated → signed → confirmed / failed) is captured consistently.
+
+const TX_POLL_INTERVAL_MS = 2000;
+const TX_POLL_MAX_ATTEMPTS = 45; // ~90s before giving up on confirmation
+
+const DEPOSIT_TYPE_BY_ACTION: Partial<Record<TxAction, VaultDepositInitiatedProps['deposit_type']>> = {
+  subscribe_policy: 'parametric_policy',
+  deposit_reinsurance: 'reinsurance_pool',
+  deposit_subsidy: 'premium_subsidy',
+};
+
+export interface TrackedTxMeta {
+  action: TxAction;
+  network: 'testnet' | 'mainnet';
+  walletAddress: string;
+  /** Defaults to the vault contract. */
+  contractId?: string;
+  amountXlm?: number;
+  region?: string;
+  season?: string;
+  /** Extra context attached to the signed / confirmed / failed events. */
+  context?: TxEventContext;
+  /** Defaults to the connected wallets-kit wallet. */
+  sign?: (xdr: string) => Promise<string>;
+}
+
+const txError = (message: string, code: string) => Object.assign(new Error(message), { code });
+
+// Freighter / wallets-kit surface rejections as messages like "User declined access"
+// or "The user rejected this request" (Freighter API code -4).
+export const isUserRejection = (error: any) =>
+  error?.code === -4 || /reject|declin|denied|cancel/i.test(String(error?.message ?? error ?? ''));
+
+export const executeTrackedTx = async (
+  meta: TrackedTxMeta,
+  buildTx: (server: rpc.Server, config: NetworkConfig) => Promise<Transaction>
+): Promise<string> => {
+  const config = NETWORK_CONFIGS[meta.network];
+  const server = new rpc.Server(config.sorobanRpcUrl);
+  const contractId = meta.contractId ?? config.vaultContractId;
+  const context = meta.context ?? {};
+  let stage: TxStage = 'simulation';
+
+  const depositType = DEPOSIT_TYPE_BY_ACTION[meta.action];
+  if (depositType) {
+    analytics.trackVaultDepositInitiated({
+      deposit_type: depositType,
+      amount_xlm: meta.amountXlm,
+      region: meta.region,
+      season: meta.season,
+      network: meta.network,
+    });
+  }
+
+  try {
+    const preparedTx = await server.prepareTransaction(await buildTx(server, config)) as Transaction;
+
+    stage = 'wallet_signing';
+    console.log(`[${config.name}] Requesting signature for: ${meta.action}`);
+    const signedXdr = meta.sign
+      ? await meta.sign(preparedTx.toXDR())
+      : await signTx(preparedTx.toXDR(), meta.network);
+    analytics.trackTransactionSigned({
+      ...context,
+      action: meta.action,
+      contract_id: contractId,
+      wallet_address: meta.walletAddress,
+      network: meta.network,
+    });
+
+    stage = 'submission';
+    const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
+    const result = await server.sendTransaction(transaction);
+    if (result.status !== "PENDING") {
+      throw txError(`Transaction failed: ${JSON.stringify(result)}`, `SEND_${result.status}`);
+    }
+
+    stage = 'on_chain_confirmation';
+    for (let attempt = 0; attempt < TX_POLL_MAX_ATTEMPTS; attempt++) {
+      await new Promise(r => setTimeout(r, TX_POLL_INTERVAL_MS));
+      const txResult = await server.getTransaction(result.hash);
+      if (txResult.status === rpc.Api.GetTransactionStatus.SUCCESS) {
+        console.log(`[${config.name}] ${meta.action} confirmed. Hash: ${result.hash}`);
+        analytics.trackTransactionConfirmed({
+          ...context,
+          tx_hash: result.hash,
+          action: meta.action,
+          amount_xlm: meta.amountXlm,
+          sponsored_fee: false,
+          sponsor_provider: 'none',
+          ledger_sequence: txResult.ledger,
+          network: meta.network,
+        });
+        return result.hash;
+      }
+      if (txResult.status === rpc.Api.GetTransactionStatus.FAILED) {
+        throw txError(`Transaction failed: ${txResult.status}`, 'TX_FAILED');
+      }
+    }
+    throw txError(`Transaction not confirmed after ${(TX_POLL_INTERVAL_MS * TX_POLL_MAX_ATTEMPTS) / 1000}s: ${result.hash}`, 'CONFIRMATION_TIMEOUT');
+  } catch (error: any) {
+    const userRejected = stage === 'wallet_signing' && isUserRejection(error);
+    analytics.trackTransactionFailed({
+      ...context,
+      action: meta.action,
+      stage,
+      error_code: userRejected ? 'USER_REJECTED' : (error?.code ?? `${stage.toUpperCase()}_ERROR`),
+      error_message: String(error?.message ?? error),
+      user_rejected: userRejected,
+      network: meta.network,
+    });
+    throw error;
+  }
+};
+
 export const registerPolicyOnChain = async (
   farmer: string,
   farmId: string,
@@ -137,66 +255,28 @@ export const registerPolicyOnChain = async (
   network: 'testnet' | 'mainnet' = 'testnet'
 ) => {
   try {
-    const config = NETWORK_CONFIGS[network as 'testnet' | 'mainnet'];
-    const server = new rpc.Server(config.sorobanRpcUrl);
-    
-    // Construct the actual Soroban subscription call:
-    // subscribe(farmer, farm_id, region, season, premium)
-    const farmerAddress = Address.fromString(farmer);
-    const contract = new Contract(config.vaultContractId);
-    
-    // Build Transaction Envelope
-    const account = await server.getAccount(farmer);
-    
-    // Construct the operation
-    const tx = new TransactionBuilder(
-      account,
-      {
-        fee: '1000000',
-        networkPassphrase: config.passphrase,
+    await executeTrackedTx(
+      { action: 'subscribe_policy', network, walletAddress: farmer, region, season },
+      async (server, config) => {
+        // subscribe(farmer, farm_id, region, season, premium)
+        const account = await server.getAccount(farmer);
+        const contract = new Contract(config.vaultContractId);
+        return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+          .addOperation(
+            contract.call(
+              "subscribe",
+              Address.fromString(farmer).toScVal(),
+              xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
+              xdr.ScVal.scvSymbol(sanitizeSymbol(region)),
+              xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
+              nativeToScVal(BigInt(cropValue), { type: 'i128' })
+            )
+          )
+          .setTimeout(300)
+          .build();
       }
-    )
-    .addOperation(
-      contract.call(
-        "subscribe",
-        ...[
-          farmerAddress.toScVal(),
-          xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
-          xdr.ScVal.scvSymbol(sanitizeSymbol(region)),
-          xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
-          nativeToScVal(BigInt(cropValue), { type: 'i128' })
-        ]
-      )
-    )
-    .setTimeout(300)
-    .build();
-
-    const preparedTx = await server.prepareTransaction(tx) as Transaction;
-
-    console.log(`[${config.name}] Requesting signature for: subscribe`);
-    const signedXdr = await signTx(preparedTx.toXDR(), network);
-    const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
-    const result = await server.sendTransaction(transaction);
-    
-    if (result.status !== "PENDING") {
-      throw new Error(`Transaction failed: ${JSON.stringify(result)}`);
-    }
-
-    // Wait for result
-    let status: string = result.status;
-    let txResult;
-    while (status === "PENDING" || status === "NOT_FOUND") {
-      await new Promise(r => setTimeout(r, 2000));
-      txResult = await server.getTransaction(result.hash);
-      status = txResult.status;
-    }
-
-    if (status === "SUCCESS") {
-      console.log(`[${config.name}] Policy registration completed successfully. Hash: ${result.hash}`);
-      return true;
-    } else {
-      throw new Error(`Transaction failed: ${status}`);
-    }
+    );
+    return true;
   } catch (error: any) {
     console.error(`[${network.toUpperCase()}] Blockchain registration error:`, error);
     throw error;
@@ -212,128 +292,68 @@ export const submitWeatherReportOnChain = async (
   network: 'testnet' | 'mainnet' = 'testnet'
 ) => {
   try {
-    const config = NETWORK_CONFIGS[network as 'testnet' | 'mainnet'];
-    const server = new rpc.Server(config.sorobanRpcUrl);
-    const contract = new Contract(config.vaultContractId);
-    const account = await server.getAccount(oracle);
-
-    let tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
-      .addOperation(
-        contract.call(
-          "submit_weather_report",
-          ...[
-            Address.fromString(oracle).toScVal(),
-            nativeToScVal(sanitizeSymbol(typhoonId), { type: 'symbol' }),
-            nativeToScVal(sanitizeSymbol(region), { type: 'symbol' }),
-            nativeToScVal(damagePercentage, { type: 'u32' }),
-            nativeToScVal(windSpeed, { type: 'u32' })
-          ]
-        )
-      )
-      .setTimeout(300)
-      .build();
-
-    const preparedTx = await server.prepareTransaction(tx) as Transaction;
-    console.log(`[${config.name}] Requesting signature for Oracle Submission...`);
-    const signedXdr = await signTx(preparedTx.toXDR(), network);
-    const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
-    const result = await server.sendTransaction(transaction);
-    
-    if (result.status !== "PENDING") {
-      throw new Error(`Transaction failed: ${JSON.stringify(result)}`);
-    }
-
-    let status: string = result.status;
-    while (status === "PENDING" || status === "NOT_FOUND") {
-      await new Promise(r => setTimeout(r, 2000));
-      const txResult = await server.getTransaction(result.hash);
-      status = txResult.status;
-    }
-
-    if (status === "SUCCESS") {
-      console.log(`[${config.name}] Oracle submission completed. Hash: ${result.hash}`);
-      return true;
-    } else {
-      throw new Error(`Transaction failed: ${status}`);
-    }
+    await executeTrackedTx(
+      { action: 'submit_weather_report', network, walletAddress: oracle, region },
+      async (server, config) => {
+        const account = await server.getAccount(oracle);
+        const contract = new Contract(config.vaultContractId);
+        return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+          .addOperation(
+            contract.call(
+              "submit_weather_report",
+              Address.fromString(oracle).toScVal(),
+              nativeToScVal(sanitizeSymbol(typhoonId), { type: 'symbol' }),
+              nativeToScVal(sanitizeSymbol(region), { type: 'symbol' }),
+              nativeToScVal(damagePercentage, { type: 'u32' }),
+              nativeToScVal(windSpeed, { type: 'u32' })
+            )
+          )
+          .setTimeout(300)
+          .build();
+      }
+    );
+    return true;
   } catch (error: any) {
     console.error(`[${network.toUpperCase()}] Blockchain oracle error:`, error);
     throw error;
   }
 };
+
 export const claimPayoutOnChain = async (
-  farmer: string, 
-  farmId: string, 
-  season: string, 
+  farmer: string,
+  farmId: string,
+  season: string,
   network: 'testnet' | 'mainnet' = 'testnet',
   typhoonId: string = 'DEFAULT_TYPHOON',
   amount: number = 0
 ) => {
   try {
-    const config = NETWORK_CONFIGS[network as 'testnet' | 'mainnet'];
-    const server = new rpc.Server(config.sorobanRpcUrl);
-    const farmerAddress = Address.fromString(farmer);
-    const contract = new Contract(config.vaultContractId);
-    
-    console.log(`[${config.name}] Claiming payout on chain for farm ${farmId}...`);
-    
-    const account = await server.getAccount(farmer);
-    let tx;
-    if (network === 'testnet') {
-      const valToPass = BigInt(Math.floor(amount * 10000000));
-      
-      const op1 = contract.call(
-        "testnet_claim_payout",
-        ...[
-          farmerAddress.toScVal(),
-          nativeToScVal(valToPass, { type: 'i128' })
-        ]
-      );
-      
-      tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
-        .addOperation(op1)
-        .setTimeout(300)
-        .build();
-    } else {
-      const operation = contract.call(
-        "claim_payout",
-        ...[
-          farmerAddress.toScVal(),
-          xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
-          xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
-          xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId))
-        ]
-      );
-      
-      tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
-        .addOperation(operation)
-        .setTimeout(300)
-        .build();
-    }
-
-    const preparedTx = await server.prepareTransaction(tx) as Transaction;
-
-    const signedXdr = await signTx(preparedTx.toXDR(), network);
-    const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
-    const result = await server.sendTransaction(transaction);
-    
-    if (result.status !== "PENDING") {
-      throw new Error(`Transaction failed: ${JSON.stringify(result)}`);
-    }
-
-    let status: string = result.status;
-    while (status === "PENDING" || status === "NOT_FOUND") {
-      await new Promise(r => setTimeout(r, 2000));
-      const txResult = await server.getTransaction(result.hash);
-      status = txResult.status;
-    }
-
-    if (status === "SUCCESS") {
-      console.log(`[${config.name}] Payout successfully disbursed. Hash: ${result.hash}`);
-      return result.hash;
-    } else {
-      throw new Error(`Transaction failed: ${status}`);
-    }
+    console.log(`[${NETWORK_CONFIGS[network].name}] Claiming payout on chain for farm ${farmId}...`);
+    return await executeTrackedTx(
+      { action: 'claim_payout', network, walletAddress: farmer, amountXlm: amount, season },
+      async (server, config) => {
+        const farmerAddress = Address.fromString(farmer);
+        const contract = new Contract(config.vaultContractId);
+        const account = await server.getAccount(farmer);
+        const operation = network === 'testnet'
+          ? contract.call(
+              "testnet_claim_payout",
+              farmerAddress.toScVal(),
+              nativeToScVal(BigInt(Math.floor(amount * 10000000)), { type: 'i128' })
+            )
+          : contract.call(
+              "claim_payout",
+              farmerAddress.toScVal(),
+              xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
+              xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
+              xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId))
+            );
+        return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+          .addOperation(operation)
+          .setTimeout(300)
+          .build();
+      }
+    );
   } catch (error) {
     console.error(`[${network.toUpperCase()}] Blockchain claim error:`, error);
     throw error;
@@ -583,52 +603,77 @@ export async function voteOnDaoProposal(
   proposalId: number,
   support: boolean,
   network: 'testnet' | 'mainnet',
-  walletAddress: string
+  walletAddress: string,
+  sign?: (xdr: string) => Promise<string>
 ): Promise<string> {
-  const pubKey = walletAddress;
-  if (!pubKey) throw new Error('Wallet not connected');
-
+  if (!walletAddress) throw new Error('Wallet not connected');
   const config = NETWORK_CONFIGS[network];
-  const server = new rpc.Server(config.sorobanRpcUrl);
 
-  const accountResp = await server.getAccount(pubKey);
-  const account = new Account(pubKey, (accountResp as any).sequence);
-
-  const contract = new Contract(config.daoContractId);
-  const operation = contract.call(
-    'vote',
-    new Address(pubKey).toScVal(),
-    nativeToScVal(proposalId, { type: 'u64' }),
-    nativeToScVal(support, { type: 'bool' })
+  return executeTrackedTx(
+    {
+      action: 'dao_vote',
+      network,
+      walletAddress,
+      contractId: config.daoContractId,
+      context: { proposal_id: proposalId, vote: support ? 'for' : 'against' },
+      sign,
+    },
+    async (server) => {
+      const account = await server.getAccount(walletAddress);
+      return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+        .addOperation(
+          new Contract(config.daoContractId).call(
+            'vote',
+            nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
+            nativeToScVal(proposalId, { type: 'u64' }),
+            nativeToScVal(support, { type: 'bool' })
+          )
+        )
+        .setTimeout(300)
+        .build();
+    }
   );
+};
 
-  let tx = new TransactionBuilder(account, {
-    fee: '1000', // Baseline fee
-    networkPassphrase: config.passphrase,
-  })
-    .addOperation(operation)
-    .setTimeout(30)
-    .build();
+/**
+ * Create a DAO proposal. durationLedgers is the voting window (1 ledger ≈ 5s).
+ */
+export async function createDaoProposal(
+  walletAddress: string,
+  description: string,
+  proposalAction: string,
+  durationLedgers: number,
+  network: 'testnet' | 'mainnet',
+  sign?: (xdr: string) => Promise<string>
+): Promise<string> {
+  if (!walletAddress) throw new Error('Wallet not connected');
+  const config = NETWORK_CONFIGS[network];
 
-  const simulated = await server.simulateTransaction(tx);
-  if (!rpc.Api.isSimulationSuccess(simulated)) {
-    throw new Error('Simulation failed');
-  }
-
-  tx = (rpc as any).assembleTransaction(tx, config.passphrase, simulated).build() as Transaction;
-
-  const signedTxXdr = (await StellarWalletsKit.signTransaction(tx.toXDR(), { 
-    address: pubKey, 
-    networkPassphrase: config.passphrase 
-  })).signedTxXdr;
-  const signedTx = TransactionBuilder.fromXDR(signedTxXdr, config.passphrase);
-
-  const sendResponse = await server.sendTransaction(signedTx as Transaction);
-  if (sendResponse.status === 'ERROR') {
-    throw new Error('Transaction submission failed');
-  }
-
-  return sendResponse.hash;
+  return executeTrackedTx(
+    {
+      action: 'dao_create_proposal',
+      network,
+      walletAddress,
+      contractId: config.daoContractId,
+      context: { proposal_action: proposalAction, voting_duration_ledgers: durationLedgers },
+      sign,
+    },
+    async (server) => {
+      const account = await server.getAccount(walletAddress);
+      return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+        .addOperation(
+          new Contract(config.daoContractId).call(
+            'create_proposal',
+            nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
+            nativeToScVal(description, { type: 'string' }),
+            nativeToScVal(proposalAction, { type: 'symbol' }),
+            nativeToScVal(durationLedgers, { type: 'u64' })
+          )
+        )
+        .setTimeout(300)
+        .build();
+    }
+  );
 };
 
 export interface LedgerTx {
@@ -671,88 +716,57 @@ export const contributeLiquidityOnChain = async (
   stakingMode: 'deposit' | 'withdraw' = 'deposit',
   network: 'testnet' | 'mainnet' = 'testnet'
 ) => {
+  let methodName: 'deposit_subsidy' | 'deposit_reinsurance' | 'withdraw_reinsurance' = 'deposit_subsidy';
+  if (type === 'lp') {
+    methodName = stakingMode === 'withdraw' ? 'withdraw_reinsurance' : 'deposit_reinsurance';
+  }
+
   try {
-    const config = NETWORK_CONFIGS[network as 'testnet' | 'mainnet'];
-    const server = new rpc.Server(config.sorobanRpcUrl);
-    const userAddress = Address.fromString(user);
-    const contract = new Contract(config.vaultContractId);
-    
-    let methodName = 'deposit_subsidy';
-    if (type === 'lp') {
-      methodName = stakingMode === 'withdraw' ? 'withdraw_reinsurance' : 'deposit_reinsurance';
-    }
+    return await executeTrackedTx(
+      { action: methodName, network, walletAddress: user, amountXlm: amount },
+      async (server, config) => {
+        const userAddress = Address.fromString(user);
+        const contract = new Contract(config.vaultContractId);
 
-    let valToPass = BigInt(Math.floor(amount * 10000000)); // Default to stroops
+        let valToPass = BigInt(Math.floor(amount * 10000000)); // Default to stroops
 
-    if (methodName === 'withdraw_reinsurance') {
-      const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
-      const txShares = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
-        .addOperation(contract.call("get_total_reinsurance_shares"))
-        .setTimeout(300).build();
-      const txDep = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
-        .addOperation(contract.call("get_total_reinsurance_deposited"))
-        .setTimeout(300).build();
+        if (methodName === 'withdraw_reinsurance') {
+          const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
+          const txShares = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
+            .addOperation(contract.call("get_total_reinsurance_shares"))
+            .setTimeout(300).build();
+          const txDep = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
+            .addOperation(contract.call("get_total_reinsurance_deposited"))
+            .setTimeout(300).build();
 
-      const [resShares, resDep] = await Promise.all([
-        server.simulateTransaction(txShares),
-        server.simulateTransaction(txDep)
-      ]);
+          const [resShares, resDep] = await Promise.all([
+            server.simulateTransaction(txShares),
+            server.simulateTransaction(txDep)
+          ]);
 
-      if (rpc.Api.isSimulationSuccess(resShares) && rpc.Api.isSimulationSuccess(resDep)) {
-        const totalShares = BigInt(scValToNative(resShares.result!.retval!));
-        const totalDeposited = BigInt(scValToNative(resDep.result!.retval!));
-        if (totalDeposited > 0n) {
-          // shares = (amount_stroops * totalShares) / totalDeposited
-          valToPass = (valToPass * totalShares) / totalDeposited;
+          if (rpc.Api.isSimulationSuccess(resShares) && rpc.Api.isSimulationSuccess(resDep)) {
+            const totalShares = BigInt(scValToNative(resShares.result!.retval!));
+            const totalDeposited = BigInt(scValToNative(resDep.result!.retval!));
+            if (totalDeposited > 0n) {
+              // shares = (amount_stroops * totalShares) / totalDeposited
+              valToPass = (valToPass * totalShares) / totalDeposited;
+            }
+          }
         }
+
+        const account = await server.getAccount(user);
+        return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+          .addOperation(
+            contract.call(
+              methodName,
+              userAddress.toScVal(),
+              nativeToScVal(valToPass, { type: 'i128' })
+            )
+          )
+          .setTimeout(300)
+          .build();
       }
-    }
-
-    const account = await server.getAccount(user);
-    const tx = new TransactionBuilder(
-      account,
-      {
-        fee: '1000000',
-        networkPassphrase: config.passphrase,
-      }
-    )
-    .addOperation(
-      contract.call(
-        methodName,
-        ...[
-          userAddress.toScVal(),
-          nativeToScVal(valToPass, { type: 'i128' })
-        ]
-      )
-    )
-    .setTimeout(300)
-    .build();
-
-    const preparedTx = await server.prepareTransaction(tx) as Transaction;
-
-    console.log(`[${config.name}] Requesting signature for: ${methodName}`);
-    const signedXdr = await signTx(preparedTx.toXDR(), network);
-    const transaction = TransactionBuilder.fromXDR(signedXdr, config.passphrase) as Transaction;
-    const result = await server.sendTransaction(transaction);
-    
-    if (result.status !== "PENDING") {
-      throw new Error(`Transaction failed: ${JSON.stringify(result)}`);
-    }
-
-    let status: string = result.status;
-    let txResult;
-    while (status === "PENDING" || status === "NOT_FOUND") {
-      await new Promise(r => setTimeout(r, 2000));
-      txResult = await server.getTransaction(result.hash);
-      status = txResult.status;
-    }
-
-    if (status === "SUCCESS") {
-      console.log(`[${config.name}] Liquidity operation successful. Hash: ${result.hash}`);
-      return result.hash;
-    } else {
-      throw new Error(`Transaction failed: ${status}`);
-    }
+    );
   } catch (error: any) {
     console.error(`[${network.toUpperCase()}] Blockchain liquidity error:`, error?.message || JSON.stringify(error) || error);
     throw error;

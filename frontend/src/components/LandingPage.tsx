@@ -4,6 +4,7 @@ import { motion, useMotionTemplate, useMotionValue, useScroll, useTransform } fr
 import MagneticButton from './MagneticButton';
 import SpotlightCard from './SpotlightCard';
 import GlobeHero from './GlobeHero';
+import { analytics } from '../lib/analytics';
 
 interface LandingPageProps {
   onConnect: () => void;
@@ -31,6 +32,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onConnect, isLoading, tvl, su
   ];
   const [logIndex, setLogIndex] = useState(0);
   const [sponsorAmount, setSponsorAmount] = useState(5000);
+
+  useEffect(() => {
+    analytics.trackLandingPageViewed();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {

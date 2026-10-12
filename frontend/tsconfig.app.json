@@ -21,5 +21,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // src/app holds Next.js App Router reference code that is not part of the Vite build
+  "exclude": ["src/app"]
 }
