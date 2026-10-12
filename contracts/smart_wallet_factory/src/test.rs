@@ -253,3 +253,82 @@ fn wallet_code_rotation_requires_admin_authorization() {
     let s = setup();
     s.factory.set_wallet_wasm_hash(&BytesN::from_array(&s.env, &[9u8; 32]));
 }
+
+// ─── Account linking ─────────────────────────────────────────────────────────
+
+fn deploy_wallet(s: &Setup, seed: u8) -> Address {
+    let pk = TestPasskey::new(seed);
+    s.factory.deploy(&pk.key_id(&s.env), &pk.public_key(&s.env))
+}
+
+#[test]
+fn link_requires_both_the_account_and_the_wallet_to_authorize() {
+    let s = setup();
+    let wallet = deploy_wallet(&s, 7);
+    let account = Address::generate(&s.env);
+    s.env.mock_all_auths();
+
+    s.factory.link_account(&wallet, &account);
+    let signers: std::vec::Vec<Address> = s.env.auths().iter().map(|(a, _)| a.clone()).collect();
+    assert!(signers.contains(&account), "the existing account must sign");
+    assert!(signers.contains(&wallet), "the passkey wallet must sign");
+    assert_eq!(s.factory.linked_wallet(&account), Some(wallet.clone()));
+    assert_eq!(s.factory.linked_account(&wallet), Some(account));
+}
+
+#[test]
+#[should_panic]
+fn link_fails_with_only_the_accounts_signature() {
+    use soroban_sdk::{testutils::{MockAuth, MockAuthInvoke}, IntoVal};
+    let s = setup();
+    let wallet = deploy_wallet(&s, 7);
+    let account = Address::generate(&s.env);
+    s.env.mock_auths(&[MockAuth {
+        address: &account,
+        invoke: &MockAuthInvoke {
+            contract: &s.factory.address,
+            fn_name: "link_account",
+            args: (wallet.clone(), account.clone()).into_val(&s.env),
+            sub_invokes: &[],
+        },
+    }]);
+    s.factory.link_account(&wallet, &account);
+}
+
+#[test]
+fn link_rejects_invalid_pairs_and_second_links() {
+    let s = setup();
+    s.env.mock_all_auths();
+    let wallet = deploy_wallet(&s, 7);
+    let other_wallet = deploy_wallet(&s, 8);
+    let account = Address::generate(&s.env);
+    let other_account = Address::generate(&s.env);
+
+    assert_eq!(s.factory.try_link_account(&account, &other_account), Err(Ok(Error::NotAFactoryWallet)));
+    assert_eq!(s.factory.try_link_account(&wallet, &wallet), Err(Ok(Error::InvalidLink)));
+    assert_eq!(s.factory.try_link_account(&wallet, &other_wallet), Err(Ok(Error::InvalidLink)));
+
+    s.factory.link_account(&wallet, &account);
+    assert_eq!(s.factory.try_link_account(&other_wallet, &account), Err(Ok(Error::AccountAlreadyLinked)));
+    assert_eq!(s.factory.try_link_account(&wallet, &other_account), Err(Ok(Error::WalletAlreadyLinked)));
+}
+
+#[test]
+fn either_party_can_unlink_but_nobody_else() {
+    let s = setup();
+    s.env.mock_all_auths();
+    let wallet = deploy_wallet(&s, 7);
+    let account = Address::generate(&s.env);
+    let stranger = Address::generate(&s.env);
+
+    assert_eq!(s.factory.try_unlink_account(&wallet, &account), Err(Ok(Error::NotLinked)));
+
+    s.factory.link_account(&wallet, &account);
+    assert_eq!(s.factory.try_unlink_account(&wallet, &stranger), Err(Ok(Error::NotLinkParty)));
+    s.factory.unlink_account(&wallet, &account);
+    assert_eq!(s.factory.linked_wallet(&account), None);
+
+    s.factory.link_account(&wallet, &account);
+    s.factory.unlink_account(&wallet, &wallet);
+    assert_eq!(s.factory.linked_account(&wallet), None);
+}
