@@ -171,3 +171,30 @@ fn rejects_invalid_key_material() {
     );
     assert_eq!(s.factory.wallet_count(), 0);
 }
+
+// ─── Deployed wallet works end to end ────────────────────────────────────────
+
+#[test]
+fn deployed_wallet_accepts_its_passkey_and_rejects_others() {
+    let s = setup();
+    let owner = TestPasskey::new(7);
+    let other = TestPasskey::new(8);
+    let address = s.factory.deploy(&owner.key_id(&s.env), &owner.public_key(&s.env));
+    let payload = [77u8; 32];
+
+    let ok = s.env.try_invoke_contract_check_auth::<soroban_sdk::InvokeError>(
+        &address,
+        &BytesN::from_array(&s.env, &payload),
+        owner.signatures(&s.env, &payload).into_val(&s.env),
+        &vec![&s.env],
+    );
+    assert_eq!(ok, Ok(()));
+
+    let rejected = s.env.try_invoke_contract_check_auth::<soroban_sdk::InvokeError>(
+        &address,
+        &BytesN::from_array(&s.env, &payload),
+        other.signatures(&s.env, &payload).into_val(&s.env),
+        &vec![&s.env],
+    );
+    assert!(rejected.is_err());
+}
