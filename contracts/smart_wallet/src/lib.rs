@@ -121,6 +121,11 @@ impl CustomAccountInterface for SmartWallet {
         if signatures.0.is_empty() {
             return Err(Error::NoSignatures);
         }
+        // A wallet has at most MAX_SIGNERS passkeys, so a larger map can only
+        // be an attempt to burn resources on signature verification.
+        if signatures.0.len() > storage::MAX_SIGNERS {
+            return Err(Error::TooManySigners);
+        }
 
         for (signer_key, signature) in signatures.0.iter() {
             let SignerKey::Secp256r1(key_id) = signer_key;
