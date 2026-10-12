@@ -101,6 +101,10 @@ import ParticleBurst from './components/ParticleBurst';
 import MagneticButton from './components/MagneticButton';
 import { capturePostHogEvent, isPostHogEnabled, posthog } from './lib/posthog';
 import { analytics, isInAppWalletId, walletTypeFromId } from './lib/analytics';
+import { clearPasskeySession, loadPasskeySession, type PasskeySession } from './lib/passkey';
+
+/** Value stored in typhoon_vault_walletId for seedless passkey sessions. */
+const PASSKEY_WALLET_ID = 'passkey';
 
 // Leaflet & React-Leaflet Imports
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -267,6 +271,18 @@ function App() {
       const savedWalletId = localStorage.getItem('typhoon_vault_walletId');
       const savedAddress = localStorage.getItem('typhoon_vault_walletAddress');
       
+      // Seedless passkey wallets reconnect from their (secret-free) session
+      // without a prompt; each transaction still asks for the biometric.
+      if (savedWalletId === PASSKEY_WALLET_ID) {
+        const session = loadPasskeySession();
+        if (session && network === 'testnet') {
+          setWalletAddress(session.walletAddress);
+          setIsWalletConnected(true);
+          await loadProfile(session.walletAddress, network);
+        }
+        return;
+      }
+
       if (savedWalletId && savedAddress) {
         try {
           // Always ensure kit is initialized with the saved network
@@ -838,51 +854,15 @@ function App() {
     lastSyncedAddress.current = address;
   };
 
-  const handleBiometricRegistration = async () => {
-    try {
-      addNotification('Awaiting Device Security...', 'info');
-      // 1. Invoke native hardware biometric popup via navigator.credentials.create
-      const challenge = new Uint8Array(32);
-      window.crypto.getRandomValues(challenge);
-      
-      const credential = await navigator.credentials.create({
-        publicKey: {
-          challenge,
-          rp: { name: "Typhoon Resilience Vault", id: window.location.hostname },
-          user: {
-            id: new Uint8Array(16),
-            name: "farmer@tyfi.app",
-            displayName: "TyFi Farmer",
-          },
-          pubKeyCredParams: [{ type: "public-key", alg: -7 }], // ES256 (secp256r1)
-          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
-          timeout: 60000,
-        }
-      });
-
-      if (!credential) throw new Error("Biometric verification cancelled.");
-
-      addNotification('Generating Smart Wallet...', 'info');
-      await new Promise(r => setTimeout(r, 1500)); // Mocking Layer 2 relay delay
-      
-      addNotification('Provisioning Gasless Identity...', 'info');
-      await new Promise(r => setTimeout(r, 1500)); // Mocking Soroban sponsorship delay
-      
-      // Mock the successful onboarding of a gasless farmer wallet
-      const mockPasskeyAddress = "WEBAUTHN_SPONSORED_" + Math.random().toString(36).substr(2, 9).toUpperCase();
-      setWalletAddress(mockPasskeyAddress);
-      setIsWalletConnected(true);
-      setBurstCount(c => c + 1);
-      
-      // Load standard profile for mock
-      await loadProfile(mockPasskeyAddress, network);
-      capturePostHogEvent('biometric_passkey_registered', { network });
-      addNotification('Biometric Passkey registered successfully! Identity is fully sponsored.', 'success');
-      
-    } catch (err: any) {
-      console.error(err);
-      addNotification('Biometric Registration Failed: ' + err.message, 'warning');
-    }
+  /** A seedless passkey wallet was created or signed in (see PasskeyOnboarding). */
+  const handlePasskeyConnected = async (session: PasskeySession) => {
+    localStorage.setItem('typhoon_vault_walletId', PASSKEY_WALLET_ID);
+    setWalletAddress(session.walletAddress);
+    setIsWalletConnected(true);
+    setBurstCount(c => c + 1);
+    analytics.trackWalletConnectionSuccessful({ stellar_address: session.walletAddress, wallet_type: 'passkey', network });
+    await loadProfile(session.walletAddress, network);
+    addNotification('Seedless passkey wallet connected. Transactions are approved with your biometrics.', 'success');
   };
 
   const handleConnectWallet = async (walletId: string) => {
@@ -1157,6 +1137,10 @@ function App() {
   };
 
   const handleDisconnect = () => {
+    if (localStorage.getItem('typhoon_vault_walletId') === PASSKEY_WALLET_ID) {
+      clearPasskeySession();
+      localStorage.removeItem('typhoon_vault_walletId');
+    }
     setWalletAddress('');
     setIsWalletConnected(false);
     setIsVerified(false);
@@ -1369,7 +1353,8 @@ function App() {
         <WalletModal 
           isOpen={isWalletModalOpen} 
           onClose={() => setIsWalletModalOpen(false)} 
-          onConnect={handleConnectWallet} 
+          onConnect={handleConnectWallet}
+          onPasskeyConnected={handlePasskeyConnected}
           network={network}
         />
         
