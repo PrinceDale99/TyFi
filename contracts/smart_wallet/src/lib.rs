@@ -184,3 +184,6 @@ fn insert_signer(env: &Env, key_id: &Bytes, public_key: &BytesN<65>) -> Result<(
     .publish(env);
     Ok(())
 }
+
+#[cfg(test)]
+mod test;
