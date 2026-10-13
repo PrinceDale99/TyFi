@@ -953,7 +953,9 @@ if (require.main === module) {
     // Node process: on the 512 MB host two processes exceeded the memory
     // limit and the instance was killed in a restart loop.
     if (process.env.ENABLE_EVENT_LISTENER !== 'false') {
-      const { startEventListeners } = await import('./listener');
+      // require, not import(): Vercel compiles with nodenext, where a dynamic
+      // import() needs a file extension that ts-node cannot resolve.
+      const { startEventListeners } = require('./listener') as typeof import('./listener');
       startEventListeners();
     }
   });
