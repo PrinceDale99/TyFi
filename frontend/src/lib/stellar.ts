@@ -1,11 +1,16 @@
 import {
   StellarWalletsKit,
   Networks as SWKNetworks,
+  SwkAppDarkTheme,
 } from '@creit.tech/stellar-wallets-kit';
 export { StellarWalletsKit };
 import { FreighterModule, FREIGHTER_ID } from '@creit.tech/stellar-wallets-kit/modules/freighter';
 import { AlbedoModule, ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
 import { WalletConnectModule, WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
+import { xBullModule } from '@creit.tech/stellar-wallets-kit/modules/xbull';
+import { LobstrModule } from '@creit.tech/stellar-wallets-kit/modules/lobstr';
+import { HanaModule } from '@creit.tech/stellar-wallets-kit/modules/hana';
+import { RabetModule } from '@creit.tech/stellar-wallets-kit/modules/rabet';
 
 import {
   Address,
@@ -73,6 +78,10 @@ export const initKit = (network: 'testnet' | 'mainnet' = 'testnet') => {
       modules: [
         new FreighterModule(),
         new AlbedoModule(),
+        new xBullModule(),
+        new LobstrModule(),
+        new HanaModule(),
+        new RabetModule(),
         ...(wcProjectId ? [
           new WalletConnectModule({
             projectId: wcProjectId,
@@ -87,6 +96,7 @@ export const initKit = (network: 'testnet' | 'mainnet' = 'testnet') => {
         ] : [])
       ]
     });
+    StellarWalletsKit.setTheme(SwkAppDarkTheme);
     isKitInitialized = true;
   } else {
     StellarWalletsKit.setNetwork(network === 'mainnet' ? SWKNetworks.PUBLIC : SWKNetworks.TESTNET);
@@ -120,6 +130,31 @@ export const connectWallet = async (network: 'testnet' | 'mainnet' = 'testnet', 
     console.error("Wallet connection error:", error);
     throw error;
   }
+};
+
+/**
+ * Let the user pick any supported wallet from the Stellar Wallets Kit's own
+ * modal. Returns the address and the chosen module id (persist it so
+ * connectWallet can reconnect silently later). Rejects with
+ * WALLET_MODAL_CLOSED if the user dismisses the modal.
+ */
+export const connectWithKitModal = async (network: 'testnet' | 'mainnet' = 'testnet') => {
+  initKit(network);
+  let address: string;
+  try {
+    ({ address } = await StellarWalletsKit.authModal());
+  } catch (error) {
+    // The kit rejects with a plain { code, message } object, not an Error.
+    const { code, message } = (error ?? {}) as { code?: number; message?: string };
+    if (code === -1 && /closed the modal/i.test(String(message))) {
+      throw new Error('WALLET_MODAL_CLOSED', { cause: error });
+    }
+    throw new Error(String(message ?? error ?? 'Failed to connect wallet.'), { cause: error });
+  }
+  const walletId = StellarWalletsKit.selectedModule.productId;
+  currentWalletId = walletId;
+  currentUserAddress = address;
+  return { address, walletId };
 };
 
 export const signTx = async (xdrString: string, network: 'testnet' | 'mainnet') => {
