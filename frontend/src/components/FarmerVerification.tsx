@@ -62,9 +62,11 @@ interface FarmerVerificationProps {
   onVerificationComplete: (farmerInfo?: any) => void;
   network?: 'testnet' | 'mainnet';
   onBack?: () => void;
+  /** Demo mode (testnet): the Didit identity check is not shown or required. */
+  skipIdentityCheck?: boolean;
 }
 
-const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'testnet', onBack }) => {
+const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationComplete, walletAddress, network = 'testnet', onBack, skipIdentityCheck = false }) => {
   const [step, setStep] = useState(1);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   
@@ -151,6 +153,8 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
   }, []);
   
   const isMainnet = network === 'mainnet';
+  // Never skip on mainnet, whatever the caller passes.
+  const skipDidit = skipIdentityCheck && !isMainnet;
 
   // Farmer Common Info
   const [farmerInfo, setFarmerInfo] = useState({
@@ -621,32 +625,42 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
 
                 {/* Didit KYC Verification */}
                 <div className="relative pt-2">
-                  <div 
-                    onClick={!isDiditVerified && !isDiditLoading ? startDiditVerification : undefined}
-                    className={`file-upload-container group block transition-all ${isDiditVerified ? 'active border-emerald-500/50 bg-emerald-500/10 cursor-default' : 'cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5'}`}
-                  >
-                    {isDiditLoading ? (
+                  {skipDidit ? (
+                    <div className="file-upload-container block border-amber-500/40! bg-amber-500/5 cursor-default!">
                       <div className="py-2">
-                        <div className="scanner mb-4"></div>
-                        <Loader2 className={`animate-spin mx-auto mb-2 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} size={32} />
-                        <p className={`font-bold text-sm animate-pulse ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>Initializing Didit Secure KYC...</p>
+                        <ShieldCheck className="text-amber-400 mx-auto mb-2" size={32} />
+                        <p className="text-amber-300 text-sm font-bold">Identity Check Skipped</p>
+                        <p className="text-slate-500 text-xs mt-1">Demo mode doesn't use Didit verification</p>
                       </div>
-                    ) : isDiditVerified ? (
-                      <div className="py-2 animate-success">
-                        <CheckCircle2 className="text-emerald-500 mx-auto mb-2" size={32} />
-                        <p className="text-emerald-400 text-sm font-bold truncate max-w-full">Identity Verified</p>
-                        <p className="text-emerald-500/70 text-xs font-medium flex items-center justify-center gap-1 mt-1">
-                          <ShieldCheck size={12} /> Secure Web3 KYC by Didit
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="py-4">
-                        <ShieldCheck className={`upload-icon mx-auto mb-2 transition-colors ${isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-blue-400'}`} size={32} />
-                        <p className="text-white font-bold text-sm mb-0.5">Verify Identity with Didit</p>
-                        <p className="text-slate-500 text-xs">Secure, fast & decentralized KYC</p>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={!isDiditVerified && !isDiditLoading ? startDiditVerification : undefined}
+                      className={`file-upload-container group block transition-all ${isDiditVerified ? 'active border-emerald-500/50 bg-emerald-500/10 cursor-default' : 'cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5'}`}
+                    >
+                      {isDiditLoading ? (
+                        <div className="py-2">
+                          <div className="scanner mb-4"></div>
+                          <Loader2 className={`animate-spin mx-auto mb-2 ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`} size={32} />
+                          <p className={`font-bold text-sm animate-pulse ${isMainnet ? 'text-emerald-400' : 'text-sky-400'}`}>Initializing Didit Secure KYC...</p>
+                        </div>
+                      ) : isDiditVerified ? (
+                        <div className="py-2 animate-success">
+                          <CheckCircle2 className="text-emerald-500 mx-auto mb-2" size={32} />
+                          <p className="text-emerald-400 text-sm font-bold truncate max-w-full">Identity Verified</p>
+                          <p className="text-emerald-500/70 text-xs font-medium flex items-center justify-center gap-1 mt-1">
+                            <ShieldCheck size={12} /> Secure Web3 KYC by Didit
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="py-4">
+                          <ShieldCheck className={`upload-icon mx-auto mb-2 transition-colors ${isMainnet ? 'group-hover:text-emerald-400' : 'group-hover:text-blue-400'}`} size={32} />
+                          <p className="text-white font-bold text-sm mb-0.5">Verify Identity with Didit</p>
+                          <p className="text-slate-500 text-xs">Secure, fast & decentralized KYC</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -661,7 +675,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
                 )}
                 <button 
                   onClick={() => setStep(2)}
-                  disabled={!farmerInfo.farmerName || !farmerInfo.rsbsaNumber || !uploadedRsbsa || !isDiditVerified || !farmerInfo.phoneNumber}
+                  disabled={!farmerInfo.farmerName || !farmerInfo.rsbsaNumber || !uploadedRsbsa || !(isDiditVerified || skipDidit) || !farmerInfo.phoneNumber}
                   className={`flex-1 py-3.5 rounded-xl font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all cursor-pointer ${
                     isMainnet 
                       ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
