@@ -72,7 +72,7 @@ import UnifiedCopilot from './components/UnifiedCopilot';
 import LedgerStream from './components/LedgerStream';
 import { fetchWeather } from './services/weatherService';
 import type { WeatherData, FarmData, Claim } from "./types";
-import { connectWallet, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance, NETWORK_CONFIGS, initKit, StellarWalletsKit, signTx } from './lib/stellar';
+import { connectWallet, connectWithKitModal, registerPolicyOnChain, claimPayoutOnChain, getContractTvl, getContractSubsidy, contributeLiquidityOnChain, submitWeatherReportOnChain, getUserLpBalance, NETWORK_CONFIGS, initKit, StellarWalletsKit, signTx } from './lib/stellar';
 import { calculateCombinedDamage } from './utils/DamageCalculator';
 import { useXlmToPhp } from './hooks/useXlmToPhp';
 import { useXlmRates } from './hooks/useXlmRates';
@@ -101,6 +101,7 @@ import ParticleBurst from './components/ParticleBurst';
 import MagneticButton from './components/MagneticButton';
 import { capturePostHogEvent, isPostHogEnabled, posthog } from './lib/posthog';
 import { analytics, isInAppWalletId, walletTypeFromId } from './lib/analytics';
+import { clearDemoWallet, getDemoMode, markDemoWallet, newSandboxWalletId } from './lib/demoMode';
 import {
   clearPasskeySession,
   getApprovalMode,
@@ -833,28 +834,43 @@ function App() {
   }, [notificationHistory, isWalletConnected, walletAddress, network]);
 
 
+  const loadProfileSeq = React.useRef(0);
   const loadProfile = async (address: string, net: 'testnet' | 'mainnet') => {
-    let consent = localStorage.getItem(`typhoon_vault_legal_consent_${net}_${address}`) === 'true';
-    let role = localStorage.getItem(`typhoon_vault_role_${net}_${address}`) as 'farmer' | 'sponsor' | null;
+    const seq = ++loadProfileSeq.current;
+    const consentKey = `typhoon_vault_legal_consent_${net}_${address}`;
+    const roleKey = `typhoon_vault_role_${net}_${address}`;
+    const consentBefore = localStorage.getItem(consentKey);
+    const roleBefore = localStorage.getItem(roleKey);
+
+    let fb: any = null;
+    try {
+      fb = await getUserProfile(address, net);
+    } catch (e) {
+      console.error(e);
+    }
+    // A newer load (reconnect, other address or network) started meanwhile; it wins.
+    if (seq !== loadProfileSeq.current) return;
+
+    // The user may have accepted the terms or picked a role while the lookup
+    // ran; a stale stored value must not undo that choice.
+    const consentChanged = localStorage.getItem(consentKey) !== consentBefore;
+    const roleChanged = localStorage.getItem(roleKey) !== roleBefore;
+    let consent = localStorage.getItem(consentKey) === 'true';
+    let role = localStorage.getItem(roleKey) as 'farmer' | 'sponsor' | null;
 
     let parsed: any = null;
 
-    try {
-      const fb = await getUserProfile(address, net);
-      if (fb) {
-        parsed = fb;
-        localStorage.setItem(`typhoon_vault_${net}_${address}`, JSON.stringify(fb));
-        if (fb.role) {
-          role = fb.role;
-          localStorage.setItem(`typhoon_vault_role_${net}_${address}`, role || '');
-        }
-        if (fb.hasAgreedToLegal !== undefined) {
-          consent = fb.hasAgreedToLegal;
-          localStorage.setItem(`typhoon_vault_legal_consent_${net}_${address}`, consent ? 'true' : 'false');
-        }
+    if (fb) {
+      parsed = fb;
+      localStorage.setItem(`typhoon_vault_${net}_${address}`, JSON.stringify(fb));
+      if (fb.role && !roleChanged) {
+        role = fb.role;
+        localStorage.setItem(roleKey, role || '');
       }
-    } catch (e) {
-      console.error(e);
+      if (fb.hasAgreedToLegal !== undefined && !consentChanged) {
+        consent = fb.hasAgreedToLegal;
+        localStorage.setItem(consentKey, consent ? 'true' : 'false');
+      }
     }
 
     if (!parsed) {
@@ -870,10 +886,10 @@ function App() {
       setFarms(parsed.farms || []);
       if ((parsed.farms || []).length > 0 && !role) {
         role = 'farmer';
-        localStorage.setItem(`typhoon_vault_role_${net}_${address}`, 'farmer');
+        localStorage.setItem(roleKey, 'farmer');
       }
       setIsVerified(parsed.isVerified || false);
-      if (parsed.hasAgreedToLegal !== undefined) {
+      if (parsed.hasAgreedToLegal !== undefined && !consentChanged) {
         consent = parsed.hasAgreedToLegal;
       }
       setClaims(parsed.claims || (net === 'mainnet' ? [] : [
@@ -930,7 +946,7 @@ function App() {
    * Returns true if the app switched to the passkey wallet.
    */
   const switchToLinkedPasskeyWallet = async (account: string, extensionWalletId: string, { prompt }: { prompt: boolean }): Promise<boolean> => {
-    if (network !== 'testnet' || getApprovalMode() !== 'passkey' || isInAppWalletId(account)) return false;
+    if (network !== 'testnet' || getApprovalMode() !== 'passkey' || getDemoMode(account, network)) return false;
     const linked = await getLinkedWallet(account).catch(() => null);
     if (!linked) return false;
 
@@ -956,6 +972,7 @@ function App() {
 
   /** A seedless passkey wallet was created or signed in (see PasskeyOnboarding). */
   const handlePasskeyConnected = async (session: PasskeySession) => {
+    clearDemoWallet();
     localStorage.setItem('typhoon_vault_walletId', PASSKEY_WALLET_ID);
     setWalletAddress(session.walletAddress);
     setIsWalletConnected(true);
@@ -974,6 +991,8 @@ function App() {
   const handleConnectWallet = async (walletId: string) => {
     const walletType = walletTypeFromId(walletId);
     analytics.trackWalletConnectionAttempted({ wallet_type: walletType, network, entry_point: 'modal_prompt' });
+    // A regular connect ends any "Demo with my wallet" session for this browser.
+    clearDemoWallet();
     try {
       if (isInAppWalletId(walletId)) {
         // Special case for demo mode bypass
@@ -1025,6 +1044,48 @@ function App() {
         setWalletError({
           id: 'connection',
           message: error.message || 'Failed to connect wallet. Ensure the wallet extension is unlocked or your mobile app is active.'
+        });
+      }
+    }
+  };
+
+  /** Demo version 1: explore with a simulated account (no wallet). Onboarding skips Didit. */
+  const handleConnectDemoSandbox = () => handleConnectWallet(newSandboxWalletId());
+
+  /**
+   * Demo version 2: pick any wallet in the Stellar Wallets Kit modal. Real
+   * testnet transactions, but onboarding skips Didit. Testnet only.
+   */
+  const handleConnectDemoWallet = async () => {
+    if (network !== 'testnet') return;
+    analytics.trackWalletConnectionAttempted({ wallet_type: 'other', network, entry_point: 'modal_prompt' });
+    try {
+      const { address, walletId } = await connectWithKitModal(network);
+      const walletType = walletTypeFromId(walletId);
+      analytics.trackWalletConnectionSuccessful({ stellar_address: address, wallet_type: walletType, network });
+      // Mark before the address lands in state so the first render already sees demo mode.
+      markDemoWallet(address);
+      localStorage.setItem('typhoon_vault_walletId', walletId);
+      setWalletAddress(address);
+      setIsWalletConnected(true);
+      setBurstCount(c => c + 1);
+      await loadProfile(address, network);
+      addNotification('Demo mode: wallet connected on Testnet. Identity verification is skipped.', 'success');
+    } catch (error: any) {
+      const errorMessage = String(error?.message ?? error ?? '');
+      if (errorMessage === 'WALLET_MODAL_CLOSED') return;
+      const userRejected = /reject|declin|denied|cancel/i.test(errorMessage);
+      analytics.trackWalletConnectionFailed({
+        wallet_type: 'other',
+        network,
+        error_code: userRejected ? 'USER_REJECTED' : errorMessage.split(':')[0] || 'UNKNOWN',
+        error_message: errorMessage,
+        user_rejected: userRejected,
+      });
+      if (!userRejected) {
+        setWalletError({
+          id: 'connection',
+          message: errorMessage || 'Failed to connect wallet. Ensure the wallet extension is unlocked or your mobile app is active.'
         });
       }
     }
@@ -1244,6 +1305,7 @@ function App() {
   };
 
   const handleDisconnect = () => {
+    clearDemoWallet();
     if (localStorage.getItem('typhoon_vault_walletId') === PASSKEY_WALLET_ID) {
       clearPasskeySession();
       localStorage.removeItem('typhoon_vault_walletId');
@@ -1428,6 +1490,9 @@ function App() {
     setDeleteConfirmName("");
   };
 
+  // Both demo versions skip Didit; null on mainnet or for a regular connection.
+  const demoMode = isWalletConnected ? getDemoMode(walletAddress, network) : null;
+
   if (!isWalletConnected) {
     return (
       <div className="min-h-screen bg-[#020617] text-slate-200">
@@ -1462,6 +1527,8 @@ function App() {
           onClose={() => setIsWalletModalOpen(false)} 
           onConnect={handleConnectWallet}
           onPasskeyConnected={handlePasskeyConnected}
+          onDemoSandbox={handleConnectDemoSandbox}
+          onDemoWallet={handleConnectDemoWallet}
           network={network}
         />
         
@@ -1768,6 +1835,7 @@ function App() {
         walletAddress={walletAddress} 
         network={network}
         isMainnet={isMainnet}
+        skipIdentityCheck={demoMode !== null}
         onBack={() => {
           localStorage.removeItem(`typhoon_vault_role_${network}_${walletAddress}`);
           setUserRole(null);
@@ -1781,6 +1849,7 @@ function App() {
       <SponsorVerification
         walletAddress={walletAddress}
         network={network}
+        skipIdentityCheck={demoMode !== null}
         onVerificationComplete={(sponsorInfo) => {
           localStorage.setItem(`typhoon_vault_${network}_${walletAddress}`, JSON.stringify({
             userRole: 'sponsor',
