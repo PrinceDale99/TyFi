@@ -1184,4 +1184,9 @@ mod test_auth;
 mod test_reinsurance;
 
 #[cfg(test)]
-mod test_security;
+mod test_security;
+#[cfg(test)]
+mod zk_fixture;
+
+#[cfg(test)]
+mod test_zk;
