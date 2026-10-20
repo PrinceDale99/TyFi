@@ -19,7 +19,7 @@ fn test_explicit_auth_deposit_subsidy() {
     let xlm_token = env.register_stellar_asset_contract(token_admin.clone());
     let oracle = Address::generate(&env);
 
-    let empty_keys = soroban_sdk::Vec::new(&env);
+    let empty_keys = soroban_sdk::vec![&env, soroban_sdk::BytesN::from_array(&env, &[7u8; 32])]; // placeholder admin key; unit tests never sign
     client.initialize(&empty_keys, &1, &xlm_token, &1, &false, &oracle);
 
     let token_admin_client = token::StellarAssetClient::new(&env, &xlm_token);
