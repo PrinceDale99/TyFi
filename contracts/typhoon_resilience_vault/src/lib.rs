@@ -326,6 +326,44 @@ impl TyphoonVault {
         Ok(())
     }
 
+    /// Install the Groth16 verifying key for the weather_threshold circuit.
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"set_zk_verifying_key" )`
+    pub fn set_zk_verifying_key(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, vk: Groth16VerifyingKey) -> Result<(), Error> {
+        require_multisig_auth(&env, b"set_zk_verifying_key", signatures)?;
+
+        // One IC point per public input, plus IC[0].
+        if vk.ic.len() != ZK_PUBLIC_INPUTS + 1 {
+            return Err(Error::InvalidAmount);
+        }
+        env.storage().instance().set(&DataKey::ZkVerifyingKey, &vk);
+        log!(&env, "ZK verifying key installed");
+        Ok(())
+    }
+
+    pub fn get_zk_verifying_key(env: Env) -> Option<Groth16VerifyingKey> {
+        env.storage().instance().get(&DataKey::ZkVerifyingKey)
+    }
+
+    /// Bind an oracle address to the Poseidon hash of its EdDSA signing key.
+    /// ZK reports from that oracle must be signed by this key.
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"set_oracle_zk_key" )`
+    pub fn set_oracle_zk_key(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, oracle: Address, key_hash: U256) -> Result<(), Error> {
+        require_multisig_auth(&env, b"set_oracle_zk_key", signatures)?;
+
+        env.storage().persistent().set(&DataKey::OracleZkKeyHash(oracle.clone()), &key_hash);
+        bump_persistent(&env, &DataKey::OracleZkKeyHash(oracle.clone()));
+        log!(&env, "Oracle ZK key registered", oracle);
+        Ok(())
+    }
+
+    pub fn get_oracle_zk_key(env: Env, oracle: Address) -> Option<U256> {
+        env.storage().persistent().get(&DataKey::OracleZkKeyHash(oracle))
+    }
+
     /// Official KYC/RSBSA Verification of farmers
     ///
     /// Signers must produce ed25519 signatures over:
