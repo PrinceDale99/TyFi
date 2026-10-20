@@ -315,6 +315,34 @@ impl TyphoonVault {
 
     // --- Governance & Admin Functions ---
 
+    /// Replace the admin key set and threshold.
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"rotate_admin_multisig" )`
+    ///
+    /// Vaults initialized before threshold validation existed may hold a
+    /// zero-threshold multisig, which accepted any admin call. That state can
+    /// be repaired once without signatures; every later rotation needs the
+    /// configured quorum.
+    pub fn rotate_admin_multisig(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, keys: Vec<BytesN<32>>, threshold: u32) -> Result<(), Error> {
+        let current: AdminMultisig = env.storage().instance().get(&DataKey::AdminMultisig).ok_or(Error::NotInitialized)?;
+        if current.threshold == 0 {
+            let nonce = get_admin_nonce(&env);
+            env.storage().instance().set(&DataKey::AdminNonce, &(nonce + 1));
+        } else {
+            require_multisig_auth(&env, b"rotate_admin_multisig", signatures)?;
+        }
+        validate_multisig(&keys, threshold)?;
+
+        env.storage().instance().set(&DataKey::AdminMultisig, &AdminMultisig { keys, threshold });
+        log!(&env, "Admin multisig rotated. Threshold:", threshold);
+        Ok(())
+    }
+
+    pub fn get_admin_multisig(env: Env) -> Option<AdminMultisig> {
+        env.storage().instance().get(&DataKey::AdminMultisig)
+    }
+
     /// Set the active status of a weather oracle (Testnet consensus)
     ///
     /// Signers must produce ed25519 signatures over:
