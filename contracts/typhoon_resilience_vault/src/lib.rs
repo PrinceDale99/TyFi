@@ -2,8 +2,9 @@
 pub mod verifier;
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, contracterror, Address, Env, Symbol, log, token, Vec, BytesN, Bytes
+    contract, contractimpl, contracttype, contracterror, xdr::ToXdr, Address, Env, Symbol, log, token, Vec, BytesN, Bytes, U256
 };
+use verifier::{Groth16Proof, Groth16VerifyingKey};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -113,6 +114,15 @@ const MAX_FARMER_LOAN_BPS: i128 = 2_000;
 
 pub fn bump_persistent(env: &Env, key: &DataKey) {
     env.storage().persistent().extend_ttl(key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND);
+}
+
+/// Maps a Symbol to a BN254 scalar for use as a circuit public input:
+/// `sha256(XDR(ScVal::Symbol))` with the top byte zeroed, so the value is
+/// always below the field modulus. The oracle uses the same encoding.
+pub fn symbol_to_field(env: &Env, symbol: &Symbol) -> U256 {
+    let mut digest = env.crypto().sha256(&symbol.clone().to_xdr(env)).to_array();
+    digest[0] = 0;
+    U256::from_be_bytes(env, &Bytes::from_array(env, &digest))
 }
 
 pub fn bump_temporary(env: &Env, key: &DataKey) {
@@ -867,25 +877,43 @@ impl TyphoonVault {
         Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_speed)
     }
 
-    /// Submit weather report with Noir Zero-Knowledge proof verification.
+    /// Submit a weather report backed by a Groth16 proof (weather_threshold circuit).
     ///
-    /// The proof proves that the observed wind speed exceeds the payout threshold
-    /// for the specific typhoon and region without leaking private raw sensor feeds.
+    /// The proof shows the oracle's registered EdDSA key signed a wind reading
+    /// for this typhoon and region that is at least `wind_floor`, without
+    /// revealing the reading. The contract builds every public input itself,
+    /// so a proof only verifies for the exact (oracle key, typhoon, region,
+    /// wind_floor, damage) it was generated for. `wind_floor` is stored as the
+    /// attested wind speed, a lower bound that the payout bands compare against.
     pub fn submit_weather_report_zk(
         env: Env,
         oracle: Address,
         typhoon_id: Symbol,
         region: Symbol,
         damage_percentage: u32,
-        wind_speed: u32,
-        proof: Bytes,
-        public_inputs: Vec<soroban_sdk::Val>,
+        wind_floor: u32,
+        proof: Groth16Proof,
     ) -> Result<(), Error> {
         oracle.require_auth();
-        if !verifier::verify_zk_proof(&env, &proof, &public_inputs) {
-            return Err(Error::Unauthorized);
+
+        let vk: Groth16VerifyingKey = env.storage().instance().get(&DataKey::ZkVerifyingKey).ok_or(Error::ZkNotConfigured)?;
+        let key_hash: U256 = env.storage().persistent().get(&DataKey::OracleZkKeyHash(oracle.clone())).ok_or(Error::ZkNotConfigured)?;
+
+        let mut public_inputs: Vec<U256> = Vec::new(&env);
+        public_inputs.push_back(key_hash);
+        public_inputs.push_back(symbol_to_field(&env, &typhoon_id));
+        public_inputs.push_back(symbol_to_field(&env, &region));
+        public_inputs.push_back(U256::from_u32(&env, wind_floor));
+        public_inputs.push_back(U256::from_u32(&env, damage_percentage));
+
+        if !verifier::verify_groth16(&env, &vk, &proof, &public_inputs) {
+            return Err(Error::InvalidProof);
         }
-        Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_speed)
+        env.events().publish(
+            (Symbol::new(&env, "zk_report_verified"), typhoon_id.clone(), region.clone()),
+            (oracle.clone(), wind_floor, damage_percentage),
+        );
+        Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_floor)
     }
 
     fn process_weather_report(
