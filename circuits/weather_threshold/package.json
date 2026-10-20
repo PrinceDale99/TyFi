@@ -6,6 +6,7 @@
   "scripts": {
     "compile": "node scripts/compile.js",
     "setup": "node scripts/setup.js",
+    "sync": "node scripts/sync-artifacts.js",
     "test": "node --test test/"
   },
   "dependencies": {
