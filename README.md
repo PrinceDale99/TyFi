@@ -122,9 +122,9 @@ graph TD
         IPFS["Pinata IPFS (Image Storage)"]
         Oracle["PAGASA, NOAA, & OpenWeather APIs"]
         
-        subgraph ZK ["RISC Zero zkVM Prover"]
-            NC["Rust ZK Oracle Consensus"]
-            BB["STARK Receipt Generator"]
+        subgraph ZK ["Groth16 Oracle Prover (snarkjs)"]
+            NC["EdDSA-signed Wind Reading"]
+            BB["weather_threshold Circuit"]
         end
     end
 
@@ -146,49 +146,51 @@ graph TD
     BE -->|"Uploads Images"| IPFS
     BE <-->|"Damage & Loan Prediction"| AI
     BE -->|"Raw Signed Weather Data"| NC
-    NC -->|"Aggregates Math & Generates STARK"| BB
-    BB -->|"Submits ZK Receipt"| ZKV
+    NC -->|"Proves reading >= payout band"| BB
+    BB -->|"submit_weather_report_zk"| ZKV
     ZKV -->|"Verifies Proof"| SC
     SC -->|"Instant XLM Payout"| Farmer
 ```
 
 ### Layer 1 — Stellar Soroban Smart Contract
 - **Parametric Actuarial Engine** — Non-custodial XLM vault iterating dynamic `ParametricBands` strictly on-chain
-- **ZK Verifier** — Cryptographically verifies STARK receipt from the RISC Zero oracle network
+- **ZK Verifier** — Verifies Groth16 weather proofs with Soroban's BN254 pairing host functions (~27.7M CPU instructions per proof)
 - **Enterprise Multi-Sig** — DAO governance controls on `update_parametric_bands` — parameters cannot be manipulated maliciously
 
 ### Layer 2 — Off-Chain Infrastructure & ZK Proving
-- **Zero-Knowledge Oracle (NoirJS)** — Proves weather thresholds from PAGASA and NASA EONET without exposing API keys
+- **Zero-Knowledge Oracle (Circom + snarkjs)** — Proves a signed wind reading clears a payout band without publishing the raw reading
 - **Gemini Vision & IPFS Oracles** — MMS claims via SMS Mesh uploaded to Pinata IPFS, assessed by Gemini 2.5 Pro
 - **AI Loan Actuary** — Gemini 2.5 Flash models crop yield predictions for instant Soroban micro-loan underwriting
 - **Secure Web3 KYC (Didit Protocol)** — `/api/didit/session` backend endpoint shields API keys from the frontend
 
 ### Layer 3 — React Frontend Consumer Dashboard
-- **Institutional Hub** — Treasury Bond Yield Tracker + **ZK Proof Inspector** (visual Barretenberg hex inspection)
+- **Institutional Hub** — Treasury Bond Yield Tracker
+- **ZK Payout tab (testnet)** — Prove a storm, watch the vault verify it on-chain, then claim against the resulting consensus
 - **Farmer Mobile Portal** — Mobile-optimized, gasless, biometric-authenticated experience
 
 ---
 
 ## 🔐 Zero-Knowledge Proof Integration
 
-TyFi utilizes **Noir** to generate Zero-Knowledge proofs for all weather data triggers, ensuring oracle privacy and preventing on-chain manipulation.
+Weather triggers are proven with **Groth16 over BN254** and verified **on-chain** by the vault.
 
 ```
-Step 1: Circuit (circuits/weather_oracle)
-        Written in Noir — takes wind_speed as private input,
-        threshold as public input, asserts wind_speed >= threshold
-        using Poseidon hashing.
+Step 1: Circuit (circuits/weather_threshold)
+        Circom. Private: raw wind speed + the oracle's EdDSA-Poseidon
+        signature. Public: oracle key hash, typhoon, region, wind band,
+        damage %. Asserts the signature is valid and wind >= band.
 
-Step 2: Dynamic Generation (backend/oracle.ts)
-        @noir-lang/noir_js + @noir-lang/backend_barretenberg load
-        the compiled WASM circuit and dynamically generate a
-        Barretenberg Plonk proof.
+Step 2: Proving (functions/zk/prover.ts)
+        The oracle signs the reading and snarkjs produces a 256-byte
+        proof in ~2.5 s. Only the payout band is published.
 
-Step 3: Native Verification (verifier.rs)
-        Soroban contract uses Protocol 27's native BN254 host functions
-        → env.crypto().bn254_pairing(...) to verify the proof
-        on-chain in milliseconds.
+Step 3: On-chain verification (contracts/typhoon_resilience_vault/src/verifier.rs)
+        submit_weather_report_zk rebuilds every public input itself and
+        runs e(-A,B)·e(α,β)·e(vk_x,γ)·e(C,δ) == 1 with
+        env.crypto().bn254().pairing_check — then records consensus.
 ```
+
+Details, constraint list and trust assumptions: [`circuits/weather_threshold/README.md`](circuits/weather_threshold/README.md).
 
 ---
 
@@ -200,7 +202,7 @@ Step 3: Native Verification (verifier.rs)
 | **Backend** | Node.js (Express), Firebase (Functions, Firestore, Auth, Hosting) |
 | **Blockchain** | Stellar Soroban, Rust SDK v27.0.0-rc.1, XLM, Fee Bump, Multi-Sig, Account Abstraction |
 | **AI/ML** | Gemini 2.5 Flash & Pro, Google Cloud Vision API |
-| **ZK Proofs** | Noir (Barretenberg Plonk), RISC Zero zkVM |
+| **ZK Proofs** | Circom 2.2 + snarkjs (Groth16 / BN254), Soroban BN254 host functions |
 | **Data** | PAGASA, NOAA/NASA EONET, OpenWeatherMap |
 | **Storage** | Pinata IPFS, Supabase |
 | **Comms** | Twilio (SMS/MMS), Firebase Cloud Messaging |
