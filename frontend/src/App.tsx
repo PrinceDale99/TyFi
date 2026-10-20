@@ -93,6 +93,7 @@ import { useContinuousYield } from './hooks/useContinuousYield';
 import SponsorVerification from './components/SponsorVerification';
 import { registerForSubsidy, getUserProfile, saveUserProfile, logPayout } from './services/firebaseService';
 import { GovernancePortal } from './components/GovernancePortal';
+import { ZkPayoutPanel } from './components/ZkPayoutPanel';
 import LandingPage from './components/LandingPage';
 import AuroraBackground from './components/AuroraBackground';
 import TiltCard from './components/TiltCard';
@@ -163,7 +164,7 @@ function App() {
   const [stakingMode, setStakingMode] = useState<'deposit' | 'withdraw'>('deposit');
   const [projectionPeriod, setProjectionPeriod] = useState<'1m' | '6m' | '1y'>('1y');
 
-  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace' | 'docs' | 'payment' | 'governance'>(() => {
+  const [activeTab, setActiveTab] = useState<'monitor' | 'history' | 'calc' | 'vault' | 'marketplace' | 'docs' | 'payment' | 'governance' | 'zk'>(() => {
     return (localStorage.getItem('typhoon_vault_activeTab') as any) || 'monitor';
   });
   const [network, setNetwork] = useState<'testnet' | 'mainnet'>(() => {
@@ -1975,8 +1976,10 @@ function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
-          {(['monitor', 'history', 'calc', 'vault', 'marketplace', 'governance', 'docs', 'payment'] as const)
+          {(['monitor', 'history', 'calc', 'vault', 'marketplace', 'governance', 'zk', 'docs', 'payment'] as const)
             .filter(tab => {
+              // The ZK oracle sandbox only runs on testnet.
+              if (tab === 'zk' && isMainnet) return false;
               if (userRole === 'sponsor') {
                 return ['marketplace', 'history', 'vault', 'docs', 'governance'].includes(tab);
               }
@@ -1992,7 +1995,7 @@ function App() {
                   : 'text-slate-500 hover:text-slate-300 hover:bg-white/5 border border-transparent'
               }`}
             >
-              {tab === 'governance' ? 'DAO Governance' : tab === 'marketplace' ? 'Market' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'governance' ? 'DAO Governance' : tab === 'zk' ? 'ZK Payout' : tab === 'marketplace' ? 'Market' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -2173,7 +2176,8 @@ function App() {
                         activeTab === 'payment' ? 'Payout Configuration' :
                           activeTab === 'history' ? 'Claim History' : 
                             activeTab === 'marketplace' ? 'Subsidy Marketplace' : 
-                              activeTab === 'docs' ? 'System Overview' : 'Vault Infrastructure'}
+                              activeTab === 'docs' ? 'System Overview' :
+                                activeTab === 'zk' ? 'Zero-Knowledge Payout' : 'Vault Infrastructure'}
                   </h1>
                   <p className="text-slate-400 mt-1">
                     {activeTab === 'monitor' ? `Automated smart contracts for ${farms[0]?.farmName || 'your farms'}` :
@@ -2182,6 +2186,7 @@ function App() {
                           activeTab === 'history' ? 'Transparency report of all triggered payouts' :
                             activeTab === 'marketplace' ? 'Fund climate resilience for verified farmers' :
                               activeTab === 'docs' ? 'How TyFi Decentralized Parametric Insurance works' :
+                                activeTab === 'zk' ? 'Prove the storm on-chain without revealing the raw sensor data' :
                           'Proof of liquidity and capital reserves'}
                   </p>
                 </div>
@@ -2650,6 +2655,19 @@ function App() {
               {activeTab === 'governance' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <GovernancePortal walletAddress={walletAddress} network={network} />
+                </div>
+              )}
+
+              {activeTab === 'zk' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <ZkPayoutPanel
+                    farms={farms}
+                    walletAddress={isWalletConnected ? walletAddress : null}
+                    addNotification={addNotification}
+                    onPaid={(farm, xlm) =>
+                      setFarms(prev => prev.map(f => f.id === farm.id ? { ...f, hasClaimed: true, claimedAmount: xlm } : f))
+                    }
+                  />
                 </div>
               )}
 
