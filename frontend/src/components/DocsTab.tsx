@@ -32,7 +32,7 @@ const DocsTab: React.FC = () => {
       id: 3,
       title: "Decentralized Oracle Network",
       icon: <Globe className="w-8 h-8 text-indigo-400" />,
-      description: "During a storm, PAGASA and NASA EONET APIs constantly feed weather data into the backend. If thresholds are met, the off-chain oracle generates a ZK Proof and the contract automatically triggers.",
+      description: "During a storm, PAGASA and NASA EONET APIs constantly feed weather data into the backend. If a payout band is met, the oracle signs the reading and generates a Groth16 proof; the vault verifies it on-chain before recording consensus.",
       animation: "spin"
     },
     {
@@ -70,7 +70,7 @@ const DocsTab: React.FC = () => {
       id: 3,
       title: "4. Parametric Trigger",
       icon: <CloudLightning className="w-8 h-8 text-amber-400" />,
-      description: "When disaster strikes, the off-chain oracle generates a Zero-Knowledge Proof. Click 'Simulate Disaster' to trigger the verification pipeline.",
+      description: "When disaster strikes, the oracle proves the wind cleared a payout band without revealing the raw reading. Open the ZK Payout tab (testnet) to run the proof, see the vault verify it on-chain, and claim.",
       animation: "shake"
     },
     {
