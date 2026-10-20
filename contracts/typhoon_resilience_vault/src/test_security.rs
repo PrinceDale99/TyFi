@@ -55,7 +55,7 @@ fn setup_security() -> (
     let token_client = token::Client::new(&env, &xlm_token);
     let token_admin_client = token::StellarAssetClient::new(&env, &xlm_token);
 
-    let empty_keys = soroban_sdk::Vec::new(&env);
+    let empty_keys = soroban_sdk::vec![&env, soroban_sdk::BytesN::from_array(&env, &[7u8; 32])]; // placeholder admin key; unit tests never sign
     // quorum=1, testnet mode so multi-oracle consensus works
     client.initialize(&empty_keys, &1, &xlm_token, &1, &false, &oracle);
 

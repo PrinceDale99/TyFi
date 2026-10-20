@@ -14,7 +14,7 @@ fn setup() -> (Env, TyphoonVaultClient<'static>, Address, Address) {
     let client = TyphoonVaultClient::new(&env, &contract_id);
     let oracle = Address::generate(&env);
     let xlm_token = env.register_stellar_asset_contract(Address::generate(&env));
-    client.initialize(&Vec::new(&env), &1, &xlm_token, &1, &false, &oracle);
+    client.initialize(&soroban_sdk::vec![&env, BytesN::from_array(&env, &[7u8; 32])], &1, &xlm_token, &1, &false, &oracle);
     env.as_contract(&contract_id, || {
         env.storage().persistent().set(&DataKey::Oracle(oracle.clone()), &true);
     });
