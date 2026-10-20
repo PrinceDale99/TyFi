@@ -409,19 +409,16 @@ export const claimPayoutOnChain = async (
         const farmerAddress = Address.fromString(farmer);
         const contract = new Contract(config.vaultContractId);
         const account = await server.getAccount(farmer);
-        const operation = network === 'testnet'
-          ? contract.call(
-              "testnet_claim_payout",
-              farmerAddress.toScVal(),
-              nativeToScVal(BigInt(Math.floor(amount * 10000000)), { type: 'i128' })
-            )
-          : contract.call(
-              "claim_payout",
-              farmerAddress.toScVal(),
-              xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
-              xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
-              xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId))
-            );
+        // The vault has no testnet-only claim: both networks pay from the
+        // on-chain consensus for (typhoon, policy region), and the contract
+        // computes the amount. `amount` is only used for analytics.
+        const operation = contract.call(
+          "claim_payout",
+          farmerAddress.toScVal(),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId))
+        );
         return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
           .addOperation(operation)
           .setTimeout(300)
