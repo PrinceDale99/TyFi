@@ -24,6 +24,8 @@ pub enum Error {
     LoanCapExceeded = 13,
     PolicyAlreadyUsed = 14,
     CoverageCapExceeded = 15,
+    ZkNotConfigured = 16,
+    InvalidProof = 17,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -64,6 +66,8 @@ pub enum DataKey {
     ParametricBands(Symbol),            // region -> Vec<PayoutBand>
     OracleWindSpeed(Symbol, Symbol),    // Raw wind speed reported by Oracle: (typhoon_id, region) -> u32
     SolvencyCapBps,                     // DAO-adjustable max coverage ratio (basis points, u32)
+    ZkVerifyingKey,                     // Groth16 VK for the weather_threshold circuit
+    OracleZkKeyHash(Address),           // Poseidon(Ax, Ay) of the oracle's EdDSA signing key (U256)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -99,6 +103,10 @@ const PERSISTENT_TTL_THRESHOLD: u32 = 1_728_000; // ~100 days
 const PERSISTENT_TTL_EXTEND: u32 = 3_456_000;    // ~200 days
 const TEMP_TTL_THRESHOLD: u32 = 172_800;         // ~10 days
 const TEMP_TTL_EXTEND: u32 = 345_600;            // ~20 days
+
+/// Public inputs of the weather_threshold circuit:
+/// [oracle_key_hash, typhoon_id, region_id, wind_floor, damage_percentage]
+const ZK_PUBLIC_INPUTS: u32 = 5;
 
 /// Maximum per-farmer outstanding loan principal as a fraction of pool (20% = 2000 bps)
 const MAX_FARMER_LOAN_BPS: i128 = 2_000;
