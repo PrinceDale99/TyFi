@@ -157,6 +157,11 @@ pub fn require_multisig_auth(
         .get(&DataKey::AdminMultisig)
         .ok_or(Error::NotInitialized)?;
 
+    // Fail closed: a zero threshold would accept an empty signature list.
+    if multisig.threshold == 0 {
+        return Err(Error::Unauthorized);
+    }
+
     // Read the current nonce. Every successful call increments it, so each
     // (nonce, fn_name) pair is valid for exactly one invocation.
     let nonce: u64 = env
@@ -219,6 +224,14 @@ pub fn require_multisig_auth(
     Ok(())
 }
 
+/// A multisig needs at least one signer and cannot require more signers than it has keys.
+fn validate_multisig(keys: &Vec<BytesN<32>>, threshold: u32) -> Result<(), Error> {
+    if threshold == 0 || threshold > keys.len() {
+        return Err(Error::InsufficientSignatures);
+    }
+    Ok(())
+}
+
 /// Returns the current admin nonce. Callers use this to construct the
 /// message they must sign: `sha256(nonce_be_8_bytes || fn_name_bytes)`.
 pub fn get_admin_nonce(env: &Env) -> u64 {
@@ -266,6 +279,7 @@ impl TyphoonVault {
         if env.storage().instance().has(&DataKey::AdminMultisig) {
             return Err(Error::AlreadyInitialized);
         }
+        validate_multisig(&admin_keys, admin_threshold)?;
 
         let multisig = AdminMultisig { keys: admin_keys, threshold: admin_threshold };
         env.storage().instance().set(&DataKey::AdminMultisig, &multisig);
