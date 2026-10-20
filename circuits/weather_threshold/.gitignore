@@ -1,0 +1,4 @@
+node_modules/
+# Intermediate compiler output; the artifacts the oracle and contract need live in artifacts/
+build/
+*.ptau
