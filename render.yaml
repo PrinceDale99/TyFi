@@ -25,6 +25,8 @@ services:
         sync: false
       - key: ORACLE_SECRET_KEY
         sync: false
+      - key: ORACLE_ZK_PRIVATE_KEY
+        sync: false
       - key: PDAX_API_KEY
         sync: false
       - key: PDAX_API_SECRET
