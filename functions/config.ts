@@ -8,7 +8,8 @@ export const NETWORK_CONFIGS = {
     horizonUrl: 'https://horizon-testnet.stellar.org',
     passphrase: Networks.TESTNET,
     vaultContractId: process.env.CONTRACT_ID_TESTNET || 'CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR',
-    daoContractId: 'CCYYM6VOPD7HUP337W4334A2MYL6KAZ55K4JMXYOPX3EWYDSDYY6C23G'
+    // The deployed week 2 DAO (contracts/deployments/testnet.json); CCYYM… was a stale id.
+    daoContractId: process.env.DAO_CONTRACT_ID_TESTNET || 'CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY'
   },
   mainnet: {
     rpcUrl: process.env.SOROBAN_RPC_URL_MAINNET || 'https://mainnet.sorobanrpc.com',
