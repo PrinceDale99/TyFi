@@ -1,0 +1,387 @@
+1
+00:00:00,800 --> 00:00:02,160
+This is TyFi:
+
+2
+00:00:02,160 --> 00:00:05,520
+parametric typhoon insurance for Filipino farmers,
+
+3
+00:00:05,520 --> 00:00:06,960
+built on Stellar.
+
+4
+00:00:06,960 --> 00:00:08,400
+In the next four minutes,
+
+5
+00:00:08,400 --> 00:00:10,960
+we run the whole pipeline live on testnet.
+
+6
+00:00:12,800 --> 00:00:14,880
+A farmer signs in with a passkey,
+
+7
+00:00:14,880 --> 00:00:16,400
+with no seed phrase.
+
+8
+00:00:16,400 --> 00:00:19,280
+The farming co-op governs the insurance vault
+
+9
+00:00:19,280 --> 00:00:20,560
+through a DAO.
+
+10
+00:00:20,560 --> 00:00:22,000
+When a typhoon hits,
+
+11
+00:00:22,000 --> 00:00:24,400
+an oracle proves the storm crossed a
+
+12
+00:00:24,400 --> 00:00:26,640
+payout threshold with a zero-knowledge proof,
+
+13
+00:00:26,640 --> 00:00:29,120
+the vault verifies that proof on-chain,
+
+14
+00:00:29,120 --> 00:00:31,440
+and the payout lands in the farmer's wallet.
+
+15
+00:00:33,600 --> 00:00:34,880
+We start with the wallet.
+
+16
+00:00:34,880 --> 00:00:36,160
+On the passkey page,
+
+17
+00:00:36,160 --> 00:00:38,720
+the farmer names the wallet and taps create.
+
+18
+00:00:38,720 --> 00:00:40,560
+The device creates a passkey,
+
+19
+00:00:40,560 --> 00:00:42,640
+and our factory contract deploys a smart
+
+20
+00:00:42,640 --> 00:00:43,920
+wallet bound to it.
+
+21
+00:00:43,920 --> 00:00:45,440
+There is no seed phrase,
+
+22
+00:00:45,440 --> 00:00:47,520
+and no private key in the browser.
+
+23
+00:00:47,520 --> 00:00:48,560
+From here on,
+
+24
+00:00:48,560 --> 00:00:50,640
+every transaction is approved with the same
+
+25
+00:00:50,640 --> 00:00:52,000
+fingerprint or face,
+
+26
+00:00:52,000 --> 00:00:54,880
+and checked on-chain by the wallet's own __check_auth.
+
+27
+00:00:54,880 --> 00:00:57,920
+Here is the deployment on Stellar Expert.
+
+28
+00:01:01,600 --> 00:01:03,840
+The co-op funds the wallet and verifies
+
+29
+00:01:03,840 --> 00:01:06,800
+the farm through the vault's admin multisig.
+
+30
+00:01:06,800 --> 00:01:09,360
+The farmer then joins the reinsurance pool
+
+31
+00:01:09,360 --> 00:01:10,800
+as a liquidity provider,
+
+32
+00:01:10,800 --> 00:01:14,240
+and insures a rice farm in Eastern Visayas.
+
+33
+00:01:14,240 --> 00:01:15,920
+Each of those steps is signed with
+
+34
+00:01:15,920 --> 00:01:18,400
+the passkey and settled on testnet.
+
+35
+00:01:20,600 --> 00:01:21,800
+Now, governance.
+
+36
+00:01:21,800 --> 00:01:23,080
+In the DAO tab,
+
+37
+00:01:23,080 --> 00:01:25,000
+the farmer's voting power is read straight
+
+38
+00:01:25,000 --> 00:01:27,080
+from their liquidity shares in the vault.
+
+39
+00:01:27,080 --> 00:01:28,440
+A new proposal is open,
+
+40
+00:01:28,440 --> 00:01:29,880
+and the farmer votes for it.
+
+41
+00:01:29,880 --> 00:01:31,560
+The passkey signs the vote,
+
+42
+00:01:31,560 --> 00:01:33,000
+and the tally updates on-chain.
+
+43
+00:01:33,000 --> 00:01:35,480
+Quorum is 30% of all shares,
+
+44
+00:01:35,480 --> 00:01:39,480
+and premium changes need a 60% supermajority.
+
+45
+00:01:39,480 --> 00:01:41,800
+Earlier, the co-op passed proposal 6:
+
+46
+00:01:41,800 --> 00:01:47,320
+raise the Eastern Visayas premium multiplier to 125%.
+
+47
+00:01:47,320 --> 00:01:49,240
+It then sat in a 12-hour timelock,
+
+48
+00:01:49,240 --> 00:01:51,640
+so members could react before anything changed.
+
+49
+00:01:54,600 --> 00:01:55,560
+The timelock is over.
+
+50
+00:01:55,560 --> 00:01:57,560
+The co-op made this farmer a DAO
+
+51
+00:01:57,560 --> 00:01:59,960
+executor, so the farmer taps finalize,
+
+52
+00:01:59,960 --> 00:02:01,400
+and signs with the passkey.
+
+53
+00:02:01,400 --> 00:02:04,280
+The DAO contract then calls the vault
+
+54
+00:02:04,280 --> 00:02:04,840
+contract directly.
+
+55
+00:02:04,840 --> 00:02:08,200
+The vault only accepts parameter changes from
+
+56
+00:02:08,200 --> 00:02:08,760
+its DAO.
+
+57
+00:02:08,760 --> 00:02:10,200
+In the invocation tree,
+
+58
+00:02:10,200 --> 00:02:13,160
+you can see the DAO calling update_premium_rate
+
+59
+00:02:13,160 --> 00:02:14,360
+on the vault,
+
+60
+00:02:14,360 --> 00:02:19,480
+and the Eastern Visayas multiplier moving from 100 to 125.
+
+61
+00:02:22,600 --> 00:02:23,560
+Then the storm.
+
+62
+00:02:23,560 --> 00:02:25,240
+Typhoon Odette crosses Eastern Visayas,
+
+63
+00:02:25,240 --> 00:02:29,960
+and the oracle reads 172 km/h.
+
+64
+00:02:29,960 --> 00:02:31,400
+That number stays private.
+
+65
+00:02:31,400 --> 00:02:33,000
+The oracle signs the reading,
+
+66
+00:02:33,000 --> 00:02:35,160
+and generates a Groth16 proof that its
+
+67
+00:02:35,160 --> 00:02:36,920
+registered key signed a reading at or
+
+68
+00:02:36,920 --> 00:02:39,960
+above the 150 km/h band.
+
+69
+00:02:39,800 --> 00:02:42,840
+The vault rebuilds every public input itself:
+
+70
+00:02:42,840 --> 00:02:44,040
+the oracle's key,
+
+71
+00:02:44,040 --> 00:02:45,640
+the typhoon, the region,
+
+72
+00:02:45,160 --> 00:02:46,600
+the band, and the damage.
+
+73
+00:02:46,600 --> 00:02:51,080
+It checks the proof with Soroban's BN254
+
+74
+00:02:51,080 --> 00:02:54,120
+pairing functions, in about 30M instructions,
+
+75
+00:02:54,120 --> 00:02:56,280
+and stores only the band.
+
+76
+00:02:55,960 --> 00:02:57,720
+With consensus recorded,
+
+77
+00:02:57,720 --> 00:02:59,000
+the farmer claims,
+
+78
+00:02:59,000 --> 00:03:01,720
+and the vault pays 85% of the
+
+79
+00:03:01,240 --> 00:03:03,160
+coverage straight to the passkey wallet.
+
+80
+00:03:06,600 --> 00:03:08,040
+Forged proofs fail.
+
+81
+00:03:08,040 --> 00:03:09,240
+Change the damage,
+
+82
+00:03:09,240 --> 00:03:10,920
+the region, the wind band,
+
+83
+00:03:10,920 --> 00:03:12,120
+or the oracle key,
+
+84
+00:03:12,120 --> 00:03:14,200
+and the pairing check rejects it.
+
+85
+00:03:14,200 --> 00:03:17,080
+The contract test suite covers each case.
+
+86
+00:03:17,080 --> 00:03:19,800
+The same statement is also written in
+
+87
+00:03:19,800 --> 00:03:23,400
+Noir, and one oracle signature satisfies both circuits.
+
+88
+00:03:23,400 --> 00:03:26,520
+And admin calls now require the multisig,
+
+89
+00:03:26,520 --> 00:03:29,160
+closing a zero-threshold bypass we found this week.
+
+90
+00:03:31,600 --> 00:03:33,840
+Every step has a testnet transaction you
+
+91
+00:03:33,840 --> 00:03:36,160
+can open on Stellar Expert.
+
+92
+00:03:36,160 --> 00:03:37,840
+The contracts, the app,
+
+93
+00:03:37,840 --> 00:03:40,320
+the oracle and both circuits are open
+
+94
+00:03:40,320 --> 00:03:42,320
+source under the MIT license,
+
+95
+00:03:42,320 --> 00:03:44,240
+with a replication guide to run all
+
+96
+00:03:44,240 --> 00:03:45,680
+of it yourself.
+
+97
+00:03:45,680 --> 00:03:46,560
+That's TyFi.
