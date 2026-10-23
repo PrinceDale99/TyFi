@@ -1,0 +1,12 @@
+{
+  "name": "tyfi-week4-walkthrough",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "captions": "node tools/captions.mjs",
+    "compose": "node tools/compose.mjs",
+    "check": "npx --yes hyperframes@0.8.188 check",
+    "render": "npx --yes hyperframes@0.8.188 render -q high --video-frame-format png -o renders/tyfi-week4-walkthrough.mp4"
+  }
+}
