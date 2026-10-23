@@ -811,6 +811,59 @@ export async function createDaoProposal(
   );
 };
 
+/**
+ * Settle a proposal after its voting deadline (execute_proposal). Permissionless;
+ * records the pass and starts the timelock, or marks it failed.
+ */
+export async function settleDaoProposal(
+  proposalId: number,
+  network: 'testnet' | 'mainnet',
+  walletAddress: string,
+  sign?: (xdr: string) => Promise<string>
+): Promise<string> {
+  const config = NETWORK_CONFIGS[network];
+  return executeTrackedTx(
+    { action: 'dao_execute_proposal', network, walletAddress, contractId: config.daoContractId, context: { proposal_id: proposalId }, sign },
+    async (server) => {
+      const account = await server.getAccount(walletAddress);
+      return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+        .addOperation(new Contract(config.daoContractId).call('execute_proposal', nativeToScVal(proposalId, { type: 'u64' })))
+        .setTimeout(300)
+        .build();
+    }
+  );
+}
+
+/**
+ * Finalize a passed proposal after its timelock (finalize_proposal). The DAO then
+ * calls the vault (update_premium_rate, dao_update_quorum_threshold, ...).
+ * Requires the Executor or Admin role.
+ */
+export async function finalizeDaoProposal(
+  proposalId: number,
+  network: 'testnet' | 'mainnet',
+  walletAddress: string,
+  sign?: (xdr: string) => Promise<string>
+): Promise<string> {
+  const config = NETWORK_CONFIGS[network];
+  return executeTrackedTx(
+    { action: 'dao_finalize_proposal', network, walletAddress, contractId: config.daoContractId, context: { proposal_id: proposalId }, sign },
+    async (server) => {
+      const account = await server.getAccount(walletAddress);
+      return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+        .addOperation(
+          new Contract(config.daoContractId).call(
+            'finalize_proposal',
+            nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
+            nativeToScVal(proposalId, { type: 'u64' })
+          )
+        )
+        .setTimeout(300)
+        .build();
+    }
+  );
+}
+
 export interface LedgerTx {
   hash: string;
   ledger: number;
