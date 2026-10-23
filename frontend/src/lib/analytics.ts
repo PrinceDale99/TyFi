@@ -12,7 +12,9 @@ export type TxAction =
   | 'claim_payout'
   | 'submit_weather_report'
   | 'dao_vote'
-  | 'dao_create_proposal';
+  | 'dao_create_proposal'
+  | 'dao_execute_proposal'
+  | 'dao_finalize_proposal';
 export type TxStage = 'simulation' | 'wallet_signing' | 'submission' | 'on_chain_confirmation';
 
 /** Optional context attached to transaction events (used by DAO governance actions). */
