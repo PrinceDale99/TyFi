@@ -100,11 +100,8 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     endDate: '',
   });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const [daoMetrics, setDaoMetrics] = useState({
-    total_members: 1248,
-    weekly_growth: 12,
-    active_proposals: 1
-  });
+  /** Total LP shares in the vault (stroops): the DAO's voting supply. */
+  const [votingSupply, setVotingSupply] = useState<number | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
@@ -120,17 +117,24 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
   const fetchGenerationRef = useRef(0);
   const isPollingRef = useRef(false);
 
-  const loadDaoMetrics = useCallback(async () => {
+  const loadVotingSupply = useCallback(async () => {
     try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
-      const metricsRes = await fetch(`${backendUrl}/api/dao/metrics`);
-      if (metricsRes.ok) {
-        setDaoMetrics(await metricsRes.json());
+      const config = NETWORK_CONFIGS[network];
+      const server = new rpc.Server(config.sorobanRpcUrl);
+      const dummyAccount = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
+      const result = await server.simulateTransaction(
+        new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
+          .addOperation(new Contract(config.vaultContractId).call('get_total_reinsurance_shares'))
+          .setTimeout(30)
+          .build()
+      );
+      if (rpc.Api.isSimulationSuccess(result) && result.result) {
+        setVotingSupply(Number(scValToNative(result.result.retval)));
       }
     } catch (e) {
-      console.error("Failed to fetch DAO metrics", e);
+      console.error("Failed to read the vault's total LP shares", e);
     }
-  }, []);
+  }, [network]);
 
   /** Returns the voter's LP-share voting power in XLM, or null if it could not be read. */
   const loadVotingPower = useCallback(async (): Promise<number | null> => {
@@ -281,8 +285,8 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
   }, [network, walletAddress]);
 
   const refreshGovernance = useCallback(async () => {
-    await Promise.all([loadProposals(), loadVotingPower(), loadDaoMetrics(), loadRole()]);
-  }, [loadProposals, loadVotingPower, loadDaoMetrics, loadRole]);
+    await Promise.all([loadProposals(), loadVotingPower(), loadVotingSupply(), loadRole()]);
+  }, [loadProposals, loadVotingPower, loadVotingSupply, loadRole]);
 
   useEffect(() => {
     fetchGenerationRef.current += 1;
@@ -490,10 +494,10 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Users size={48} />
           </div>
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Total DAO Members</p>
-          <div className="text-3xl font-black text-white">{daoMetrics.total_members.toLocaleString()}</div>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Voting Supply</p>
+          <div className="text-3xl font-black text-white">{votingSupply === null ? '—' : formatShares(votingSupply)}</div>
           <div className="text-xs text-emerald-400 font-bold mt-2 flex items-center gap-1">
-            <Activity size={12} /> +{daoMetrics.weekly_growth} this week
+            <Activity size={12} /> vTYFI · total LP shares in the vault
           </div>
         </div>
 
