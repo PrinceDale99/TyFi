@@ -1,0 +1,16 @@
+{
+  "name": "tyfi-weather-threshold-noir",
+  "version": "1.0.0",
+  "description": "Noir (UltraHonk) version of the TyFi weather_threshold statement",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "compile": "node scripts/compile.mjs",
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "dependencies": {
+    "@aztec/bb.js": "5.2.1",
+    "@noir-lang/noir_js": "1.0.0-rc.6",
+    "circomlibjs": "0.1.7"
+  }
+}
