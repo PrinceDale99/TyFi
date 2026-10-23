@@ -1,6 +1,7 @@
 {
   "name": "typhoon-resilience-vault",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Root workspace control for TyFi",
   "private": true,
   "scripts": {
