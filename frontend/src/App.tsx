@@ -2177,7 +2177,8 @@ function App() {
                           activeTab === 'history' ? 'Claim History' : 
                             activeTab === 'marketplace' ? 'Subsidy Marketplace' : 
                               activeTab === 'docs' ? 'System Overview' :
-                                activeTab === 'zk' ? 'Zero-Knowledge Payout' : 'Vault Infrastructure'}
+                                activeTab === 'zk' ? 'Zero-Knowledge Payout' :
+                                  activeTab === 'governance' ? 'DAO Governance' : 'Vault Infrastructure'}
                   </h1>
                   <p className="text-slate-400 mt-1">
                     {activeTab === 'monitor' ? `Automated smart contracts for ${farms[0]?.farmName || 'your farms'}` :
@@ -2187,6 +2188,7 @@ function App() {
                             activeTab === 'marketplace' ? 'Fund climate resilience for verified farmers' :
                               activeTab === 'docs' ? 'How TyFi Decentralized Parametric Insurance works' :
                                 activeTab === 'zk' ? 'Prove the storm on-chain without revealing the raw sensor data' :
+                                  activeTab === 'governance' ? 'Co-op members steer the vault through on-chain proposals' :
                           'Proof of liquidity and capital reserves'}
                   </p>
                 </div>
