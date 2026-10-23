@@ -34,21 +34,38 @@ function stellar(args, { quiet = false } = {}) {
 
 /** Runs a sending CLI command; the tx hash is only printed to stderr. */
 function sendLogged(step, args) {
-  const res = spawnSync('stellar', [...args, '-v'], { encoding: 'utf8' });
+  // -v must precede `--`, after which arguments belong to the contract function.
+  const sep = args.indexOf('--');
+  const full = sep < 0 ? [...args, '-v'] : [...args.slice(0, sep), '-v', ...args.slice(sep)];
+  const res = spawnSync('stellar', full, { encoding: 'utf8' });
   if (res.status !== 0) {
     console.error(res.stderr);
     throw new Error(`${step} failed`);
   }
-  return record(step, res.stderr);
+  return record(step);
 }
 
 function invokeLogged(step, source, fn, args) {
   return sendLogged(step, ['contract', 'invoke', '--id', VAULT, '--source', source, ...NET, '--send=yes', '--', fn, ...args]);
 }
 
-function record(step, stderr) {
-  // Not the first 64-hex match: `upload` also prints the wasm hash.
-  const hash = stderr.match(/Transaction hash is ([0-9a-f]{64})/)?.[1] ?? null;
+/**
+ * The CLI's log wording is not stable across versions, so read the hash of the
+ * deployer's newest transaction from Horizon. Steps run one at a time with the
+ * deployer as source, so that is the transaction just sent.
+ */
+function latestDeployerTx() {
+  const account = stellar(['keys', 'address', 'deployer'], { quiet: true });
+  const res = spawnSync('curl', ['-s', `https://horizon-testnet.stellar.org/accounts/${account}/transactions?order=desc&limit=1`], { encoding: 'utf8' });
+  try {
+    return JSON.parse(res.stdout)._embedded.records[0].hash;
+  } catch {
+    return null;
+  }
+}
+
+function record(step) {
+  const hash = latestDeployerTx();
   log.steps.push({ step, txHash: hash, explorerUrl: hash && `https://stellar.expert/explorer/testnet/tx/${hash}`, at: new Date().toISOString() });
   save();
   console.log(`✔ ${step}${hash ? `  tx ${hash}` : ''}`);
