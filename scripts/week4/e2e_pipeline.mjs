@@ -22,7 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { execSync, spawnSync } from 'node:child_process';
-import { DAO, TxLog, VAULT, XLM_SAC, addressOf, adminSigs, invoke, root, view } from './lib.mjs';
+import { DAO, ID, TxLog, VAULT, XLM_SAC, addressOf, adminSigs, invoke, root, view } from './lib.mjs';
 
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
@@ -130,13 +130,13 @@ async function stage() {
 
     // 2. Fund it from the co-op treasury account.
     if (!log.has('fund_wallet')) {
-      const { hash } = invoke(XLM_SAC, 'freighter_wallet', 'transfer', ['--from', addressOf('freighter_wallet'), '--to', wallet, '--amount', String(BigInt(FUND_XLM) * 10_000_000n)]);
-      log.record('fund_wallet', { hash, actor: 'co-op treasury (freighter_wallet)', amountXlm: FUND_XLM });
+      const { hash } = invoke(XLM_SAC, ID.funder, 'transfer', ['--from', addressOf(ID.funder), '--to', wallet, '--amount', String(BigInt(FUND_XLM) * 10_000_000n)]);
+      log.record('fund_wallet', { hash, actor: `co-op treasury (${ID.funder})`, amountXlm: FUND_XLM });
     }
 
     // 3. Co-op admin verifies the farmer (vault admin multisig).
     if (!log.has('verify_farmer')) {
-      const { hash } = invoke(VAULT, 'deployer', 'verify_farmer', ['--signatures', adminSigs('verify_farmer'), '--farmer', wallet, '--is_verified', 'true']);
+      const { hash } = invoke(VAULT, ID.deployer, 'verify_farmer', ['--signatures', adminSigs('verify_farmer'), '--farmer', wallet, '--is_verified', 'true']);
       log.record('verify_farmer', { hash, actor: 'vault admin multisig' });
     }
 
@@ -155,19 +155,19 @@ async function stage() {
     // 6. Co-op proposal: raise the region's premium multiplier.
     if (!log.has('create_proposal')) {
       const before = view(VAULT, 'get_premium_rate', ['--region', REGION]);
-      const { hash, result } = invoke(DAO, 'freighter_wallet', 'create_proposal', [
-        '--creator', addressOf('freighter_wallet'),
+      const { hash, result } = invoke(DAO, ID.funder, 'create_proposal', [
+        '--creator', addressOf(ID.funder),
         '--description', `Raise the ${REGION} premium multiplier to ${PROPOSAL.multiplier} after the 2026 typhoon season`,
         '--action_type', 'UpdatePremiumRate',
         '--param_value', String(PROPOSAL.multiplier),
         '--param_region', REGION,
-        '--param_oracle', addressOf('freighter_wallet'),
+        '--param_oracle', addressOf(ID.funder),
         '--param_oracle_active', '0',
         '--duration_ledgers', String(PROPOSAL.votingLedgers),
       ]);
       const proposalId = Number(result.replace(/"/g, ''));
       log.data.proposalId = proposalId;
-      log.record('create_proposal', { hash, actor: 'co-op member (freighter_wallet)', proposalId, premiumRateBefore: Number(before.replace(/"/g, '')) });
+      log.record('create_proposal', { hash, actor: `co-op member (${ID.funder})`, proposalId, premiumRateBefore: Number(before.replace(/"/g, '')) });
     }
     const proposalId = log.data.proposalId;
 
@@ -176,8 +176,10 @@ async function stage() {
       const hash = await inApp(page, 'voteOnDaoProposal', proposalId, true, 'testnet', wallet);
       log.record('passkey_vote', { hash, actor: 'passkey wallet', proposalId, support: true });
     }
-    for (const voter of ['freighter_wallet', 'deployer']) {
+    for (const voter of [ID.funder, ID.deployer]) {
       if (log.has(`vote_${voter}`)) continue;
+      // On a fresh deployment these accounts may hold no LP shares (vote would fail with NoVotingPower).
+      if (view(VAULT, 'get_lp_shares', ['--lp', addressOf(voter)]).replace(/"/g, '') === '0') continue;
       const { hash } = invoke(DAO, voter, 'vote', ['--voter', addressOf(voter), '--proposal_id', String(proposalId), '--support', 'true']);
       log.record(`vote_${voter}`, { hash, actor: `co-op LP (${voter})`, proposalId, support: true });
     }
@@ -201,13 +203,13 @@ function status() {
 }
 
 function settle() {
-  const { hash, result } = invoke(DAO, 'deployer', 'execute_proposal', ['--proposal_id', String(log.data.proposalId)]);
+  const { hash, result } = invoke(DAO, ID.deployer, 'execute_proposal', ['--proposal_id', String(log.data.proposalId)]);
   log.record('execute_proposal', { hash, actor: 'anyone (deployer)', status: result });
 }
 
 function finalize() {
   const before = Number(view(VAULT, 'get_premium_rate', ['--region', REGION]).replace(/"/g, ''));
-  const { hash } = invoke(DAO, 'deployer', 'finalize_proposal', ['--caller', addressOf('deployer'), '--proposal_id', String(log.data.proposalId)]);
+  const { hash } = invoke(DAO, ID.deployer, 'finalize_proposal', ['--caller', addressOf(ID.deployer), '--proposal_id', String(log.data.proposalId)]);
   const after = Number(view(VAULT, 'get_premium_rate', ['--region', REGION]).replace(/"/g, ''));
   log.record('finalize_proposal_cross_contract', { hash, actor: 'DAO executor (deployer)', premiumRateBefore: before, premiumRateAfter: after });
 }
