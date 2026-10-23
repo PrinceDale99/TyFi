@@ -87,6 +87,14 @@
       "proposalId": 6,
       "support": true,
       "at": "2026-10-23T14:29:33.954Z"
+    },
+    {
+      "step": "execute_proposal",
+      "actor": "anyone (deployer)",
+      "txHash": "49ba704b8575db2320779a05aebc31cf9bfc051f37f67611f907a14398ca4ba5",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/49ba704b8575db2320779a05aebc31cf9bfc051f37f67611f907a14398ca4ba5",
+      "status": "\"TimelockPending\"",
+      "at": "2026-10-23T14:43:32.432Z"
     }
   ],
   "wallet": "CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5",
