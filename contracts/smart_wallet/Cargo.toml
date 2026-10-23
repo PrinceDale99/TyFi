@@ -2,6 +2,7 @@
 name = "smart_wallet"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 description = "TyFi seedless smart wallet: a Soroban custom account authorized by WebAuthn secp256r1 passkeys"
 
 [lib]
