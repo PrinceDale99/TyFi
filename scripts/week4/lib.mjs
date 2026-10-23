@@ -8,8 +8,17 @@ import { Keypair } from '@stellar/stellar-sdk';
 
 export const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1')), '..', '..');
 export const NET = ['--network', 'testnet'];
-export const VAULT = 'CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR';
-export const DAO = 'CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY';
+// Defaults are the TyFi testnet deployment; override to run against your own.
+export const VAULT = process.env.VAULT_ID || 'CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR';
+export const DAO = process.env.DAO_ID || 'CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY';
+
+/** stellar CLI identity names (`stellar keys ls`). */
+export const ID = {
+  deployer: process.env.DEPLOYER || 'deployer', //            pays fees; DAO admin/executor
+  admin: process.env.ADMIN_IDENTITY || 'admin', //            vault admin multisig signer
+  funder: process.env.FUNDER || 'freighter_wallet', //        co-op treasury and LP voter
+  oracle: process.env.ORACLE_IDENTITY || 'tyfi_zk_oracle', // submits ZK weather reports
+};
 export const XLM_SAC = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 export const explorerTx = (hash) => `https://stellar.expert/explorer/testnet/tx/${hash}`;
 
@@ -27,7 +36,16 @@ export function secretOf(identity) {
 
 /** Read-only contract call (simulated, never sent). */
 export function view(contract, fn, args = []) {
-  return stellar(['contract', 'invoke', '--id', contract, '--source', 'deployer', ...NET, '--send=no', '--', fn, ...args], { quiet: true });
+  return stellar(['contract', 'invoke', '--id', contract, '--source', ID.deployer, ...NET, '--send=no', '--', fn, ...args], { quiet: true });
+}
+
+/** Runs a sending CLI command and returns the tx hash of `source`'s newest transaction. */
+export function sendCli(source, args) {
+  const res = spawnSync('stellar', args, { encoding: 'utf8' });
+  if (res.status !== 0) {
+    throw new Error(`stellar ${args.slice(0, 2).join(' ')} failed:\n${res.stderr}`);
+  }
+  return latestTx(addressOf(source));
 }
 
 /** Hash of `account`'s newest transaction on Horizon (the CLI's log wording is not stable). */
@@ -58,7 +76,7 @@ export function adminSigs(fnName) {
   const msg = Buffer.alloc(8);
   msg.writeBigUInt64BE(nonce);
   const digest = crypto.createHash('sha256').update(Buffer.concat([msg, Buffer.from(fnName)])).digest();
-  const admin = Keypair.fromSecret(secretOf('admin'));
+  const admin = Keypair.fromSecret(secretOf(ID.admin));
   return JSON.stringify([[admin.rawPublicKey().toString('hex'), admin.sign(digest).toString('hex')]]);
 }
 
