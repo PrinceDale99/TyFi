@@ -49,6 +49,13 @@
       "txHash": "261fa6265fa348f65c63969ea10d0a6d996f0660fe597acf8214930193af7601",
       "explorerUrl": "https://stellar.expert/explorer/testnet/tx/261fa6265fa348f65c63969ea10d0a6d996f0660fe597acf8214930193af7601",
       "at": "2026-10-23T14:22:34.193Z"
+    },
+    {
+      "step": "set_oracle_active",
+      "actor": "deployer",
+      "txHash": "67b6dfec9ce4dc8e81ef2f36a417bf85a137c22cb63b31bb5d51c0ea63291db1",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/67b6dfec9ce4dc8e81ef2f36a417bf85a137c22cb63b31bb5d51c0ea63291db1",
+      "at": "2026-10-23T14:41:22.526Z"
     }
   ],
   "wasmHash": "9ec723fa422e3810d1dd5c23246452bcd4c72b0de146c814f5286daf3ea6f477",
