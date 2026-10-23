@@ -9,7 +9,7 @@
 // generated there if absent). Every step's tx hash is written to
 // contracts/deployments/week4-zk-testnet.json. Steps that already took effect
 // on-chain are skipped, so the script is safe to re-run.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,23 +31,24 @@ function stellar(args, { quiet = false } = {}) {
   return out.trim();
 }
 
-function invokeLogged(step, source, fn, args) {
-  try {
-    const out = execFileSync(
-      'stellar',
-      ['contract', 'invoke', '--id', VAULT, '--source', source, ...NET, '--send=yes', '-v', '--', fn, ...args],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-    );
-    return record(step, out, '');
-  } catch (e) {
-    console.error(e.stderr?.toString() ?? e.message);
+/** Runs a sending CLI command; the tx hash is only printed to stderr. */
+function sendLogged(step, args) {
+  const res = spawnSync('stellar', [...args, '-v'], { encoding: 'utf8' });
+  if (res.status !== 0) {
+    console.error(res.stderr);
     throw new Error(`${step} failed`);
   }
+  return record(step, res.stderr);
 }
 
-function record(step, stdout, stderr) {
-  const hash = (stdout + stderr).match(/\b[0-9a-f]{64}\b/)?.[0];
-  log.steps.push({ step, txHash: hash ?? null, at: new Date().toISOString() });
+function invokeLogged(step, source, fn, args) {
+  return sendLogged(step, ['contract', 'invoke', '--id', VAULT, '--source', source, ...NET, '--send=yes', '--', fn, ...args]);
+}
+
+function record(step, stderr) {
+  // Not the first 64-hex match: `upload` also prints the wasm hash.
+  const hash = stderr.match(/Transaction hash is ([0-9a-f]{64})/)?.[1] ?? null;
+  log.steps.push({ step, txHash: hash, explorerUrl: hash && `https://stellar.expert/explorer/testnet/tx/${hash}`, at: new Date().toISOString() });
   save();
   console.log(`✔ ${step}${hash ? `  tx ${hash}` : ''}`);
   return hash;
@@ -103,8 +104,7 @@ async function main() {
   log.wasmHash = wasmHash;
   log.wasmSizeBytes = fs.statSync(WASM).size;
   if (!log.steps.some((s) => s.step === 'upload_wasm')) {
-    const out = execFileSync('stellar', ['contract', 'upload', '--wasm', WASM, '--source', 'deployer', ...NET, '-v'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-    record('upload_wasm', out, '');
+    sendLogged('upload_wasm', ['contract', 'upload', '--wasm', WASM, '--source', 'deployer', ...NET]);
   }
 
   // 2. Upgrade in place, then 3. repair the multisig straight away.
