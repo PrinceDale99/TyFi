@@ -215,7 +215,7 @@ oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
 // meets a payout band, and submits the proof to the vault's on-chain verifier.
 // ==========================================
 oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
-  const { paymentPrefs, network = 'testnet' } = req.body;
+  const { network = 'testnet' } = req.body;
   const parsed = parseWeatherTrigger(req.body);
   if ('error' in parsed) {
     return res.status(400).json({ error: parsed.error });
@@ -260,54 +260,16 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
     });
   }
 
-  try {
-    const amountPHP = req.body.amountPHP || 15000;
-    
-    // PROACTIVE SMS ALERTS for Sandbox Simulation
-    const db = getDb();
-    if (db) {
-      try {
-        const farmersSnapshot = await db.collection('farmers').get();
-        for (const doc of farmersSnapshot.docs) {
-          const farmer = doc.data();
-          if (farmer.phoneNumber) {
-            const dynamicPayout = farmer.insuredValue || 15000;
-            const msg = `🚨 TyFi Alert: A severe typhoon has been detected in your registered region. Your estimated farm damage compensation is PHP ${dynamicPayout}. \n\nType CLAIM to begin assessment, or type AUTO CLAIM for instant payout. Stay safe!`;
-            await sendSms(farmer.phoneNumber, msg).catch(e => console.error("Proactive SMS failed", e));
-          }
-        }
-      } catch (e) {
-        console.error("Failed to query farmers for proactive SMS", e);
-      }
-    }
-
-    let pdaxTxId = "PENDING";
-    try {
-      await logEvent('INFO', 'Initiating payout via safeInitiatePayout', { amountPHP, paymentPrefs });
-      const result = await safeInitiatePayout(amountPHP, paymentPrefs, {
-        source: 'WEATHER_TRIGGER_SANDBOX'
-      });
-      pdaxTxId = result.txId;
-      await logEvent('INFO', `Payout result: ${result.mode}`, { txId: result.txId });
-    } catch (pdaxError: any) {
-      await logEvent('ERROR', 'Payout failed unexpectedly', { error: pdaxError.message });
-      pdaxTxId = 'FAILED';
-    }
-
-    res.json({
-      status: 'success',
-      txHash,
-      pdaxTxId,
-      amountPHP,
-      typhoonId: parsed.typhoonId,
-      region: parsed.region,
-      windFloor: parsed.windFloor,
-      damagePercentage: parsed.damagePercentage,
-      zk,
-    });
-  } catch (err: any) {
-    // The proof is already verified on-chain; only the off-chain follow-ups failed.
-    await logEvent('ERROR', 'Post-verification follow-up failed', { error: err.message, txHash });
-    res.json({ status: 'verified', txHash, zk, warning: 'Alerts or fiat payout failed after on-chain verification' });
-  }
+  // The payout itself is the farmer's on-chain claim_payout against this
+  // consensus. The sandbox no longer texts every registered farmer or queues
+  // a fiat sweep on each trigger: the endpoint is public.
+  res.json({
+    status: 'success',
+    txHash,
+    typhoonId: parsed.typhoonId,
+    region: parsed.region,
+    windFloor: parsed.windFloor,
+    damagePercentage: parsed.damagePercentage,
+    zk,
+  });
 });
