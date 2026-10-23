@@ -1,0 +1,94 @@
+{
+  "network": "testnet",
+  "vault": "CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
+  "dao": "CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY",
+  "scenario": {
+    "region": "Eastern_Visayas",
+    "farmId": "TYFI_COOP_FARM_01",
+    "season": "Wet Season 2026",
+    "typhoon": "ODETTE_2026",
+    "premiumMultiplier": 125
+  },
+  "steps": [
+    {
+      "step": "passkey_wallet_created",
+      "actor": "passkey (virtual authenticator)",
+      "txHash": "ba3aec2b2cbe775d9467dddd547f4239a347331cd321135b8c0be8e3d25fe696",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/ba3aec2b2cbe775d9467dddd547f4239a347331cd321135b8c0be8e3d25fe696",
+      "wallet": "CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5",
+      "at": "2026-10-23T14:27:07.396Z"
+    },
+    {
+      "step": "fund_wallet",
+      "actor": "co-op treasury (freighter_wallet)",
+      "txHash": "44754883de05e9fc116f2fa6cb1f5ce6d9c0f7fb7c5d7d00203b92957cadc282",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/44754883de05e9fc116f2fa6cb1f5ce6d9c0f7fb7c5d7d00203b92957cadc282",
+      "amountXlm": 3000,
+      "at": "2026-10-23T14:27:12.366Z"
+    },
+    {
+      "step": "verify_farmer",
+      "actor": "vault admin multisig",
+      "txHash": "7b0944b8457faa339b94ede5b1432c1fc393a9ceb32834380667d8d65dcb1df2",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/7b0944b8457faa339b94ede5b1432c1fc393a9ceb32834380667d8d65dcb1df2",
+      "at": "2026-10-23T14:27:26.696Z"
+    },
+    {
+      "step": "passkey_deposit_lp",
+      "actor": "passkey wallet",
+      "txHash": "77b166e4156a547068fad9ee6a1778f3d9d5e05b3bb59d7c4337e22b2ab91bc3",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/77b166e4156a547068fad9ee6a1778f3d9d5e05b3bb59d7c4337e22b2ab91bc3",
+      "amountXlm": 1500,
+      "lpShares": "\"15000000000\"",
+      "at": "2026-10-23T14:27:37.806Z"
+    },
+    {
+      "step": "passkey_subscribe_policy",
+      "actor": "passkey wallet",
+      "txHash": "00896d37e2204b45caad32d6a20af96c38137bc3805acd0519b8f5b540ca0f2e",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/00896d37e2204b45caad32d6a20af96c38137bc3805acd0519b8f5b540ca0f2e",
+      "farmId": "TYFI_COOP_FARM_01",
+      "region": "Eastern_Visayas",
+      "premiumStroops": "200000000",
+      "at": "2026-10-23T14:27:47.847Z"
+    },
+    {
+      "step": "create_proposal",
+      "actor": "co-op member (freighter_wallet)",
+      "txHash": "50350b755a3a5300036dfd6dc117c4738da9fbe4c82dbc8fee5ec3f23de992c9",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/50350b755a3a5300036dfd6dc117c4738da9fbe4c82dbc8fee5ec3f23de992c9",
+      "proposalId": 6,
+      "premiumRateBefore": 100,
+      "at": "2026-10-23T14:27:58.559Z"
+    },
+    {
+      "step": "passkey_vote",
+      "actor": "passkey wallet",
+      "txHash": "9988d264d300d9b7c46ff2f131ecafd8d80911f1664db3ec1130509b852d501d",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/9988d264d300d9b7c46ff2f131ecafd8d80911f1664db3ec1130509b852d501d",
+      "proposalId": 6,
+      "support": true,
+      "at": "2026-10-23T14:29:17.006Z"
+    },
+    {
+      "step": "vote_freighter_wallet",
+      "actor": "co-op LP (freighter_wallet)",
+      "txHash": "a25edf5e244e311bee41646ed1f952943c82e315a888a1839bc0188da6d7d8ce",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/a25edf5e244e311bee41646ed1f952943c82e315a888a1839bc0188da6d7d8ce",
+      "proposalId": 6,
+      "support": true,
+      "at": "2026-10-23T14:29:24.086Z"
+    },
+    {
+      "step": "vote_deployer",
+      "actor": "co-op LP (deployer)",
+      "txHash": "833270546bdf5bc9de8122586057b60f00fdd2aa34acda3480a36648b2eef6ce",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/833270546bdf5bc9de8122586057b60f00fdd2aa34acda3480a36648b2eef6ce",
+      "proposalId": 6,
+      "support": true,
+      "at": "2026-10-23T14:29:33.954Z"
+    }
+  ],
+  "wallet": "CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5",
+  "proposalId": 6
+}
