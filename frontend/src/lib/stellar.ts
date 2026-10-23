@@ -43,11 +43,12 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
   testnet: {
     name: 'Testnet',
     xlmTokenId: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
-    vaultContractId: 'CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR',
+    // Overridable so reviewers can point the app at their own deployment (docs/REPLICATION_GUIDE.md).
+    vaultContractId: import.meta.env.VITE_TESTNET_VAULT_ID || 'CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR',
     horizonUrl: 'https://horizon-testnet.stellar.org',
     sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
     passphrase: Networks.TESTNET,
-    daoContractId: 'CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY', // Week 2 testnet DAO (see contracts/deployments/testnet.json)
+    daoContractId: import.meta.env.VITE_TESTNET_DAO_ID || 'CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY', // Week 2 testnet DAO (see contracts/deployments/testnet.json)
   },
   mainnet: {
     name: 'Mainnet',
