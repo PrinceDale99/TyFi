@@ -329,7 +329,8 @@ export const registerPolicyOnChain = async (
   network: 'testnet' | 'mainnet' = 'testnet'
 ) => {
   try {
-    await executeTrackedTx(
+    // Returns the tx hash (truthy, so existing `if (await ...)` callers still work).
+    return await executeTrackedTx(
       { action: 'subscribe_policy', network, walletAddress: farmer, region, season },
       async (server, config) => {
         // subscribe(farmer, farm_id, region, season, premium)
@@ -350,7 +351,6 @@ export const registerPolicyOnChain = async (
           .build();
       }
     );
-    return true;
   } catch (error: any) {
     console.error(`[${network.toUpperCase()}] Blockchain registration error:`, error);
     throw error;
