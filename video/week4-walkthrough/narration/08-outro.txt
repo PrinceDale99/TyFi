@@ -1,0 +1,1 @@
+Every step has a testnet transaction you can open on Stellar Expert. The contracts, the app, the oracle and both circuits are open source under the MIT license, with a replication guide to run all of it yourself. That's TyFi.

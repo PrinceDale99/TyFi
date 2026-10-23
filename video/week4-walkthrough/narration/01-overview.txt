@@ -1,0 +1,1 @@
+A farmer signs in with a passkey, with no seed phrase. The farming co-op governs the insurance vault through a DAO. When a typhoon hits, an oracle proves the storm crossed a payout threshold with a zero-knowledge proof, the vault verifies that proof on-chain, and the payout lands in the farmer's wallet.
