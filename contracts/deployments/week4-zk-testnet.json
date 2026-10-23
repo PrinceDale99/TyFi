@@ -1,0 +1,53 @@
+{
+  "network": "testnet",
+  "vault": "CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
+  "steps": [
+    {
+      "step": "upload_wasm",
+      "txHash": "fdb732d6943b6a865c928acf9d28b7ac2ca88bcdea9c28e0375bf25f6b327ac2",
+      "at": "2026-10-23T14:02:27.110Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/fdb732d6943b6a865c928acf9d28b7ac2ca88bcdea9c28e0375bf25f6b327ac2"
+    },
+    {
+      "step": "upgrade_vault",
+      "txHash": "6d46601e285b44bf5374562bd3bfe09ecc77a4e9b8c64776c8f56c96c2e49e19",
+      "at": "2026-10-23T14:02:36.611Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/6d46601e285b44bf5374562bd3bfe09ecc77a4e9b8c64776c8f56c96c2e49e19"
+    },
+    {
+      "step": "rotate_admin_multisig",
+      "txHash": "1d4fd139e26a02f105b6233dce4a2c134f3ea03322ce0d58364e6e326120e62b",
+      "at": "2026-10-23T14:02:41.465Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/1d4fd139e26a02f105b6233dce4a2c134f3ea03322ce0d58364e6e326120e62b"
+    },
+    {
+      "step": "set_zk_verifying_key",
+      "txHash": "b8d75f5fb8444f4f74d5bcd09028dcade5ee0476432e0c68e34a8bf5d720cb87",
+      "at": "2026-10-23T14:03:02.431Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/b8d75f5fb8444f4f74d5bcd09028dcade5ee0476432e0c68e34a8bf5d720cb87"
+    },
+    {
+      "step": "set_oracle_active",
+      "txHash": "513a678fa4a103ba7bff0d7eb6f261395e4bba4013b9524fcba37a12164d6979",
+      "at": "2026-10-23T14:03:12.369Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/513a678fa4a103ba7bff0d7eb6f261395e4bba4013b9524fcba37a12164d6979"
+    },
+    {
+      "step": "set_oracle_zk_key",
+      "txHash": "8d0b8245cd7f0228977b9ea61a2d0a507d716fb5b4f66b7b5696cd2824993257",
+      "at": "2026-10-23T14:03:32.621Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/8d0b8245cd7f0228977b9ea61a2d0a507d716fb5b4f66b7b5696cd2824993257"
+    }
+  ],
+  "wasmHash": "9ec723fa422e3810d1dd5c23246452bcd4c72b0de146c814f5286daf3ea6f477",
+  "wasmSizeBytes": 54558,
+  "adminMultisig": {
+    "keys": [
+      "b86604caf8e86ba6c629125b188dbed86da9d901d3bb68c66e93bc440edc0a23"
+    ],
+    "threshold": 1,
+    "signer": "GC4GMBGK7DUGXJWGFEJFWGENX3MG3KOZAHJ3W2GGN2J3YRAO3QFCHNGC"
+  },
+  "oracle": "GAOYA37UORCXQSC2TIYL3OHUV3GSRXQY2JACGJ5OV3UWCF2TGO74Z4RQ",
+  "oracleZkKeyHash": "16903983959979666084249553466291075550611473209871867804533960125777664860862"
+}
