@@ -37,6 +37,18 @@
       "txHash": "8d0b8245cd7f0228977b9ea61a2d0a507d716fb5b4f66b7b5696cd2824993257",
       "at": "2026-10-23T14:03:32.621Z",
       "explorerUrl": "https://stellar.expert/explorer/testnet/tx/8d0b8245cd7f0228977b9ea61a2d0a507d716fb5b4f66b7b5696cd2824993257"
+    },
+    {
+      "step": "set_oracle_active",
+      "txHash": "a9af4e87d33444ee06231ecd6761e22742ebf388f6326f04b8bf00e40ff2f629",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/a9af4e87d33444ee06231ecd6761e22742ebf388f6326f04b8bf00e40ff2f629",
+      "at": "2026-10-23T14:22:17.687Z"
+    },
+    {
+      "step": "set_dao_address",
+      "txHash": "261fa6265fa348f65c63969ea10d0a6d996f0660fe597acf8214930193af7601",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/261fa6265fa348f65c63969ea10d0a6d996f0660fe597acf8214930193af7601",
+      "at": "2026-10-23T14:22:34.193Z"
     }
   ],
   "wasmHash": "9ec723fa422e3810d1dd5c23246452bcd4c72b0de146c814f5286daf3ea6f477",
@@ -49,5 +61,6 @@
     "signer": "GC4GMBGK7DUGXJWGFEJFWGENX3MG3KOZAHJ3W2GGN2J3YRAO3QFCHNGC"
   },
   "oracle": "GAOYA37UORCXQSC2TIYL3OHUV3GSRXQY2JACGJ5OV3UWCF2TGO74Z4RQ",
-  "oracleZkKeyHash": "16903983959979666084249553466291075550611473209871867804533960125777664860862"
+  "oracleZkKeyHash": "16903983959979666084249553466291075550611473209871867804533960125777664860862",
+  "dao": "CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY"
 }
