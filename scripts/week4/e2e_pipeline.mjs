@@ -12,6 +12,8 @@
 //   stage     create + fund the wallet, verify it as a farmer, deposit LP,
 //             subscribe a policy, open the proposal and cast the co-op votes
 //   settle    after the voting deadline: execute_proposal (starts the timelock)
+//   grant-executor  DAO admin gives the passkey wallet the Executor role, so
+//             the farmer (not an operator key) applies the decision
 //   finalize  after the timelock: finalize_proposal -> vault update_premium_rate
 //   payout    oracle proves the storm on-chain, the farmer claims
 //
@@ -207,11 +209,34 @@ function settle() {
   log.record('execute_proposal', { hash, actor: 'anyone (deployer)', status: result });
 }
 
-function finalize() {
+/** The co-op (DAO admin) designates the farmer's passkey wallet as an executor. */
+function grantExecutor() {
+  const { wallet } = loadState();
+  if (log.has('grant_executor_role')) return;
+  const { hash } = invoke(DAO, ID.deployer, 'grant_role', ['--caller', addressOf(ID.deployer), '--target', wallet, '--role', 'Executor']);
+  log.record('grant_executor_role', { hash, actor: 'DAO admin', target: wallet, role: 'Executor' });
+}
+
+async function finalize() {
+  const state = loadState();
   const before = Number(view(VAULT, 'get_premium_rate', ['--region', REGION]).replace(/"/g, ''));
-  const { hash } = invoke(DAO, ID.deployer, 'finalize_proposal', ['--caller', addressOf(ID.deployer), '--proposal_id', String(log.data.proposalId)]);
+  const role = view(DAO, 'get_role', ['--addr', state.wallet]);
+  let hash, actor;
+  if (/Executor|Admin/.test(role)) {
+    // The farmer's passkey wallet applies the co-op's decision.
+    const { browser, page } = await openApp(state);
+    try {
+      hash = await inApp(page, 'finalizeDaoProposal', log.data.proposalId, 'testnet', state.wallet);
+      actor = 'passkey wallet (DAO executor)';
+    } finally {
+      await browser.close();
+    }
+  } else {
+    hash = invoke(DAO, ID.deployer, 'finalize_proposal', ['--caller', addressOf(ID.deployer), '--proposal_id', String(log.data.proposalId)]).hash;
+    actor = `DAO executor (${ID.deployer})`;
+  }
   const after = Number(view(VAULT, 'get_premium_rate', ['--region', REGION]).replace(/"/g, ''));
-  log.record('finalize_proposal_cross_contract', { hash, actor: 'DAO executor (deployer)', premiumRateBefore: before, premiumRateAfter: after });
+  log.record('finalize_proposal_cross_contract', { hash, actor, premiumRateBefore: before, premiumRateAfter: after });
 }
 
 async function payout() {
@@ -247,7 +272,7 @@ async function payout() {
   }
 }
 
-const phases = { stage, settle, finalize, payout, status };
+const phases = { stage, settle, 'grant-executor': grantExecutor, finalize, payout, status };
 const phase = process.argv[2];
 if (!phases[phase]) {
   console.error(`usage: node scripts/week4/e2e_pipeline.mjs <${Object.keys(phases).join('|')}>`);
