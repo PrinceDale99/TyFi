@@ -95,6 +95,15 @@
       "explorerUrl": "https://stellar.expert/explorer/testnet/tx/49ba704b8575db2320779a05aebc31cf9bfc051f37f67611f907a14398ca4ba5",
       "status": "\"TimelockPending\"",
       "at": "2026-10-23T14:43:32.432Z"
+    },
+    {
+      "step": "grant_executor_role",
+      "actor": "DAO admin",
+      "txHash": "6d584eb63e96240b1b1efffee07301daa25bec17c18f4f089e19c9481387a3d6",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/6d584eb63e96240b1b1efffee07301daa25bec17c18f4f089e19c9481387a3d6",
+      "target": "CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5",
+      "role": "Executor",
+      "at": "2026-10-23T14:57:57.554Z"
     }
   ],
   "wallet": "CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5",
