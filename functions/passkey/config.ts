@@ -28,7 +28,9 @@ export interface PasskeyConfig {
   sessionSecret?: string;
 }
 
-const DEFAULT_MAX_FEE_STROOPS = 5_000_000; // 0.5 XLM
+// 1 XLM. A DAO vote (cross-contract LP-share lookup + vote record writes)
+// prepares at ~0.59 XLM including the 0.1 XLM inclusion fee, over the old 0.5 cap.
+const DEFAULT_MAX_FEE_STROOPS = 10_000_000;
 
 export type ConfigResult = { ok: true; config: PasskeyConfig } | { ok: false; reason: string };
 
