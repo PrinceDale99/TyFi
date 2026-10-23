@@ -17,6 +17,7 @@ import { Keypair } from '@stellar/stellar-sdk';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1')), '..', '..');
 const VAULT = 'CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR';
+const DAO = 'CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY';
 const BUILT_WASM = path.join(root, 'contracts', 'target', 'wasm32v1-none', 'release', 'typhoon_resilience_vault.wasm');
 const WASM = path.join(root, 'contracts', 'target', 'typhoon_resilience_vault.optimized.wasm');
 const ENV_FILE = path.join(root, 'functions', '.env');
@@ -167,6 +168,15 @@ async function main() {
   if (view('get_oracle_zk_key', ['--oracle', oracle]).replace(/"/g, '') !== keyHash) {
     invokeLogged('set_oracle_zk_key', 'deployer', 'set_oracle_zk_key', ['--signatures', adminSigs('set_oracle_zk_key'), '--oracle', oracle, '--key_hash', keyHash]);
   }
+
+  // 6. Link the DAO so finalize_proposal's cross-contract calls are accepted.
+  //    The vault has no getter for it, so read its instance storage directly.
+  const instance = stellar(['contract', 'read', '--id', VAULT, ...NET, '--durability', 'persistent', '--output', 'json'], { quiet: true });
+  if (!new RegExp(`DaoAddress[\\s\\S]{0,300}${DAO}`).test(instance)) {
+    invokeLogged('set_dao_address', 'deployer', 'set_dao_address', ['--signatures', adminSigs('set_dao_address'), '--dao', DAO]);
+  }
+  log.dao = DAO;
+  save();
 
   console.log(`\nDone. Log: ${path.relative(root, OUT)}`);
 }
