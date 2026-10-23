@@ -14,7 +14,7 @@ interface GovernancePortalProps {
 }
 
 import {
-  NETWORK_CONFIGS, voteOnDaoProposal, createDaoProposal, isUserRejection, describeDaoError,
+  NETWORK_CONFIGS, voteOnDaoProposal, createDaoProposal, settleDaoProposal, finalizeDaoProposal, isUserRejection, describeDaoError,
   DAO_ADMIN_ONLY_ACTIONS, DAO_MIN_PROPOSAL_SHARES,
   type DaoActionType, type DaoProposalStatus, type DaoRole,
 } from '../lib/stellar';
@@ -358,6 +358,39 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     }
   };
 
+  const [finalizingId, setFinalizingId] = useState<number | null>(null);
+  const canExecute = daoRole === 'Executor' || daoRole === 'Admin';
+
+  /**
+   * Applies a passed proposal to the vault. finalize_proposal only accepts
+   * proposals that execute_proposal has settled, so settle first when needed.
+   */
+  const handleFinalize = async (id: number) => {
+    if (!walletAddress) return;
+    const passphrase = NETWORK_CONFIGS[network].passphrase;
+    const sign = (xdr: string) => signWithFreighter(xdr, passphrase);
+    setFinalizingId(id);
+    try {
+      showToast(`Applying proposal ${id} to the vault...`, "info");
+      try {
+        await finalizeDaoProposal(id, network, walletAddress, sign);
+      } catch (e) {
+        // DaoError::ProposalFailed (#10): not settled yet.
+        if (!/Error\(Contract, #10\)/.test(String((e as any)?.message ?? e))) throw e;
+        await settleDaoProposal(id, network, walletAddress, sign);
+        await finalizeDaoProposal(id, network, walletAddress, sign);
+      }
+      capturePostHogEvent('governance_proposal_finalized', { proposal_id: id, network });
+      showToast(`Proposal ${id} executed: the DAO updated the vault on-chain.`, "success");
+      refreshGovernance();
+    } catch (e) {
+      console.error("Finalize failed", e);
+      showToast(isUserRejection(e) ? "Finalize cancelled in wallet." : describeDaoError(e) ?? "Finalize failed. Check console for details.", "error");
+    } finally {
+      setFinalizingId(null);
+    }
+  };
+
   const selectedAction = ACTION_OPTIONS.find(a => a.value === proposalForm.actionType)!;
   const isAdmin = daoRole === 'Admin';
   const canProposeSelected = DAO_ADMIN_ONLY_ACTIONS.includes(proposalForm.actionType)
@@ -623,6 +656,30 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                         >
                           <XCircle size={16} /> Vote Against
                         </button>
+                      </div>
+                    )}
+
+                    {status === 'TimelockPending' && (
+                      <div className="mt-6 pt-6 border-t border-white/5 text-xs font-bold text-indigo-300 flex items-center gap-2">
+                        <Clock size={14} /> Passed — can be applied to the vault once the timelock ends.
+                      </div>
+                    )}
+
+                    {status === 'Passed' && (
+                      <div className="mt-6 pt-6 border-t border-white/5">
+                        {canExecute ? (
+                          <button
+                            onClick={() => handleFinalize(proposal.id)}
+                            disabled={finalizingId !== null}
+                            className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black uppercase tracking-wider text-xs transition-all flex justify-center items-center gap-2 disabled:opacity-50"
+                          >
+                            {finalizingId === proposal.id
+                              ? <><Loader2 size={16} className="animate-spin" /> Applying to vault…</>
+                              : <><ShieldCheck size={16} /> Finalize &amp; apply to vault</>}
+                          </button>
+                        ) : (
+                          <p className="text-xs font-bold text-slate-400">Timelock over — waiting for a DAO executor to apply it to the vault.</p>
+                        )}
                       </div>
                     )}
                   </div>
