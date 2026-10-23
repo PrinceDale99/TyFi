@@ -1,6 +1,7 @@
 {
   "name": "tyfi-weather-threshold-circuit",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Groth16 (BN254) circuit proving a signed oracle wind reading crossed the payout threshold",
   "private": true,
   "scripts": {
