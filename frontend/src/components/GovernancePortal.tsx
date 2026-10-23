@@ -340,7 +340,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     }
 
     try {
-      showToast(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`, "info");
+      showToast(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban smart contract... Approve it in your wallet or with your passkey.`, "info");
 
       const passphrase = NETWORK_CONFIGS[network].passphrase;
       await voteOnDaoProposal(id, support, network, walletAddress, xdr => signWithFreighter(xdr, passphrase));
@@ -442,7 +442,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
     setIsSubmittingProposal(true);
     try {
-      showToast("Submitting proposal via smart contract... Please check Freighter.", "info");
+      showToast("Submitting proposal via smart contract... Approve it in your wallet or with your passkey.", "info");
       const passphrase = NETWORK_CONFIGS[network].passphrase;
       await createDaoProposal(
         walletAddress,
