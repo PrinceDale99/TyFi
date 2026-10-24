@@ -2,7 +2,7 @@
 pub mod verifier;
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, contracterror, xdr::ToXdr, Address, Env, Symbol, log, token, Vec, BytesN, Bytes, U256
+    contract, contractimpl, contracttype, contracterror, xdr::ToXdr, Address, Env, IntoVal, Symbol, log, token, Vec, BytesN, Bytes, U256
 };
 use verifier::{Groth16Proof, Groth16VerifyingKey};
 
@@ -69,6 +69,7 @@ pub enum DataKey {
     SolvencyCapBps,                     // DAO-adjustable max coverage ratio (basis points, u32)
     ZkVerifyingKey,                     // Groth16 VK for the weather_threshold circuit
     OracleZkKeyHash(Address),           // Poseidon(Ax, Ay) of the oracle's EdDSA signing key (U256)
+    NoirVerifier,                       // UltraHonk verifier contract for the Noir weather circuit
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -404,6 +405,23 @@ impl TyphoonVault {
 
     pub fn get_oracle_zk_key(env: Env, oracle: Address) -> Option<U256> {
         env.storage().persistent().get(&DataKey::OracleZkKeyHash(oracle))
+    }
+
+    /// Set the UltraHonk verifier contract (`contracts/noir_verifier`) that
+    /// checks proofs of the Noir weather circuit. Its verification key is
+    /// fixed at deployment, so pointing the vault at it pins the circuit.
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"set_noir_verifier" )`
+    pub fn set_noir_verifier(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, verifier: Address) -> Result<(), Error> {
+        require_multisig_auth(&env, b"set_noir_verifier", signatures)?;
+        env.storage().instance().set(&DataKey::NoirVerifier, &verifier);
+        log!(&env, "Noir verifier set", verifier);
+        Ok(())
+    }
+
+    pub fn get_noir_verifier(env: Env) -> Option<Address> {
+        env.storage().instance().get(&DataKey::NoirVerifier)
     }
 
     /// Official KYC/RSBSA Verification of farmers
@@ -996,6 +1014,50 @@ impl TyphoonVault {
         Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_floor)
     }
 
+    /// Submit a weather report backed by an UltraHonk proof of the Noir
+    /// weather circuit (`circuits/weather_threshold_noir`), the same statement
+    /// as `submit_weather_report_zk`. The vault builds the five public inputs
+    /// itself (32-byte big-endian, circuit order) and the verifier contract set
+    /// by `set_noir_verifier` checks the proof against its fixed key.
+    pub fn submit_weather_report_noir(
+        env: Env,
+        oracle: Address,
+        typhoon_id: Symbol,
+        region: Symbol,
+        damage_percentage: u32,
+        wind_floor: u32,
+        proof: Bytes,
+    ) -> Result<(), Error> {
+        oracle.require_auth();
+
+        let verifier: Address = env.storage().instance().get(&DataKey::NoirVerifier).ok_or(Error::ZkNotConfigured)?;
+        let key_hash: U256 = env.storage().persistent().get(&DataKey::OracleZkKeyHash(oracle.clone())).ok_or(Error::ZkNotConfigured)?;
+
+        let mut public_inputs = Bytes::new(&env);
+        for input in [
+            key_hash,
+            symbol_to_field(&env, &typhoon_id),
+            symbol_to_field(&env, &region),
+            U256::from_u32(&env, wind_floor),
+            U256::from_u32(&env, damage_percentage),
+        ] {
+            public_inputs.append(&input.to_be_bytes());
+        }
+
+        let mut args: Vec<soroban_sdk::Val> = Vec::new(&env);
+        args.push_back(public_inputs.into_val(&env));
+        args.push_back(proof.into_val(&env));
+        let verified = env.try_invoke_contract::<(), soroban_sdk::Error>(&verifier, &Symbol::new(&env, "verify_proof"), args);
+        if !matches!(verified, Ok(Ok(()))) {
+            return Err(Error::InvalidProof);
+        }
+        env.events().publish(
+            (Symbol::new(&env, "noir_report_verified"), typhoon_id.clone(), region.clone()),
+            (oracle.clone(), wind_floor, damage_percentage),
+        );
+        Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_floor)
+    }
+
     fn process_weather_report(
         env: &Env,
         oracle: &Address,
@@ -1232,3 +1294,6 @@ mod zk_fixture;
 
 #[cfg(test)]
 mod test_zk;
+
+#[cfg(test)]
+mod test_noir;
