@@ -109,7 +109,8 @@ async function click(page, handle) {
 const byText = (page, selector, text, timeout = 60_000) =>
   page.waitForFunction((sel, t) => [...document.querySelectorAll(sel)].find((e) => e.textContent.includes(t) && e.offsetParent !== null), { timeout }, selector, text);
 
-const waitText = (page, text, timeout = 180_000) => page.waitForFunction((t) => document.body.innerText.includes(t), { timeout }, text);
+// Case-insensitive: some labels are uppercased with CSS, which innerText reflects.
+const waitText = (page, text, timeout = 180_000) => page.waitForFunction((t) => document.body.innerText.toLowerCase().includes(t.toLowerCase()), { timeout }, text);
 
 async function record(page, name, fn) {
   const file = path.join(FOOTAGE, `${name}.mp4`);
@@ -127,7 +128,7 @@ async function openAsCoopFarmer(tab) {
   const state = readJson(STATE_FILE);
   if (!state.wallet) throw new Error('Run scripts/week4/e2e_pipeline.mjs stage first');
   const ctx = await launch(state.credential);
-  await ctx.page.goto(`${APP_URL}/passkey`, { waitUntil: 'networkidle2' });
+  await ctx.page.goto(`${APP_URL}/passkey`, { waitUntil: 'networkidle2', timeout: 180_000 });
   // The app's local profile for this wallet. The farm mirrors the policy the
   // pipeline subscribed on-chain (TYFI_COOP_FARM_01, Eastern Visayas, 200 XLM cover).
   await ctx.page.evaluate(({ W, session, tab }) => {
@@ -145,7 +146,7 @@ async function openAsCoopFarmer(tab) {
     }));
     localStorage.setItem('typhoon_vault_activeTab', tab);
   }, { W: state.wallet, session: state.session, tab });
-  await ctx.page.goto(`${APP_URL}/`, { waitUntil: 'networkidle2' });
+  await ctx.page.goto(`${APP_URL}/`, { waitUntil: 'networkidle2', timeout: 180_000 });
   await sleep(5000); // let live data (proposals, balances) load before recording
   return { ...ctx, state };
 }
@@ -294,6 +295,12 @@ async function proofs() {
       if (fs.existsSync(out)) continue;
       await page.goto(`https://stellar.expert/explorer/testnet/tx/${s.txHash}`, { waitUntil: 'networkidle2', timeout: 90_000 });
       await sleep(3000);
+      // Expand the invocation tree so nested cross-contract calls are visible.
+      const toggle = await page.$('.tx-effects-toggle');
+      if (toggle) {
+        await toggle.click();
+        await sleep(2500);
+      }
       await page.screenshot({ path: out, fullPage: true });
       console.log(`\u{1F4F8} ${path.relative(root, out)}`);
     }
