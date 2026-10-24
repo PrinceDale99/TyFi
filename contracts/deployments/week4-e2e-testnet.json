@@ -166,6 +166,34 @@
       "proposalId": 8,
       "support": true,
       "at": "2026-10-23T15:13:36.394Z"
+    },
+    {
+      "step": "finalize_proposal_cross_contract",
+      "actor": "passkey wallet (DAO executor)",
+      "txHash": "7fd8c2a3204d3a3457bac478be6a6ac5e3e2e47579d99fbb5628f1ca8d611cdc",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/7fd8c2a3204d3a3457bac478be6a6ac5e3e2e47579d99fbb5628f1ca8d611cdc",
+      "premiumRateBefore": 100,
+      "premiumRateAfter": 125,
+      "at": "2026-10-24T10:09:52.110Z"
+    },
+    {
+      "step": "zk_weather_report",
+      "actor": "ZK oracle (tyfi_zk_oracle)",
+      "txHash": "98eee50cf45191c9b69334c33d4729565100bfd939399f84dbfb28fe4c8ee6af",
+      "windFloor": 150,
+      "damagePercentage": 85,
+      "at": "2026-10-24T10:11:57Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/98eee50cf45191c9b69334c33d4729565100bfd939399f84dbfb28fe4c8ee6af"
+    },
+    {
+      "step": "passkey_claim_payout",
+      "actor": "passkey wallet",
+      "txHash": "d9962ba020588862def4e25f6fc348cfd8f660516d336cc726a6f1ba7d497706",
+      "payoutXlm": 170,
+      "balanceAfterStroops": "16650000000",
+      "balanceBeforeStroops": "14950000000",
+      "at": "2026-10-24T10:12:17Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/d9962ba020588862def4e25f6fc348cfd8f660516d336cc726a6f1ba7d497706"
     }
   ],
   "wallet": "CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5",
