@@ -1,71 +1,32 @@
-// Proves and verifies the Noir circuit with UltraHonk (bb.js), using a reading
-// signed by circomlibjs — the same EdDSA-Poseidon signer the TyFi oracle uses
-// for the Groth16 circuit. A pass here means one oracle signature satisfies
-// both the Circom and the Noir version of the statement.
+// Proves and verifies the Noir circuit with UltraHonk (bb.js 0.87.0, Keccak
+// transcript: the format the on-chain verifier in contracts/noir_verifier
+// accepts), using a reading signed by circomlibjs, the same EdDSA-Poseidon
+// signer the TyFi oracle uses for the Groth16 circuit. A pass here means one
+// oracle signature satisfies both the Circom and the Noir version.
 //
-// Requires target/weather_threshold_noir.json (`nargo compile`, see README).
+// Requires target/weather_threshold_noir.json (`npm run compile`, see README).
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Noir } from '@noir-lang/noir_js';
-import { Barretenberg, UltraHonkBackend } from '@aztec/bb.js';
-import { buildEddsa, buildPoseidon } from 'circomlibjs';
+import { UltraHonkBackend } from '@aztec/bb.js';
+import { signedInputs, symbolToField } from '../scripts/inputs.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const program = JSON.parse(fs.readFileSync(path.join(root, 'target', 'weather_threshold_noir.json'), 'utf8'));
+const KECCAK = { keccak: true };
 
-/**
- * Symbol -> field, matching symbol_to_field in the vault and functions/zk/encoding.ts:
- * sha256(XDR(ScVal::Symbol)) with the top byte zeroed. XDR: int32 SCV_SYMBOL (15),
- * uint32 length, bytes padded to a multiple of 4.
- */
-function symbolToField(symbol) {
-  const bytes = Buffer.from(symbol, 'ascii');
-  const xdr = Buffer.alloc(8 + Math.ceil(bytes.length / 4) * 4);
-  xdr.writeInt32BE(15, 0);
-  xdr.writeUInt32BE(bytes.length, 4);
-  bytes.copy(xdr, 8);
-  const digest = crypto.createHash('sha256').update(xdr).digest();
-  digest[0] = 0;
-  return BigInt('0x' + digest.toString('hex'));
-}
+let backend, noir;
 
-let eddsa, poseidon, api, backend, noir;
-const ORACLE_SECRET = Buffer.from('01'.repeat(32), 'hex');
-
-before(async () => {
-  [eddsa, poseidon] = await Promise.all([buildEddsa(), buildPoseidon()]);
-  api = await Barretenberg.new();
-  backend = new UltraHonkBackend(program.bytecode, api);
+before(() => {
+  backend = new UltraHonkBackend(program.bytecode, { threads: 1 });
   noir = new Noir(program);
 });
 after(async () => {
-  await api?.destroy();
+  await backend?.destroy();
 });
-
-function inputsFor({ typhoon = 'ZK_STORM', region = 'Visayas', wind = 172, floor = 150, damage = 85, secret = ORACLE_SECRET, keyHashOverride } = {}) {
-  const [ax, ay] = eddsa.prv2pub(secret).map((p) => eddsa.F.toObject(p));
-  const keyHash = keyHashOverride ?? poseidon.F.toObject(poseidon([ax, ay]));
-  const t = symbolToField(typhoon);
-  const r = symbolToField(region);
-  const sig = eddsa.signPoseidon(secret, poseidon([t, r, BigInt(wind), BigInt(damage)]));
-  return {
-    oracle_key_hash: keyHash.toString(),
-    typhoon_id: t.toString(),
-    region_id: r.toString(),
-    payout_threshold: String(floor),
-    damage_percentage: String(damage),
-    wind_speed: String(wind),
-    ax: ax.toString(),
-    ay: ay.toString(),
-    r8x: eddsa.F.toObject(sig.R8[0]).toString(),
-    r8y: eddsa.F.toObject(sig.R8[1]).toString(),
-    s: sig.S.toString(),
-  };
-}
 
 test('symbol encoding matches the vault fixture', () => {
   // TYPHOON_FIELD for "ZK_STORM" in contracts/typhoon_resilience_vault/src/zk_fixture.rs starts 0x00 0x7f 0x73 0xd4.
@@ -73,9 +34,11 @@ test('symbol encoding matches the vault fixture', () => {
 });
 
 test('a circomlibjs-signed reading above the floor proves and verifies with UltraHonk', async () => {
-  const { witness } = await noir.execute(inputsFor());
-  const proof = await backend.generateProof(witness);
-  assert.equal(await backend.verifyProof(proof), true);
+  const { witness } = await noir.execute(await signedInputs());
+  const proof = await backend.generateProof(witness, KECCAK);
+  assert.equal(await backend.verifyProof(proof, KECCAK), true);
+  // The on-chain verifier takes exactly 14,592 proof bytes.
+  assert.equal(proof.proof.length, 14592);
 
   // Public inputs come out in declaration order: key hash, typhoon, region, threshold, damage.
   assert.equal(proof.publicInputs.length, 5);
@@ -83,27 +46,32 @@ test('a circomlibjs-signed reading above the floor proves and verifies with Ultr
   assert.equal(BigInt(proof.publicInputs[4]), 85n);
 });
 
+test('the committed verification key matches the circuit', async () => {
+  const vk = await backend.getVerificationKey(KECCAK);
+  assert.ok(Buffer.from(vk).equals(fs.readFileSync(path.join(root, 'artifacts', 'vk'))), 'artifacts/vk is stale: run npm run compile');
+});
+
 test('changing a public input invalidates the proof', async () => {
-  const { witness } = await noir.execute(inputsFor());
-  const proof = await backend.generateProof(witness);
+  const { witness } = await noir.execute(await signedInputs());
+  const proof = await backend.generateProof(witness, KECCAK);
   const tampered = [...proof.publicInputs];
   tampered[4] = '0x' + (100n).toString(16).padStart(64, '0'); // claim 100% damage
-  assert.equal(await backend.verifyProof({ ...proof, publicInputs: tampered }), false);
+  assert.equal(await backend.verifyProof({ ...proof, publicInputs: tampered }, KECCAK), false);
 });
 
 test('a reading below the floor has no witness', async () => {
-  await assert.rejects(noir.execute(inputsFor({ wind: 120 })), /wind below payout threshold/);
+  await assert.rejects(noir.execute(await signedInputs({ wind: 120 })), /wind below payout threshold/);
 });
 
 test('a key other than the registered one is rejected', async () => {
-  const registered = inputsFor();
+  const registered = await signedInputs();
   await assert.rejects(
-    noir.execute(inputsFor({ secret: Buffer.from('02'.repeat(32), 'hex'), keyHashOverride: BigInt(registered.oracle_key_hash) })),
+    noir.execute(await signedInputs({ secret: Buffer.from('02'.repeat(32), 'hex'), keyHashOverride: BigInt(registered.oracle_key_hash) })),
     /unregistered oracle key/,
   );
 });
 
 test('a signature over a different reading is rejected', async () => {
-  const signedFor85 = inputsFor({ damage: 85 });
+  const signedFor85 = await signedInputs({ damage: 85 });
   await assert.rejects(noir.execute({ ...signedFor85, damage_percentage: '95' }), /bad oracle signature/);
 });

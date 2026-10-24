@@ -52,6 +52,7 @@ pub fn permute<let T: u32, let N: u32, let X: u32>(
 ) -> [Field; T] {
     let PoseidonConfig { t, rf, rp, alpha, round_constants, mds, presparse_mds, sparse_mds } =
         pos_conf;
+
     for i in 0..state.len() {
         state[i] += round_constants[i];
     }
@@ -106,6 +107,7 @@ pub fn permute<let T: u32, let N: u32, let X: u32>(
 
     state = sigma(state);
     state = apply_matrix(mds, state);
+
     state
 }
 
@@ -352,6 +354,6 @@ impl Hasher for PoseidonHasher {
 
 impl Default for PoseidonHasher {
     fn default() -> Self {
-        PoseidonHasher { _state: @[] }
+        PoseidonHasher { _state: &[] }
     }
 }
