@@ -3,19 +3,28 @@ import { ShieldCheck, AlertCircle, TrendingDown, Clock, MapPin, Loader2, Brain }
 import type { WeatherData, FarmData } from '../types';
 import { useXlmToPhp } from '../hooks/useXlmToPhp';
 import { calculateCombinedDamage } from '../utils/DamageCalculator';
+import { getClaimEligibility, type ClaimEligibility } from '../lib/stellar';
 
 interface PayoutStatusProps {
   weather: WeatherData | null;
   farms: FarmData[];
-  onClaim?: (farm: FarmData) => void;
+  onClaim?: (farm: FarmData) => void | Promise<void>;
   network?: 'testnet' | 'mainnet';
+  /** Connected wallet; when set, claims are only offered if the vault would accept them. */
+  walletAddress?: string | null;
 }
 
-const PayoutStatus: React.FC<PayoutStatusProps> = ({ weather, farms, onClaim, network = 'testnet' }) => {
+const PayoutStatus: React.FC<PayoutStatusProps> = ({ weather, farms, onClaim, network = 'testnet', walletAddress = null }) => {
   const { formatPhp } = useXlmToPhp();
   const isMainnet = network === 'mainnet';
 
   const [claimingFarmIds, setClaimingFarmIds] = React.useState<string[]>([]);
+  // undefined = still checking, null = the check itself failed
+  const [eligibility, setEligibility] = React.useState<Record<string, ClaimEligibility | null | undefined>>({});
+  const [eligibilityRefresh, setEligibilityRefresh] = React.useState(0);
+
+  // Same typhoon id handleClaim sends to claim_payout.
+  const typhoonId = weather?.activeStorm?.name || 'TROPICAL_DEPRESSION_CONSENSUS';
 
   // Clear claiming state for any farms that have finished claiming or reset
   React.useEffect(() => {
@@ -24,6 +33,22 @@ const PayoutStatus: React.FC<PayoutStatusProps> = ({ weather, farms, onClaim, ne
       return farm && !farm.hasClaimed;
     }));
   }, [farms]);
+
+  React.useEffect(() => {
+    if (!walletAddress) return;
+    let cancelled = false;
+    setEligibility({});
+    for (const farm of farms) {
+      if (farm.hasClaimed) continue;
+      getClaimEligibility(walletAddress, farm.id, typhoonId, 'Wet Season 2026', network)
+        .then(result => { if (!cancelled) setEligibility(prev => ({ ...prev, [farm.id]: result })); })
+        .catch(err => {
+          console.error('Claim eligibility check failed:', err);
+          if (!cancelled) setEligibility(prev => ({ ...prev, [farm.id]: null }));
+        });
+    }
+    return () => { cancelled = true; };
+  }, [walletAddress, farms, typhoonId, network, eligibilityRefresh]);
 
   if (!weather) return null;
 
@@ -84,6 +109,15 @@ const PayoutStatus: React.FC<PayoutStatusProps> = ({ weather, farms, onClaim, ne
         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-2">Your Insured Assets</h4>
         {farms.map((farm) => {
           const farmTriggered = isTriggered; // In real app, check proximity to weather event
+          const onChain = walletAddress ? eligibility[farm.id] : undefined;
+          // With a wallet connected the vault decides: no claim without an active
+          // on-chain policy and oracle consensus for this typhoon in its region.
+          const blockedReason = !walletAddress ? null
+            : onChain === undefined ? 'Checking the vault…'
+            : onChain === null ? 'Could not reach the vault. Try again shortly.'
+            : !onChain.policyActive ? 'Not insured on-chain for this season'
+            : !onChain.consensusReached ? `Waiting for oracle consensus on ${typhoonId}`
+            : null;
           return (
             <div key={farm.id} className="glass-panel hover:border-white/10 transition-colors">
               <div className="flex items-start justify-between mb-4">
@@ -123,12 +157,21 @@ const PayoutStatus: React.FC<PayoutStatusProps> = ({ weather, farms, onClaim, ne
                   Processing Claim...
                   <Loader2 size={18} className="animate-spin" />
                 </button>
+              ) : farmTriggered && blockedReason ? (
+                <div className="w-full py-3 bg-white/5 rounded-xl flex items-center justify-center gap-2 border border-white/5">
+                  <AlertCircle size={16} className="text-amber-400" />
+                  <span className="text-xs font-bold text-slate-400">{blockedReason}</span>
+                </div>
               ) : farmTriggered ? (
                 <div className="space-y-1.5 w-full">
-                  <button 
+                  <button
                     onClick={() => {
                       setClaimingFarmIds(prev => [...prev, farm.id]);
-                      onClaim?.(farm);
+                      Promise.resolve(onClaim?.(farm)).finally(() => {
+                        // Re-enable on failure (success flips hasClaimed) and re-read the vault.
+                        setClaimingFarmIds(prev => prev.filter(id => id !== farm.id));
+                        setEligibilityRefresh(n => n + 1);
+                      });
                     }}
                     className="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 group cursor-pointer"
                   >
