@@ -12,7 +12,8 @@ import { sendSms } from './smsHandler';
 
 import { NETWORK_CONFIGS } from './config';
 import { loadOracleZkKey, proveWeatherReading } from './zk/prover';
-import { submitZkReport } from './zk/submit';
+import { submitNoirReport, submitZkReport } from './zk/submit';
+import { proveWeatherReadingNoir } from './zk/noirProver';
 import { parseWeatherTrigger } from './zk/request';
 
 // Helper to safely get Firestore
@@ -211,14 +212,19 @@ oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
 
 // ==========================================
 // POST /oracle/api/v1/weather-trigger
-// Testnet sandbox: the oracle signs a wind reading, proves in Groth16 that it
-// meets a payout band, and submits the proof to the vault's on-chain verifier.
+// Testnet sandbox: the oracle signs a wind reading, proves that it meets a
+// payout band, and submits the proof to the vault's on-chain verifier.
+// proofSystem "groth16" (default): Circom circuit, submit_weather_report_zk.
+// proofSystem "noir": Noir circuit (UltraHonk), submit_weather_report_noir.
 // ==========================================
 oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
-  const { network = 'testnet' } = req.body;
+  const { network = 'testnet', proofSystem = 'groth16' } = req.body;
   const parsed = parseWeatherTrigger(req.body);
   if ('error' in parsed) {
     return res.status(400).json({ error: parsed.error });
+  }
+  if (proofSystem !== 'groth16' && proofSystem !== 'noir') {
+    return res.status(400).json({ error: 'proofSystem must be "groth16" or "noir"' });
   }
   if (network !== 'testnet') {
     return res.status(403).json({ error: 'The weather sandbox only runs on testnet' });
@@ -229,28 +235,43 @@ oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
   }
 
   let txHash: string;
-  let zk: { proof: string; publicSignals: string[]; provingMs: number; cpuInstructions?: number; ledger: number };
+  let zk: { proofSystem: string; proof: string; publicSignals: string[]; provingMs: number; cpuInstructions?: number; ledger: number };
   try {
-    await logEvent('INFO', 'Weather trigger received', { ...parsed, windSpeed: undefined, network });
+    await logEvent('INFO', 'Weather trigger received', { ...parsed, windSpeed: undefined, network, proofSystem });
 
     const key = await loadOracleZkKey();
-    const proven = await proveWeatherReading(parsed, key);
-    await logEvent('INFO', 'Groth16 weather proof generated', { provingMs: proven.provingMs });
-
     const config = NETWORK_CONFIGS.testnet;
-    const submitted = await submitZkReport(
-      { typhoonId: parsed.typhoonId, region: parsed.region, windFloor: parsed.windFloor, damagePercentage: parsed.damagePercentage, proof: proven.proof },
-      { rpcUrl: config.rpcUrl, passphrase: config.passphrase, vaultContractId: config.vaultContractId, oracle: Keypair.fromSecret(oracleSecret) },
-    );
-    txHash = submitted.txHash;
-    zk = {
-      proof: Buffer.concat([proven.proof.a, proven.proof.b, proven.proof.c]).toString('hex'),
-      publicSignals: proven.publicSignals,
-      provingMs: proven.provingMs,
-      cpuInstructions: submitted.cpuInstructions,
-      ledger: submitted.ledger,
-    };
-    await logEvent('INFO', 'ZK weather report verified on-chain', { txHash, ledger: submitted.ledger });
+    const submitConfig = { rpcUrl: config.rpcUrl, passphrase: config.passphrase, vaultContractId: config.vaultContractId, oracle: Keypair.fromSecret(oracleSecret) };
+    const report = { typhoonId: parsed.typhoonId, region: parsed.region, windFloor: parsed.windFloor, damagePercentage: parsed.damagePercentage };
+
+    if (proofSystem === 'noir') {
+      const proven = await proveWeatherReadingNoir(parsed, key);
+      await logEvent('INFO', 'UltraHonk (Noir) weather proof generated', { provingMs: proven.provingMs });
+      const submitted = await submitNoirReport({ ...report, proof: proven.proof }, submitConfig);
+      txHash = submitted.txHash;
+      zk = {
+        proofSystem: 'ultrahonk-noir',
+        proof: proven.proof.toString('hex'),
+        publicSignals: proven.publicInputs.map((h) => BigInt(h).toString()),
+        provingMs: proven.provingMs,
+        cpuInstructions: submitted.cpuInstructions,
+        ledger: submitted.ledger,
+      };
+    } else {
+      const proven = await proveWeatherReading(parsed, key);
+      await logEvent('INFO', 'Groth16 weather proof generated', { provingMs: proven.provingMs });
+      const submitted = await submitZkReport({ ...report, proof: proven.proof }, submitConfig);
+      txHash = submitted.txHash;
+      zk = {
+        proofSystem: 'groth16-circom',
+        proof: Buffer.concat([proven.proof.a, proven.proof.b, proven.proof.c]).toString('hex'),
+        publicSignals: proven.publicSignals,
+        provingMs: proven.provingMs,
+        cpuInstructions: submitted.cpuInstructions,
+        ledger: submitted.ledger,
+      };
+    }
+    await logEvent('INFO', 'ZK weather report verified on-chain', { txHash, ledger: zk.ledger, proofSystem });
   } catch (err: any) {
     await logEvent('ERROR', 'ZK weather report failed', { error: err.message });
     const rejected = /Error\(Contract, #17\)/.test(err.message);

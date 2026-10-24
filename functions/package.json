@@ -15,8 +15,10 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
+    "@aztec/bb.js": "0.87.0",
     "@google-cloud/logging": "^11.2.1",
     "@google/generative-ai": "^0.24.1",
+    "@noir-lang/noir_js": "1.0.0-beta.9",
     "@opentelemetry/api-logs": "^0.223.0",
     "@opentelemetry/exporter-logs-otlp-http": "^0.223.0",
     "@opentelemetry/resources": "^2.12.0",
