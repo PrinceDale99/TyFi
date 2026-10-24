@@ -1,0 +1,41 @@
+{
+  "network": "testnet",
+  "vault": "CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
+  "steps": [
+    {
+      "step": "upload_vault_wasm",
+      "actor": "deployer",
+      "txHash": "6c263fe7dfd49f0121ab9c8348fc4ad1953d8b60d3acba37c5b5183b41bc9929",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/6c263fe7dfd49f0121ab9c8348fc4ad1953d8b60d3acba37c5b5183b41bc9929",
+      "wasmHash": "86963c0e16f723d3f26cadac9938f4418405779f3c1a82b614de0a4e8fd47b9b",
+      "at": "2026-10-24T16:24:07.200Z"
+    },
+    {
+      "step": "upgrade_vault_noir",
+      "actor": "vault admin multisig",
+      "txHash": "38cffc1b88a500eaae5027e43c1b422b25d124ee5889dc0d501c3f380e1f42f1",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/38cffc1b88a500eaae5027e43c1b422b25d124ee5889dc0d501c3f380e1f42f1",
+      "wasmHash": "86963c0e16f723d3f26cadac9938f4418405779f3c1a82b614de0a4e8fd47b9b",
+      "at": "2026-10-24T16:24:17.593Z"
+    },
+    {
+      "step": "deploy_noir_verifier",
+      "actor": "deployer",
+      "txHash": "4a4eeeff659f49a405af36f59800f9e3b84c2b82ca5fc73cf12dc5c49a8d0577",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/4a4eeeff659f49a405af36f59800f9e3b84c2b82ca5fc73cf12dc5c49a8d0577",
+      "contract": "CBOR46OZEO26T7HWG7SG7WZB34ZBPJXTO2F5EUJLXQGUVC3MSB2LERW6",
+      "at": "2026-10-24T16:24:32.445Z"
+    },
+    {
+      "step": "set_noir_verifier",
+      "actor": "vault admin multisig",
+      "txHash": "090faf32e881e3ead1af797fbf7a57b056d1070e6e853a8028c9e9273bdcc304",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/090faf32e881e3ead1af797fbf7a57b056d1070e6e853a8028c9e9273bdcc304",
+      "verifier": "CBOR46OZEO26T7HWG7SG7WZB34ZBPJXTO2F5EUJLXQGUVC3MSB2LERW6",
+      "at": "2026-10-24T16:24:41.282Z"
+    }
+  ],
+  "noirVerifier": "CBOR46OZEO26T7HWG7SG7WZB34ZBPJXTO2F5EUJLXQGUVC3MSB2LERW6",
+  "noirVerifierWasmHash": "957c56650b155e4aab38e97b16c1f4120c6dbb2754019c8908b0b46796d919b8",
+  "vkSha256": "b5b701cf639cfb14f76ac891e1309e21b4a58eb9d14f4a4fabe575c00a968d7d"
+}
