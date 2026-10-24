@@ -435,6 +435,7 @@ An automated static analysis and manual security review was conducted. **No high
 |---|---|
 | 🔗 **Live App** | [https://www.tyfi.site/](https://www.tyfi.site/) |
 | 🎬 **Demo Video** | [https://youtu.be/hViSMpbMckU](https://youtu.be/hViSMpbMckU) |
+| 🎬 **Week 4 Walkthrough** (passkey → DAO → ZK payout, 3:50) | [https://youtu.be/hQO7kVUe3_M](https://youtu.be/hQO7kVUe3_M) |
 | 🖼️ **Pitch Deck** | [https://canva.link/kb9peaekmd3u50m](https://canva.link/kb9peaekmd3u50m) |
 
 ---
