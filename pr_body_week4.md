@@ -64,5 +64,4 @@ Read-only checks against the live contracts and the full reproduction path: [`do
 ### ⚠️ Known limitations
 - Single-party Groth16 trusted setup (testnet only).
 - Noir circuit verified off-chain; the vault verifies the equivalent Groth16 circuit.
-- Video passkey prompts use Chrome's virtual authenticator (stated on screen).
 - DAO timelock is 8,640 ledgers (~12 h), so a full pipeline run takes half a day.
