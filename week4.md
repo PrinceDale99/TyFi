@@ -54,9 +54,9 @@ Passkey wallet: [`CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5`](htt
 | Vote FOR proposal 6 | co-op LP | [`83327054…eef6ce`](https://stellar.expert/explorer/testnet/tx/833270546bdf5bc9de8122586057b60f00fdd2aa34acda3480a36648b2eef6ce) |
 | Settle: quorum + 60% met → timelock | anyone | [`49ba704b…ca4ba5`](https://stellar.expert/explorer/testnet/tx/49ba704b8575db2320779a05aebc31cf9bfc051f37f67611f907a14398ca4ba5) |
 | Farmer wallet made a DAO executor | DAO admin | [`6d584eb6…87a3d6`](https://stellar.expert/explorer/testnet/tx/6d584eb63e96240b1b1efffee07301daa25bec17c18f4f089e19c9481387a3d6) |
-| Finalize: DAO → vault.update_premium_rate | passkey wallet | _pending_ |
-| Groth16 weather proof verified by the vault | ZK oracle | _pending_ |
-| Payout claimed | passkey wallet | _pending_ |
+| Finalize: DAO → vault.update_premium_rate (100 → 125) | passkey wallet | [`7fd8c2a3…611cdc`](https://stellar.expert/explorer/testnet/tx/7fd8c2a3204d3a3457bac478be6a6ac5e3e2e47579d99fbb5628f1ca8d611cdc) |
+| Groth16 weather proof verified by the vault | ZK oracle | [`98eee50c…8ee6af`](https://stellar.expert/explorer/testnet/tx/98eee50cf45191c9b69334c33d4729565100bfd939399f84dbfb28fe4c8ee6af) |
+| Payout claimed (+170.00 XLM) | passkey wallet | [`d9962ba0…497706`](https://stellar.expert/explorer/testnet/tx/d9962ba020588862def4e25f6fc348cfd8f660516d336cc726a6f1ba7d497706) |
 | Wallet created on camera | passkey | [`e9b247d6…1a9ece`](https://stellar.expert/explorer/testnet/tx/e9b247d6434592918f120228c10c4eccc328f609916b41d3d1df0dcb961a9ece) |
 | Live proposal for the video vote | co-op member | [`d35864da…fdaf79`](https://stellar.expert/explorer/testnet/tx/d35864daefe825ca82cacd3da1e8233a5faf96567173d1fe2dee912845fdaf79) |
 | Vote cast on camera | passkey wallet | [`af87d974…797c33`](https://stellar.expert/explorer/testnet/tx/af87d9742b693d769f812cb89e6eebe2815944bfb23dab952a3db47ecd797c33) |
