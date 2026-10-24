@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = ["smart_wallet", "smart_wallet_factory", "tyfi_dao", "typhoon_resilience_vault"]
+# Built on its own: needs soroban-sdk 28 (see noir_verifier/Cargo.toml).
+exclude = ["noir_verifier"]
 
 [profile.dev]
 debug = 0
