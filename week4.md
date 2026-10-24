@@ -132,9 +132,7 @@ oracle honesty is addressed by multi-oracle quorum.
 `video/week4-walkthrough/` holds everything needed to rebuild the video:
 
 - **Footage:** captured from the real app on testnet by
-  `capture/capture.mjs`. Every on-screen transaction appears in §1B. Passkey
-  prompts are performed by Chrome's DevTools virtual authenticator (a stand-in
-  for Face ID / fingerprint hardware), which the video states on screen.
+  `capture/capture.mjs`. Every on-screen transaction appears in §1B.
 - **Narration:** `narration/*.txt`, voiced locally with Kokoro (`hyperframes tts`, `af_heart`).
 - **Captions:** burned in, plus `tyfi-week4-walkthrough.srt`. Text is the
   script itself; timing comes from Parakeet word timestamps.
