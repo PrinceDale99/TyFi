@@ -41,21 +41,26 @@
     <div class="proof-shot"><img src="proofs/video_passkey_vote.png" style="transform: translate(-227px, -50px)" /></div>
     <div class="proof-hash">tx af87d974…797c33</div></div>
 <div id="c15" class="clip chapter" data-start="114" data-duration="28"><span class="num">05</span><span>DAO → vault, cross-contract</span></div>
-<div id="c16" class="clip frame placeholder" data-start="114.3" data-duration="27.7"><div>Footage pending: 05-finalize.mp4</div></div>
-<div id="c17" class="clip callout " data-start="118" data-duration="6">The farmer is a DAO <b>executor</b>: finalize is passkey-signed</div>
-<div id="c18" class="clip proof proof-center" data-start="133" data-duration="8.8" style="--crop-h:588px">
+<video id="v-05-cross-contract" class="clip frame" src="footage/05-finalize.mp4" data-start="114.3" data-duration="17.867" data-media-start="4" muted playsinline></video>
+<div id="c17" class="clip callout " data-start="115.5" data-duration="5.5">The farmer is a DAO <b>executor</b>: finalize is passkey-signed</div>
+<div id="c18" class="clip callout " data-start="121.5" data-duration="7">The vault accepts parameter changes <b>only from its DAO</b></div>
+<div id="c19" class="clip proof proof-center" data-start="129.8" data-duration="12" style="--crop-h:504px">
     <div class="proof-head"><span class="dot"></span>Verified on Stellar Expert · testnet</div>
-    <div class="proof-label">tyfi_dao → vault.update_premium_rate</div>
-    <div class="proof-shot"><div class="pending">screenshot pending</div></div>
-    <div class="proof-hash">tx pending</div></div>
-<div id="c19" class="clip callout wide" data-start="135.5" data-duration="6.3"><div class="big-delta">Eastern Visayas premium <b>100%</b> → <b class="em">125%</b></div></div>
+    <div class="proof-label">tyfi_dao → vault.update_premium_rate · Eastern Visayas 100 → 125</div>
+    <div class="proof-shot"><img src="proofs/finalize_proposal_cross_contract.png" style="transform: translate(-227px, -357px)" /></div>
+    <div class="proof-hash">tx 7fd8c2a3…611cdc</div></div>
 <div id="c20" class="clip chapter" data-start="142" data-duration="44"><span class="num">06</span><span>ZK-verified payout</span></div>
-<div id="c21" class="clip frame placeholder" data-start="142.3" data-duration="43.7"><div>Footage pending: 06-zk.mp4</div></div>
-<div id="c22" class="clip callout amber" data-start="146" data-duration="7">Raw reading <b>172 km/h</b> stays with the oracle</div>
-<div id="c23" class="clip callout " data-start="154" data-duration="8">Proof attests only <b>wind ≥ 150 km/h</b> · signed by the registered oracle key</div>
-<div id="c24" class="clip callout " data-start="163" data-duration="8">Vault rebuilds all 5 public inputs · BN254 pairing check · ~30M CPU instructions</div>
-<div id="c25" class="clip chapter" data-start="186" data-duration="25"><span class="num">07</span><span>Why it holds</span></div>
-<div id="c26" class="clip trust-wrap" data-start="186.3" data-duration="24.7">
+<video id="v-06-zk-payout" class="clip frame" src="footage/06-zk.mp4" data-start="142.3" data-duration="43.7" data-media-start="2" muted playsinline></video>
+<div id="c22" class="clip callout amber" data-start="145" data-duration="6.5">Raw reading <b>172 km/h</b> stays with the oracle</div>
+<div id="c23" class="clip callout " data-start="152" data-duration="8">Proof attests only <b>wind ≥ 150 km/h</b> · signed by the registered oracle key</div>
+<div id="c24" class="clip callout " data-start="160.5" data-duration="5.5">Vault rebuilds all <b>5 public inputs</b> itself</div>
+<div id="c25" class="clip proof proof-center" data-start="166.5" data-duration="9.5" style="--crop-h:504px">
+    <div class="proof-head"><span class="dot"></span>Verified on Stellar Expert · testnet</div>
+    <div class="proof-label">submit_weather_report_zk · Groth16 verified · 29.2M instructions</div>
+    <div class="proof-shot"><img src="proofs/zk_weather_report.png" style="transform: translate(-227px, -357px)" /></div>
+    <div class="proof-hash">tx 98eee50c…8ee6af</div></div>
+<div id="c26" class="clip chapter" data-start="186" data-duration="25"><span class="num">07</span><span>Why it holds</span></div>
+<div id="c27" class="clip trust-wrap" data-start="186.3" data-duration="24.7">
     <div class="trust">
       <div class="trust-col"><div class="trust-h">Contract tests · real Groth16 proof</div><div class="check">✓ Tampered damage → InvalidProof</div><div class="check">✓ Replayed for another region → InvalidProof</div><div class="check">✓ Inflated wind band → InvalidProof</div><div class="check">✓ Unregistered oracle key → InvalidProof</div><div class="check">✓ Swapped / off-curve proof points → rejected</div></div>
       <div class="trust-col side">
@@ -64,7 +69,7 @@
         <div class="pill-card"><b>134</b> contract tests · <b>41</b> backend tests<span>all passing</span></div>
       </div>
     </div></div>
-<div id="c27" class="clip outro-wrap" data-start="211" data-duration="19">
+<div id="c28" class="clip outro-wrap" data-start="211" data-duration="19">
     <div class="outro">
       <div class="outro-l">
         <div class="logo small">Ty<span>Fi</span></div>
@@ -75,105 +80,105 @@
           <div class="mit">Open source · MIT License</div>
         </div>
       </div>
-      <div class="outro-r"><div class="tx-row"><span>Passkey wallet created</span><code>e9b247d6…1a9ece</code></div><div class="tx-row"><span>LP deposit (passkey)</span><code>77b166e4…b91bc3</code></div><div class="tx-row"><span>DAO vote (passkey)</span><code>9988d264…2d501d</code></div><div class="tx-row"><span>Proposal executed</span><code>49ba704b…ca4ba5</code></div><div class="tx-row"><span>DAO → vault update</span><code>pending</code></div><div class="tx-row"><span>ZK report verified</span><code>pending</code></div><div class="tx-row"><span>Payout claimed (passkey)</span><code>pending</code></div></div>
+      <div class="outro-r"><div class="tx-row"><span>Passkey wallet created</span><code>e9b247d6…1a9ece</code></div><div class="tx-row"><span>LP deposit (passkey)</span><code>77b166e4…b91bc3</code></div><div class="tx-row"><span>DAO vote (passkey)</span><code>9988d264…2d501d</code></div><div class="tx-row"><span>Proposal executed</span><code>49ba704b…ca4ba5</code></div><div class="tx-row"><span>DAO → vault update</span><code>7fd8c2a3…611cdc</code></div><div class="tx-row"><span>ZK report verified</span><code>98eee50c…8ee6af</code></div><div class="tx-row"><span>Payout claimed (passkey)</span><code>d9962ba0…497706</code></div></div>
     </div></div>
-<div id="c28" class="clip cap" data-start="0.8" data-duration="1.36"><span>This is TyFi:</span></div>
-<div id="c29" class="clip cap" data-start="2.16" data-duration="3.36"><span>parametric typhoon insurance for Filipino farmers,</span></div>
-<div id="c30" class="clip cap" data-start="5.52" data-duration="1.44"><span>built on Stellar.</span></div>
-<div id="c31" class="clip cap" data-start="6.96" data-duration="1.44"><span>In the next four minutes,</span></div>
-<div id="c32" class="clip cap" data-start="8.4" data-duration="2.56"><span>we run the whole pipeline live on testnet.</span></div>
-<div id="c33" class="clip cap" data-start="12.8" data-duration="2.08"><span>A farmer signs in with a passkey,</span></div>
-<div id="c34" class="clip cap" data-start="14.88" data-duration="1.52"><span>with no seed phrase.</span></div>
-<div id="c35" class="clip cap" data-start="16.4" data-duration="2.88"><span>The farming co-op governs the insurance vault</span></div>
-<div id="c36" class="clip cap" data-start="19.28" data-duration="1.28"><span>through a DAO.</span></div>
-<div id="c37" class="clip cap" data-start="20.56" data-duration="1.44"><span>When a typhoon hits,</span></div>
-<div id="c38" class="clip cap" data-start="22" data-duration="2.4"><span>an oracle proves the storm crossed a</span></div>
-<div id="c39" class="clip cap" data-start="24.4" data-duration="2.24"><span>payout threshold with a zero-knowledge proof,</span></div>
-<div id="c40" class="clip cap" data-start="26.64" data-duration="2.48"><span>the vault verifies that proof on-chain,</span></div>
-<div id="c41" class="clip cap" data-start="29.12" data-duration="2.32"><span>and the payout lands in the farmer's wallet.</span></div>
-<div id="c42" class="clip cap" data-start="33.6" data-duration="1.28"><span>We start with the wallet.</span></div>
-<div id="c43" class="clip cap" data-start="34.88" data-duration="1.28"><span>On the passkey page,</span></div>
-<div id="c44" class="clip cap" data-start="36.16" data-duration="2.56"><span>the farmer names the wallet and taps create.</span></div>
-<div id="c45" class="clip cap" data-start="38.72" data-duration="1.84"><span>The device creates a passkey,</span></div>
-<div id="c46" class="clip cap" data-start="40.56" data-duration="2.08"><span>and our factory contract deploys a smart</span></div>
-<div id="c47" class="clip cap" data-start="42.64" data-duration="1.28"><span>wallet bound to it.</span></div>
-<div id="c48" class="clip cap" data-start="43.92" data-duration="1.52"><span>There is no seed phrase,</span></div>
-<div id="c49" class="clip cap" data-start="45.44" data-duration="2.08"><span>and no private key in the browser.</span></div>
-<div id="c50" class="clip cap" data-start="47.52" data-duration="1.04"><span>From here on,</span></div>
-<div id="c51" class="clip cap" data-start="48.56" data-duration="2.08"><span>every transaction is approved with the same</span></div>
-<div id="c52" class="clip cap" data-start="50.64" data-duration="1.36"><span>fingerprint or face,</span></div>
-<div id="c53" class="clip cap" data-start="52" data-duration="2.88"><span>and checked on-chain by the wallet's own __check_auth.</span></div>
-<div id="c54" class="clip cap" data-start="54.88" data-duration="3.04"><span>Here is the deployment on Stellar Expert.</span></div>
-<div id="c55" class="clip cap" data-start="61.6" data-duration="2.24"><span>The co-op funds the wallet and verifies</span></div>
-<div id="c56" class="clip cap" data-start="63.84" data-duration="2.96"><span>the farm through the vault's admin multisig.</span></div>
-<div id="c57" class="clip cap" data-start="66.8" data-duration="2.56"><span>The farmer then joins the reinsurance pool</span></div>
-<div id="c58" class="clip cap" data-start="69.36" data-duration="1.44"><span>as a liquidity provider,</span></div>
-<div id="c59" class="clip cap" data-start="70.8" data-duration="3.44"><span>and insures a rice farm in Eastern Visayas.</span></div>
-<div id="c60" class="clip cap" data-start="74.24" data-duration="1.68"><span>Each of those steps is signed with</span></div>
-<div id="c61" class="clip cap" data-start="75.92" data-duration="2.48"><span>the passkey and settled on testnet.</span></div>
-<div id="c62" class="clip cap" data-start="80.6" data-duration="1.2"><span>Now, governance.</span></div>
-<div id="c63" class="clip cap" data-start="81.8" data-duration="1.28"><span>In the DAO tab,</span></div>
-<div id="c64" class="clip cap" data-start="83.08" data-duration="1.92"><span>the farmer's voting power is read straight</span></div>
-<div id="c65" class="clip cap" data-start="85" data-duration="2.08"><span>from their liquidity shares in the vault.</span></div>
-<div id="c66" class="clip cap" data-start="87.08" data-duration="1.36"><span>A new proposal is open,</span></div>
-<div id="c67" class="clip cap" data-start="88.44" data-duration="1.44"><span>and the farmer votes for it.</span></div>
-<div id="c68" class="clip cap" data-start="89.88" data-duration="1.68"><span>The passkey signs the vote,</span></div>
-<div id="c69" class="clip cap" data-start="91.56" data-duration="1.44"><span>and the tally updates on-chain.</span></div>
-<div id="c70" class="clip cap" data-start="93" data-duration="2.48"><span>Quorum is 30% of all shares,</span></div>
-<div id="c71" class="clip cap" data-start="95.48" data-duration="4"><span>and premium changes need a 60% supermajority.</span></div>
-<div id="c72" class="clip cap" data-start="99.48" data-duration="2.32"><span>Earlier, the co-op passed proposal 6:</span></div>
-<div id="c73" class="clip cap" data-start="101.8" data-duration="5.52"><span>raise the Eastern Visayas premium multiplier to 125%.</span></div>
-<div id="c74" class="clip cap" data-start="107.32" data-duration="1.92"><span>It then sat in a 12-hour timelock,</span></div>
-<div id="c75" class="clip cap" data-start="109.24" data-duration="2.4"><span>so members could react before anything changed.</span></div>
-<div id="c76" class="clip cap" data-start="114.6" data-duration="0.96"><span>The timelock is over.</span></div>
-<div id="c77" class="clip cap" data-start="115.56" data-duration="2"><span>The co-op made this farmer a DAO</span></div>
-<div id="c78" class="clip cap" data-start="117.56" data-duration="2.4"><span>executor, so the farmer taps finalize,</span></div>
-<div id="c79" class="clip cap" data-start="119.96" data-duration="1.44"><span>and signs with the passkey.</span></div>
-<div id="c80" class="clip cap" data-start="121.4" data-duration="2.88"><span>The DAO contract then calls the vault</span></div>
-<div id="c81" class="clip cap" data-start="124.28" data-duration="0.56"><span>contract directly.</span></div>
-<div id="c82" class="clip cap" data-start="124.84" data-duration="3.36"><span>The vault only accepts parameter changes from</span></div>
-<div id="c83" class="clip cap" data-start="128.2" data-duration="0.56"><span>its DAO.</span></div>
-<div id="c84" class="clip cap" data-start="128.76" data-duration="1.44"><span>In the invocation tree,</span></div>
-<div id="c85" class="clip cap" data-start="130.2" data-duration="2.96"><span>you can see the DAO calling update_premium_rate</span></div>
-<div id="c86" class="clip cap" data-start="133.16" data-duration="1.2"><span>on the vault,</span></div>
-<div id="c87" class="clip cap" data-start="134.36" data-duration="5.12"><span>and the Eastern Visayas multiplier moving from 100 to 125.</span></div>
-<div id="c88" class="clip cap" data-start="142.6" data-duration="0.96"><span>Then the storm.</span></div>
-<div id="c89" class="clip cap" data-start="143.56" data-duration="1.68"><span>Typhoon Odette crosses Eastern Visayas,</span></div>
-<div id="c90" class="clip cap" data-start="145.24" data-duration="4.72"><span>and the oracle reads 172 km/h.</span></div>
-<div id="c91" class="clip cap" data-start="149.96" data-duration="1.44"><span>That number stays private.</span></div>
-<div id="c92" class="clip cap" data-start="151.4" data-duration="1.6"><span>The oracle signs the reading,</span></div>
-<div id="c93" class="clip cap" data-start="153" data-duration="2.16"><span>and generates a Groth16 proof that its</span></div>
-<div id="c94" class="clip cap" data-start="155.16" data-duration="1.76"><span>registered key signed a reading at or</span></div>
-<div id="c95" class="clip cap" data-start="156.92" data-duration="3.04"><span>above the 150 km/h band.</span></div>
-<div id="c96" class="clip cap" data-start="159.8" data-duration="3.04"><span>The vault rebuilds every public input itself:</span></div>
-<div id="c97" class="clip cap" data-start="162.84" data-duration="1.2"><span>the oracle's key,</span></div>
-<div id="c98" class="clip cap" data-start="164.04" data-duration="1.6"><span>the typhoon, the region,</span></div>
-<div id="c99" class="clip cap" data-start="165.16" data-duration="1.44"><span>the band, and the damage.</span></div>
-<div id="c100" class="clip cap" data-start="166.6" data-duration="4.48"><span>It checks the proof with Soroban's BN254</span></div>
-<div id="c101" class="clip cap" data-start="171.08" data-duration="3.04"><span>pairing functions, in about 30M instructions,</span></div>
-<div id="c102" class="clip cap" data-start="174.12" data-duration="2.16"><span>and stores only the band.</span></div>
-<div id="c103" class="clip cap" data-start="175.96" data-duration="1.76"><span>With consensus recorded,</span></div>
-<div id="c104" class="clip cap" data-start="177.72" data-duration="1.28"><span>the farmer claims,</span></div>
-<div id="c105" class="clip cap" data-start="179" data-duration="2.72"><span>and the vault pays 85% of the</span></div>
-<div id="c106" class="clip cap" data-start="181.24" data-duration="1.92"><span>coverage straight to the passkey wallet.</span></div>
-<div id="c107" class="clip cap" data-start="186.6" data-duration="1.44"><span>Forged proofs fail.</span></div>
-<div id="c108" class="clip cap" data-start="188.04" data-duration="1.2"><span>Change the damage,</span></div>
-<div id="c109" class="clip cap" data-start="189.24" data-duration="1.68"><span>the region, the wind band,</span></div>
-<div id="c110" class="clip cap" data-start="190.92" data-duration="1.2"><span>or the oracle key,</span></div>
-<div id="c111" class="clip cap" data-start="192.12" data-duration="2.08"><span>and the pairing check rejects it.</span></div>
-<div id="c112" class="clip cap" data-start="194.2" data-duration="2.88"><span>The contract test suite covers each case.</span></div>
-<div id="c113" class="clip cap" data-start="197.08" data-duration="2.72"><span>The same statement is also written in</span></div>
-<div id="c114" class="clip cap" data-start="199.8" data-duration="3.6"><span>Noir, and one oracle signature satisfies both circuits.</span></div>
-<div id="c115" class="clip cap" data-start="203.4" data-duration="3.12"><span>And admin calls now require the multisig,</span></div>
-<div id="c116" class="clip cap" data-start="206.52" data-duration="2.64"><span>closing a zero-threshold bypass we found this week.</span></div>
-<div id="c117" class="clip cap" data-start="211.6" data-duration="2.24"><span>Every step has a testnet transaction you</span></div>
-<div id="c118" class="clip cap" data-start="213.84" data-duration="2.32"><span>can open on Stellar Expert.</span></div>
-<div id="c119" class="clip cap" data-start="216.16" data-duration="1.68"><span>The contracts, the app,</span></div>
-<div id="c120" class="clip cap" data-start="217.84" data-duration="2.48"><span>the oracle and both circuits are open</span></div>
-<div id="c121" class="clip cap" data-start="220.32" data-duration="2"><span>source under the MIT license,</span></div>
-<div id="c122" class="clip cap" data-start="222.32" data-duration="1.92"><span>with a replication guide to run all</span></div>
-<div id="c123" class="clip cap" data-start="224.24" data-duration="1.44"><span>of it yourself.</span></div>
-<div id="c124" class="clip cap" data-start="225.68" data-duration="0.88"><span>That's TyFi.</span></div>
+<div id="c29" class="clip cap" data-start="0.8" data-duration="1.36"><span>This is TyFi:</span></div>
+<div id="c30" class="clip cap" data-start="2.16" data-duration="3.36"><span>parametric typhoon insurance for Filipino farmers,</span></div>
+<div id="c31" class="clip cap" data-start="5.52" data-duration="1.44"><span>built on Stellar.</span></div>
+<div id="c32" class="clip cap" data-start="6.96" data-duration="1.44"><span>In the next four minutes,</span></div>
+<div id="c33" class="clip cap" data-start="8.4" data-duration="2.56"><span>we run the whole pipeline live on testnet.</span></div>
+<div id="c34" class="clip cap" data-start="12.8" data-duration="2.08"><span>A farmer signs in with a passkey,</span></div>
+<div id="c35" class="clip cap" data-start="14.88" data-duration="1.52"><span>with no seed phrase.</span></div>
+<div id="c36" class="clip cap" data-start="16.4" data-duration="2.88"><span>The farming co-op governs the insurance vault</span></div>
+<div id="c37" class="clip cap" data-start="19.28" data-duration="1.28"><span>through a DAO.</span></div>
+<div id="c38" class="clip cap" data-start="20.56" data-duration="1.44"><span>When a typhoon hits,</span></div>
+<div id="c39" class="clip cap" data-start="22" data-duration="2.4"><span>an oracle proves the storm crossed a</span></div>
+<div id="c40" class="clip cap" data-start="24.4" data-duration="2.24"><span>payout threshold with a zero-knowledge proof,</span></div>
+<div id="c41" class="clip cap" data-start="26.64" data-duration="2.48"><span>the vault verifies that proof on-chain,</span></div>
+<div id="c42" class="clip cap" data-start="29.12" data-duration="2.32"><span>and the payout lands in the farmer's wallet.</span></div>
+<div id="c43" class="clip cap" data-start="33.6" data-duration="1.28"><span>We start with the wallet.</span></div>
+<div id="c44" class="clip cap" data-start="34.88" data-duration="1.28"><span>On the passkey page,</span></div>
+<div id="c45" class="clip cap" data-start="36.16" data-duration="2.56"><span>the farmer names the wallet and taps create.</span></div>
+<div id="c46" class="clip cap" data-start="38.72" data-duration="1.84"><span>The device creates a passkey,</span></div>
+<div id="c47" class="clip cap" data-start="40.56" data-duration="2.08"><span>and our factory contract deploys a smart</span></div>
+<div id="c48" class="clip cap" data-start="42.64" data-duration="1.28"><span>wallet bound to it.</span></div>
+<div id="c49" class="clip cap" data-start="43.92" data-duration="1.52"><span>There is no seed phrase,</span></div>
+<div id="c50" class="clip cap" data-start="45.44" data-duration="2.08"><span>and no private key in the browser.</span></div>
+<div id="c51" class="clip cap" data-start="47.52" data-duration="1.04"><span>From here on,</span></div>
+<div id="c52" class="clip cap" data-start="48.56" data-duration="2.08"><span>every transaction is approved with the same</span></div>
+<div id="c53" class="clip cap" data-start="50.64" data-duration="1.36"><span>fingerprint or face,</span></div>
+<div id="c54" class="clip cap" data-start="52" data-duration="2.88"><span>and checked on-chain by the wallet's own __check_auth.</span></div>
+<div id="c55" class="clip cap" data-start="54.88" data-duration="3.04"><span>Here is the deployment on Stellar Expert.</span></div>
+<div id="c56" class="clip cap" data-start="61.6" data-duration="2.24"><span>The co-op funds the wallet and verifies</span></div>
+<div id="c57" class="clip cap" data-start="63.84" data-duration="2.96"><span>the farm through the vault's admin multisig.</span></div>
+<div id="c58" class="clip cap" data-start="66.8" data-duration="2.56"><span>The farmer then joins the reinsurance pool</span></div>
+<div id="c59" class="clip cap" data-start="69.36" data-duration="1.44"><span>as a liquidity provider,</span></div>
+<div id="c60" class="clip cap" data-start="70.8" data-duration="3.44"><span>and insures a rice farm in Eastern Visayas.</span></div>
+<div id="c61" class="clip cap" data-start="74.24" data-duration="1.68"><span>Each of those steps is signed with</span></div>
+<div id="c62" class="clip cap" data-start="75.92" data-duration="2.48"><span>the passkey and settled on testnet.</span></div>
+<div id="c63" class="clip cap" data-start="80.6" data-duration="1.2"><span>Now, governance.</span></div>
+<div id="c64" class="clip cap" data-start="81.8" data-duration="1.28"><span>In the DAO tab,</span></div>
+<div id="c65" class="clip cap" data-start="83.08" data-duration="1.92"><span>the farmer's voting power is read straight</span></div>
+<div id="c66" class="clip cap" data-start="85" data-duration="2.08"><span>from their liquidity shares in the vault.</span></div>
+<div id="c67" class="clip cap" data-start="87.08" data-duration="1.36"><span>A new proposal is open,</span></div>
+<div id="c68" class="clip cap" data-start="88.44" data-duration="1.44"><span>and the farmer votes for it.</span></div>
+<div id="c69" class="clip cap" data-start="89.88" data-duration="1.68"><span>The passkey signs the vote,</span></div>
+<div id="c70" class="clip cap" data-start="91.56" data-duration="1.44"><span>and the tally updates on-chain.</span></div>
+<div id="c71" class="clip cap" data-start="93" data-duration="2.48"><span>Quorum is 30% of all shares,</span></div>
+<div id="c72" class="clip cap" data-start="95.48" data-duration="4"><span>and premium changes need a 60% supermajority.</span></div>
+<div id="c73" class="clip cap" data-start="99.48" data-duration="2.32"><span>Earlier, the co-op passed proposal 6:</span></div>
+<div id="c74" class="clip cap" data-start="101.8" data-duration="5.52"><span>raise the Eastern Visayas premium multiplier to 125%.</span></div>
+<div id="c75" class="clip cap" data-start="107.32" data-duration="1.92"><span>It then sat in a 12-hour timelock,</span></div>
+<div id="c76" class="clip cap" data-start="109.24" data-duration="2.4"><span>so members could react before anything changed.</span></div>
+<div id="c77" class="clip cap" data-start="114.6" data-duration="0.96"><span>The timelock is over.</span></div>
+<div id="c78" class="clip cap" data-start="115.56" data-duration="2"><span>The co-op made this farmer a DAO</span></div>
+<div id="c79" class="clip cap" data-start="117.56" data-duration="2.4"><span>executor, so the farmer taps finalize,</span></div>
+<div id="c80" class="clip cap" data-start="119.96" data-duration="1.44"><span>and signs with the passkey.</span></div>
+<div id="c81" class="clip cap" data-start="121.4" data-duration="2.88"><span>The DAO contract then calls the vault</span></div>
+<div id="c82" class="clip cap" data-start="124.28" data-duration="0.56"><span>contract directly.</span></div>
+<div id="c83" class="clip cap" data-start="124.84" data-duration="3.36"><span>The vault only accepts parameter changes from</span></div>
+<div id="c84" class="clip cap" data-start="128.2" data-duration="0.56"><span>its DAO.</span></div>
+<div id="c85" class="clip cap" data-start="128.76" data-duration="1.44"><span>In the invocation tree,</span></div>
+<div id="c86" class="clip cap" data-start="130.2" data-duration="2.96"><span>you can see the DAO calling update_premium_rate</span></div>
+<div id="c87" class="clip cap" data-start="133.16" data-duration="1.2"><span>on the vault,</span></div>
+<div id="c88" class="clip cap" data-start="134.36" data-duration="5.12"><span>and the Eastern Visayas multiplier moving from 100 to 125.</span></div>
+<div id="c89" class="clip cap" data-start="142.6" data-duration="0.96"><span>Then the storm.</span></div>
+<div id="c90" class="clip cap" data-start="143.56" data-duration="1.68"><span>Typhoon Odette crosses Eastern Visayas,</span></div>
+<div id="c91" class="clip cap" data-start="145.24" data-duration="4.72"><span>and the oracle reads 172 km/h.</span></div>
+<div id="c92" class="clip cap" data-start="149.96" data-duration="1.44"><span>That number stays private.</span></div>
+<div id="c93" class="clip cap" data-start="151.4" data-duration="1.6"><span>The oracle signs the reading,</span></div>
+<div id="c94" class="clip cap" data-start="153" data-duration="2.16"><span>and generates a Groth16 proof that its</span></div>
+<div id="c95" class="clip cap" data-start="155.16" data-duration="1.76"><span>registered key signed a reading at or</span></div>
+<div id="c96" class="clip cap" data-start="156.92" data-duration="3.04"><span>above the 150 km/h band.</span></div>
+<div id="c97" class="clip cap" data-start="159.8" data-duration="3.04"><span>The vault rebuilds every public input itself:</span></div>
+<div id="c98" class="clip cap" data-start="162.84" data-duration="1.2"><span>the oracle's key,</span></div>
+<div id="c99" class="clip cap" data-start="164.04" data-duration="1.6"><span>the typhoon, the region,</span></div>
+<div id="c100" class="clip cap" data-start="165.16" data-duration="1.44"><span>the band, and the damage.</span></div>
+<div id="c101" class="clip cap" data-start="166.6" data-duration="4.48"><span>It checks the proof with Soroban's BN254</span></div>
+<div id="c102" class="clip cap" data-start="171.08" data-duration="3.04"><span>pairing functions, in about 30M instructions,</span></div>
+<div id="c103" class="clip cap" data-start="174.12" data-duration="2.16"><span>and stores only the band.</span></div>
+<div id="c104" class="clip cap" data-start="175.96" data-duration="1.76"><span>With consensus recorded,</span></div>
+<div id="c105" class="clip cap" data-start="177.72" data-duration="1.28"><span>the farmer claims,</span></div>
+<div id="c106" class="clip cap" data-start="179" data-duration="2.72"><span>and the vault pays 85% of the</span></div>
+<div id="c107" class="clip cap" data-start="181.24" data-duration="1.92"><span>coverage straight to the passkey wallet.</span></div>
+<div id="c108" class="clip cap" data-start="186.6" data-duration="1.44"><span>Forged proofs fail.</span></div>
+<div id="c109" class="clip cap" data-start="188.04" data-duration="1.2"><span>Change the damage,</span></div>
+<div id="c110" class="clip cap" data-start="189.24" data-duration="1.68"><span>the region, the wind band,</span></div>
+<div id="c111" class="clip cap" data-start="190.92" data-duration="1.2"><span>or the oracle key,</span></div>
+<div id="c112" class="clip cap" data-start="192.12" data-duration="2.08"><span>and the pairing check rejects it.</span></div>
+<div id="c113" class="clip cap" data-start="194.2" data-duration="2.88"><span>The contract test suite covers each case.</span></div>
+<div id="c114" class="clip cap" data-start="197.08" data-duration="2.72"><span>The same statement is also written in</span></div>
+<div id="c115" class="clip cap" data-start="199.8" data-duration="3.6"><span>Noir, and one oracle signature satisfies both circuits.</span></div>
+<div id="c116" class="clip cap" data-start="203.4" data-duration="3.12"><span>And admin calls now require the multisig,</span></div>
+<div id="c117" class="clip cap" data-start="206.52" data-duration="2.64"><span>closing a zero-threshold bypass we found this week.</span></div>
+<div id="c118" class="clip cap" data-start="211.6" data-duration="2.24"><span>Every step has a testnet transaction you</span></div>
+<div id="c119" class="clip cap" data-start="213.84" data-duration="2.32"><span>can open on Stellar Expert.</span></div>
+<div id="c120" class="clip cap" data-start="216.16" data-duration="1.68"><span>The contracts, the app,</span></div>
+<div id="c121" class="clip cap" data-start="217.84" data-duration="2.48"><span>the oracle and both circuits are open</span></div>
+<div id="c122" class="clip cap" data-start="220.32" data-duration="2"><span>source under the MIT license,</span></div>
+<div id="c123" class="clip cap" data-start="222.32" data-duration="1.92"><span>with a replication guide to run all</span></div>
+<div id="c124" class="clip cap" data-start="224.24" data-duration="1.44"><span>of it yourself.</span></div>
+<div id="c125" class="clip cap" data-start="225.68" data-duration="0.88"><span>That's TyFi.</span></div>
 <audio id="vo-00-title" class="clip" src="audio/00-title.wav" data-start="0.8" data-duration="10.76" data-volume="1"></audio>
 <audio id="vo-01-overview" class="clip" src="audio/01-overview.wav" data-start="12.8" data-duration="19.24" data-volume="1"></audio>
 <audio id="vo-02-wallet" class="clip" src="audio/02-wallet.wav" data-start="33.6" data-duration="24.92" data-volume="1"></audio>
@@ -220,124 +225,126 @@ tl.to("#c13", { opacity: 0, duration: 0.4, ease: "power2.in" }, 100.65);
 tl.fromTo("#c14", { opacity: 0, y: 40, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "power3.out" }, 108);
 tl.to("#c14", { opacity: 0, duration: 0.4, ease: "power2.in" }, 113.6);
 tl.fromTo("#c15", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 114.2);
-tl.fromTo("#c16", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 114.3);
-tl.fromTo("#c17", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 118);
-tl.to("#c17", { opacity: 0, duration: 0.4, ease: "power2.in" }, 123.65);
-tl.fromTo("#c18", { opacity: 0, y: 40, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "power3.out" }, 133);
-tl.to("#c18", { opacity: 0, duration: 0.4, ease: "power2.in" }, 141.4);
-tl.fromTo("#c19", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 135.5);
-tl.to("#c19", { opacity: 0, duration: 0.4, ease: "power2.in" }, 141.45);
+tl.fromTo("#v-05-cross-contract", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 114.3);
+tl.fromTo("#c17", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 115.5);
+tl.to("#c17", { opacity: 0, duration: 0.4, ease: "power2.in" }, 120.65);
+tl.fromTo("#c18", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 121.5);
+tl.to("#c18", { opacity: 0, duration: 0.4, ease: "power2.in" }, 128.15);
+tl.fromTo("#c19", { opacity: 0, y: 40, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "power3.out" }, 129.8);
+tl.to("#c19", { opacity: 0, duration: 0.4, ease: "power2.in" }, 141.4);
 tl.fromTo("#c20", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 142.2);
-tl.fromTo("#c21", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 142.3);
-tl.fromTo("#c22", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 146);
-tl.to("#c22", { opacity: 0, duration: 0.4, ease: "power2.in" }, 152.65);
-tl.fromTo("#c23", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 154);
-tl.to("#c23", { opacity: 0, duration: 0.4, ease: "power2.in" }, 161.65);
-tl.fromTo("#c24", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 163);
-tl.to("#c24", { opacity: 0, duration: 0.4, ease: "power2.in" }, 170.65);
-tl.fromTo("#c25", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 186.2);
-tl.fromTo("#c26 .check", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.9, ease: "power3.out" }, 187);
-tl.fromTo("#c26 .pill-card", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, stagger: 3, ease: "power3.out" }, 195);
-tl.to("#c26", { opacity: 0, duration: 0.4, ease: "power2.in" }, 210.5);
-tl.fromTo("#c27 .outro-l > *", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.25, ease: "power3.out" }, 211.4);
-tl.fromTo("#c27 .tx-row", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.4, stagger: 0.35, ease: "power3.out" }, 212.2);
-tl.fromTo("#c28 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 0.8);
-tl.fromTo("#c29 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 2.16);
-tl.fromTo("#c30 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 5.52);
-tl.fromTo("#c31 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 6.96);
-tl.fromTo("#c32 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 8.4);
-tl.fromTo("#c33 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 12.8);
-tl.fromTo("#c34 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 14.88);
-tl.fromTo("#c35 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 16.4);
-tl.fromTo("#c36 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 19.28);
-tl.fromTo("#c37 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 20.56);
-tl.fromTo("#c38 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 22);
-tl.fromTo("#c39 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 24.4);
-tl.fromTo("#c40 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 26.64);
-tl.fromTo("#c41 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 29.12);
-tl.fromTo("#c42 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 33.6);
-tl.fromTo("#c43 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 34.88);
-tl.fromTo("#c44 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 36.16);
-tl.fromTo("#c45 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 38.72);
-tl.fromTo("#c46 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 40.56);
-tl.fromTo("#c47 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 42.64);
-tl.fromTo("#c48 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 43.92);
-tl.fromTo("#c49 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 45.44);
-tl.fromTo("#c50 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 47.52);
-tl.fromTo("#c51 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 48.56);
-tl.fromTo("#c52 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 50.64);
-tl.fromTo("#c53 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 52);
-tl.fromTo("#c54 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 54.88);
-tl.fromTo("#c55 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 61.6);
-tl.fromTo("#c56 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 63.84);
-tl.fromTo("#c57 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 66.8);
-tl.fromTo("#c58 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 69.36);
-tl.fromTo("#c59 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 70.8);
-tl.fromTo("#c60 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 74.24);
-tl.fromTo("#c61 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 75.92);
-tl.fromTo("#c62 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 80.6);
-tl.fromTo("#c63 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 81.8);
-tl.fromTo("#c64 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 83.08);
-tl.fromTo("#c65 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 85);
-tl.fromTo("#c66 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 87.08);
-tl.fromTo("#c67 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 88.44);
-tl.fromTo("#c68 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 89.88);
-tl.fromTo("#c69 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 91.56);
-tl.fromTo("#c70 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 93);
-tl.fromTo("#c71 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 95.48);
-tl.fromTo("#c72 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 99.48);
-tl.fromTo("#c73 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 101.8);
-tl.fromTo("#c74 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 107.32);
-tl.fromTo("#c75 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 109.24);
-tl.fromTo("#c76 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 114.6);
-tl.fromTo("#c77 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 115.56);
-tl.fromTo("#c78 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 117.56);
-tl.fromTo("#c79 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 119.96);
-tl.fromTo("#c80 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 121.4);
-tl.fromTo("#c81 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 124.28);
-tl.fromTo("#c82 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 124.84);
-tl.fromTo("#c83 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 128.2);
-tl.fromTo("#c84 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 128.76);
-tl.fromTo("#c85 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 130.2);
-tl.fromTo("#c86 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 133.16);
-tl.fromTo("#c87 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 134.36);
-tl.fromTo("#c88 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 142.6);
-tl.fromTo("#c89 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 143.56);
-tl.fromTo("#c90 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 145.24);
-tl.fromTo("#c91 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 149.96);
-tl.fromTo("#c92 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 151.4);
-tl.fromTo("#c93 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 153);
-tl.fromTo("#c94 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 155.16);
-tl.fromTo("#c95 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 156.92);
-tl.fromTo("#c96 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 159.8);
-tl.fromTo("#c97 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 162.84);
-tl.fromTo("#c98 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 164.04);
-tl.fromTo("#c99 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 165.16);
-tl.fromTo("#c100 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 166.6);
-tl.fromTo("#c101 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 171.08);
-tl.fromTo("#c102 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 174.12);
-tl.fromTo("#c103 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 175.96);
-tl.fromTo("#c104 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 177.72);
-tl.fromTo("#c105 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 179);
-tl.fromTo("#c106 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 181.24);
-tl.fromTo("#c107 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 186.6);
-tl.fromTo("#c108 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 188.04);
-tl.fromTo("#c109 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 189.24);
-tl.fromTo("#c110 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 190.92);
-tl.fromTo("#c111 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 192.12);
-tl.fromTo("#c112 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 194.2);
-tl.fromTo("#c113 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 197.08);
-tl.fromTo("#c114 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 199.8);
-tl.fromTo("#c115 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 203.4);
-tl.fromTo("#c116 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 206.52);
-tl.fromTo("#c117 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 211.6);
-tl.fromTo("#c118 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 213.84);
-tl.fromTo("#c119 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 216.16);
-tl.fromTo("#c120 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 217.84);
-tl.fromTo("#c121 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 220.32);
-tl.fromTo("#c122 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 222.32);
-tl.fromTo("#c123 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 224.24);
-tl.fromTo("#c124 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 225.68);
+tl.fromTo("#v-06-zk-payout", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 142.3);
+tl.fromTo("#c22", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 145);
+tl.to("#c22", { opacity: 0, duration: 0.4, ease: "power2.in" }, 151.15);
+tl.fromTo("#c23", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 152);
+tl.to("#c23", { opacity: 0, duration: 0.4, ease: "power2.in" }, 159.65);
+tl.fromTo("#c24", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.5, ease: "back.out(1.6)" }, 160.5);
+tl.to("#c24", { opacity: 0, duration: 0.4, ease: "power2.in" }, 165.65);
+tl.fromTo("#c25", { opacity: 0, y: 40, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "power3.out" }, 166.5);
+tl.to("#c25", { opacity: 0, duration: 0.4, ease: "power2.in" }, 175.6);
+tl.fromTo("#c26", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 186.2);
+tl.fromTo("#c27 .check", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.45, stagger: 0.9, ease: "power3.out" }, 187);
+tl.fromTo("#c27 .pill-card", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, stagger: 3, ease: "power3.out" }, 195);
+tl.to("#c27", { opacity: 0, duration: 0.4, ease: "power2.in" }, 210.5);
+tl.fromTo("#c28 .outro-l > *", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.25, ease: "power3.out" }, 211.4);
+tl.fromTo("#c28 .tx-row", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.4, stagger: 0.35, ease: "power3.out" }, 212.2);
+tl.fromTo("#c29 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 0.8);
+tl.fromTo("#c30 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 2.16);
+tl.fromTo("#c31 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 5.52);
+tl.fromTo("#c32 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 6.96);
+tl.fromTo("#c33 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 8.4);
+tl.fromTo("#c34 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 12.8);
+tl.fromTo("#c35 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 14.88);
+tl.fromTo("#c36 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 16.4);
+tl.fromTo("#c37 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 19.28);
+tl.fromTo("#c38 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 20.56);
+tl.fromTo("#c39 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 22);
+tl.fromTo("#c40 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 24.4);
+tl.fromTo("#c41 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 26.64);
+tl.fromTo("#c42 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 29.12);
+tl.fromTo("#c43 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 33.6);
+tl.fromTo("#c44 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 34.88);
+tl.fromTo("#c45 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 36.16);
+tl.fromTo("#c46 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 38.72);
+tl.fromTo("#c47 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 40.56);
+tl.fromTo("#c48 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 42.64);
+tl.fromTo("#c49 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 43.92);
+tl.fromTo("#c50 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 45.44);
+tl.fromTo("#c51 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 47.52);
+tl.fromTo("#c52 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 48.56);
+tl.fromTo("#c53 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 50.64);
+tl.fromTo("#c54 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 52);
+tl.fromTo("#c55 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 54.88);
+tl.fromTo("#c56 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 61.6);
+tl.fromTo("#c57 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 63.84);
+tl.fromTo("#c58 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 66.8);
+tl.fromTo("#c59 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 69.36);
+tl.fromTo("#c60 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 70.8);
+tl.fromTo("#c61 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 74.24);
+tl.fromTo("#c62 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 75.92);
+tl.fromTo("#c63 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 80.6);
+tl.fromTo("#c64 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 81.8);
+tl.fromTo("#c65 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 83.08);
+tl.fromTo("#c66 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 85);
+tl.fromTo("#c67 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 87.08);
+tl.fromTo("#c68 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 88.44);
+tl.fromTo("#c69 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 89.88);
+tl.fromTo("#c70 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 91.56);
+tl.fromTo("#c71 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 93);
+tl.fromTo("#c72 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 95.48);
+tl.fromTo("#c73 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 99.48);
+tl.fromTo("#c74 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 101.8);
+tl.fromTo("#c75 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 107.32);
+tl.fromTo("#c76 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 109.24);
+tl.fromTo("#c77 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 114.6);
+tl.fromTo("#c78 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 115.56);
+tl.fromTo("#c79 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 117.56);
+tl.fromTo("#c80 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 119.96);
+tl.fromTo("#c81 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 121.4);
+tl.fromTo("#c82 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 124.28);
+tl.fromTo("#c83 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 124.84);
+tl.fromTo("#c84 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 128.2);
+tl.fromTo("#c85 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 128.76);
+tl.fromTo("#c86 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 130.2);
+tl.fromTo("#c87 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 133.16);
+tl.fromTo("#c88 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 134.36);
+tl.fromTo("#c89 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 142.6);
+tl.fromTo("#c90 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 143.56);
+tl.fromTo("#c91 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 145.24);
+tl.fromTo("#c92 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 149.96);
+tl.fromTo("#c93 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 151.4);
+tl.fromTo("#c94 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 153);
+tl.fromTo("#c95 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 155.16);
+tl.fromTo("#c96 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 156.92);
+tl.fromTo("#c97 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 159.8);
+tl.fromTo("#c98 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 162.84);
+tl.fromTo("#c99 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 164.04);
+tl.fromTo("#c100 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 165.16);
+tl.fromTo("#c101 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 166.6);
+tl.fromTo("#c102 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 171.08);
+tl.fromTo("#c103 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 174.12);
+tl.fromTo("#c104 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 175.96);
+tl.fromTo("#c105 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 177.72);
+tl.fromTo("#c106 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 179);
+tl.fromTo("#c107 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 181.24);
+tl.fromTo("#c108 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 186.6);
+tl.fromTo("#c109 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 188.04);
+tl.fromTo("#c110 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 189.24);
+tl.fromTo("#c111 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 190.92);
+tl.fromTo("#c112 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 192.12);
+tl.fromTo("#c113 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 194.2);
+tl.fromTo("#c114 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 197.08);
+tl.fromTo("#c115 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 199.8);
+tl.fromTo("#c116 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 203.4);
+tl.fromTo("#c117 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 206.52);
+tl.fromTo("#c118 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 211.6);
+tl.fromTo("#c119 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 213.84);
+tl.fromTo("#c120 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 216.16);
+tl.fromTo("#c121 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 217.84);
+tl.fromTo("#c122 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 220.32);
+tl.fromTo("#c123 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 222.32);
+tl.fromTo("#c124 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 224.24);
+tl.fromTo("#c125 span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 225.68);
 window.__timelines["main"] = tl;
 tl.seek(0);
 </script>
