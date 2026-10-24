@@ -1,0 +1,201 @@
+{
+  "network": "testnet",
+  "vault": "CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR",
+  "dao": "CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY",
+  "scenario": {
+    "region": "Eastern_Visayas",
+    "farmId": "TYFI_COOP_FARM_01",
+    "season": "Wet Season 2026",
+    "typhoon": "ODETTE_2026",
+    "premiumMultiplier": 125
+  },
+  "steps": [
+    {
+      "step": "passkey_wallet_created",
+      "actor": "passkey (virtual authenticator)",
+      "txHash": "ba3aec2b2cbe775d9467dddd547f4239a347331cd321135b8c0be8e3d25fe696",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/ba3aec2b2cbe775d9467dddd547f4239a347331cd321135b8c0be8e3d25fe696",
+      "wallet": "CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5",
+      "at": "2026-10-23T14:27:07.396Z"
+    },
+    {
+      "step": "fund_wallet",
+      "actor": "co-op treasury (freighter_wallet)",
+      "txHash": "44754883de05e9fc116f2fa6cb1f5ce6d9c0f7fb7c5d7d00203b92957cadc282",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/44754883de05e9fc116f2fa6cb1f5ce6d9c0f7fb7c5d7d00203b92957cadc282",
+      "amountXlm": 3000,
+      "at": "2026-10-23T14:27:12.366Z"
+    },
+    {
+      "step": "verify_farmer",
+      "actor": "vault admin multisig",
+      "txHash": "7b0944b8457faa339b94ede5b1432c1fc393a9ceb32834380667d8d65dcb1df2",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/7b0944b8457faa339b94ede5b1432c1fc393a9ceb32834380667d8d65dcb1df2",
+      "at": "2026-10-23T14:27:26.696Z"
+    },
+    {
+      "step": "passkey_deposit_lp",
+      "actor": "passkey wallet",
+      "txHash": "77b166e4156a547068fad9ee6a1778f3d9d5e05b3bb59d7c4337e22b2ab91bc3",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/77b166e4156a547068fad9ee6a1778f3d9d5e05b3bb59d7c4337e22b2ab91bc3",
+      "amountXlm": 1500,
+      "lpShares": "\"15000000000\"",
+      "at": "2026-10-23T14:27:37.806Z"
+    },
+    {
+      "step": "passkey_subscribe_policy",
+      "actor": "passkey wallet",
+      "txHash": "00896d37e2204b45caad32d6a20af96c38137bc3805acd0519b8f5b540ca0f2e",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/00896d37e2204b45caad32d6a20af96c38137bc3805acd0519b8f5b540ca0f2e",
+      "farmId": "TYFI_COOP_FARM_01",
+      "region": "Eastern_Visayas",
+      "premiumStroops": "200000000",
+      "at": "2026-10-23T14:27:47.847Z"
+    },
+    {
+      "step": "create_proposal",
+      "actor": "co-op member (freighter_wallet)",
+      "txHash": "50350b755a3a5300036dfd6dc117c4738da9fbe4c82dbc8fee5ec3f23de992c9",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/50350b755a3a5300036dfd6dc117c4738da9fbe4c82dbc8fee5ec3f23de992c9",
+      "proposalId": 6,
+      "premiumRateBefore": 100,
+      "at": "2026-10-23T14:27:58.559Z"
+    },
+    {
+      "step": "passkey_vote",
+      "actor": "passkey wallet",
+      "txHash": "9988d264d300d9b7c46ff2f131ecafd8d80911f1664db3ec1130509b852d501d",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/9988d264d300d9b7c46ff2f131ecafd8d80911f1664db3ec1130509b852d501d",
+      "proposalId": 6,
+      "support": true,
+      "at": "2026-10-23T14:29:17.006Z"
+    },
+    {
+      "step": "vote_freighter_wallet",
+      "actor": "co-op LP (freighter_wallet)",
+      "txHash": "a25edf5e244e311bee41646ed1f952943c82e315a888a1839bc0188da6d7d8ce",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/a25edf5e244e311bee41646ed1f952943c82e315a888a1839bc0188da6d7d8ce",
+      "proposalId": 6,
+      "support": true,
+      "at": "2026-10-23T14:29:24.086Z"
+    },
+    {
+      "step": "vote_deployer",
+      "actor": "co-op LP (deployer)",
+      "txHash": "833270546bdf5bc9de8122586057b60f00fdd2aa34acda3480a36648b2eef6ce",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/833270546bdf5bc9de8122586057b60f00fdd2aa34acda3480a36648b2eef6ce",
+      "proposalId": 6,
+      "support": true,
+      "at": "2026-10-23T14:29:33.954Z"
+    },
+    {
+      "step": "execute_proposal",
+      "actor": "anyone (deployer)",
+      "txHash": "49ba704b8575db2320779a05aebc31cf9bfc051f37f67611f907a14398ca4ba5",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/49ba704b8575db2320779a05aebc31cf9bfc051f37f67611f907a14398ca4ba5",
+      "status": "\"TimelockPending\"",
+      "at": "2026-10-23T14:43:32.432Z"
+    },
+    {
+      "step": "grant_executor_role",
+      "actor": "DAO admin",
+      "txHash": "6d584eb63e96240b1b1efffee07301daa25bec17c18f4f089e19c9481387a3d6",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/6d584eb63e96240b1b1efffee07301daa25bec17c18f4f089e19c9481387a3d6",
+      "target": "CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5",
+      "role": "Executor",
+      "at": "2026-10-23T14:57:57.554Z"
+    },
+    {
+      "step": "video_passkey_wallet_created",
+      "actor": "passkey (virtual authenticator)",
+      "txHash": "6359f3c0da6fee01d5a5e0e62e756459048d996a47ecdfcb3133f8d82a433281",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/6359f3c0da6fee01d5a5e0e62e756459048d996a47ecdfcb3133f8d82a433281",
+      "wallet": "CAASPQJPNJSBYIHU5SV5LEIUG3PRG6KSATGKIZ3JXSEUNK45JCORMKZN",
+      "at": "2026-10-23T15:09:02.273Z",
+      "retake": true
+    },
+    {
+      "step": "video_passkey_wallet_created",
+      "actor": "passkey (virtual authenticator)",
+      "txHash": "817ed56ea94ecd974b54cebe40773df59158568650373605cd768bd5789aaac2",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/817ed56ea94ecd974b54cebe40773df59158568650373605cd768bd5789aaac2",
+      "wallet": "CCM4CBLQ6Q6W6R6WIL2KQZDEXKHU3HQQ23TWZVMJJPI6UJWUPQRDOAHS",
+      "at": "2026-10-23T15:10:01.212Z",
+      "retake": true
+    },
+    {
+      "step": "video_passkey_wallet_created",
+      "actor": "passkey (virtual authenticator)",
+      "txHash": "e9b247d6434592918f120228c10c4eccc328f609916b41d3d1df0dcb961a9ece",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/e9b247d6434592918f120228c10c4eccc328f609916b41d3d1df0dcb961a9ece",
+      "wallet": "CDKBILEUSD4KZ47PKPU6OL7KJO2JRMHNFYTPXSHUJ2PLIJIVPRYLT2N7",
+      "at": "2026-10-23T15:11:00.959Z"
+    },
+    {
+      "step": "video_create_proposal",
+      "actor": "co-op member (freighter_wallet)",
+      "txHash": "493ae7ddecf78db9d76a7982c40078e52a956b36da917466d57608c554103e22",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/493ae7ddecf78db9d76a7982c40078e52a956b36da917466d57608c554103e22",
+      "proposalId": 7,
+      "at": "2026-10-23T15:11:28.976Z",
+      "retake": true
+    },
+    {
+      "step": "video_passkey_vote",
+      "actor": "passkey wallet",
+      "txHash": "9222dff92ef06ecd14799fc9e5b69bc5951f237e3bb5ded94cc6d41c215bd4b1",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/9222dff92ef06ecd14799fc9e5b69bc5951f237e3bb5ded94cc6d41c215bd4b1",
+      "proposalId": 7,
+      "support": true,
+      "at": "2026-10-23T15:12:21.035Z",
+      "retake": true
+    },
+    {
+      "step": "video_create_proposal",
+      "actor": "co-op member (freighter_wallet)",
+      "txHash": "d35864daefe825ca82cacd3da1e8233a5faf96567173d1fe2dee912845fdaf79",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/d35864daefe825ca82cacd3da1e8233a5faf96567173d1fe2dee912845fdaf79",
+      "proposalId": 8,
+      "at": "2026-10-23T15:12:48.612Z"
+    },
+    {
+      "step": "video_passkey_vote",
+      "actor": "passkey wallet",
+      "txHash": "af87d9742b693d769f812cb89e6eebe2815944bfb23dab952a3db47ecd797c33",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/af87d9742b693d769f812cb89e6eebe2815944bfb23dab952a3db47ecd797c33",
+      "proposalId": 8,
+      "support": true,
+      "at": "2026-10-23T15:13:36.394Z"
+    },
+    {
+      "step": "finalize_proposal_cross_contract",
+      "actor": "passkey wallet (DAO executor)",
+      "txHash": "7fd8c2a3204d3a3457bac478be6a6ac5e3e2e47579d99fbb5628f1ca8d611cdc",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/7fd8c2a3204d3a3457bac478be6a6ac5e3e2e47579d99fbb5628f1ca8d611cdc",
+      "premiumRateBefore": 100,
+      "premiumRateAfter": 125,
+      "at": "2026-10-24T10:09:52.110Z"
+    },
+    {
+      "step": "zk_weather_report",
+      "actor": "ZK oracle (tyfi_zk_oracle)",
+      "txHash": "98eee50cf45191c9b69334c33d4729565100bfd939399f84dbfb28fe4c8ee6af",
+      "windFloor": 150,
+      "damagePercentage": 85,
+      "at": "2026-10-24T10:11:57Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/98eee50cf45191c9b69334c33d4729565100bfd939399f84dbfb28fe4c8ee6af"
+    },
+    {
+      "step": "passkey_claim_payout",
+      "actor": "passkey wallet",
+      "txHash": "d9962ba020588862def4e25f6fc348cfd8f660516d336cc726a6f1ba7d497706",
+      "payoutXlm": 170,
+      "balanceAfterStroops": "16650000000",
+      "balanceBeforeStroops": "14950000000",
+      "at": "2026-10-24T10:12:17Z",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/d9962ba020588862def4e25f6fc348cfd8f660516d336cc726a6f1ba7d497706"
+    }
+  ],
+  "wallet": "CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5",
+  "proposalId": 6
+}

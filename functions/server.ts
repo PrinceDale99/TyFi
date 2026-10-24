@@ -237,13 +237,9 @@ app.get('/api/dao/metrics', async (req, res) => {
 
     if (error) throw error;
 
-    // Fallback if table is empty or doesn't exist
+    // No indexer data yet: say so rather than returning placeholder numbers.
     if (!data) {
-      return res.json({
-        total_members: 1248,
-        weekly_growth: 12,
-        active_proposals: 1
-      });
+      return res.status(404).json({ error: 'No DAO metrics indexed yet' });
     }
 
     res.json({
@@ -253,12 +249,7 @@ app.get('/api/dao/metrics', async (req, res) => {
     });
   } catch (error: any) {
     await logEvent('ERROR', 'Failed to fetch DAO metrics from Supabase', { error: error.message });
-    // Fallback on error
-    res.json({
-      total_members: 1248,
-      weekly_growth: 12,
-      active_proposals: 1
-    });
+    res.status(503).json({ error: 'DAO metrics unavailable' });
   }
 });
 

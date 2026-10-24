@@ -2,8 +2,9 @@
 pub mod verifier;
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, contracterror, Address, Env, Symbol, log, token, Vec, BytesN, Bytes
+    contract, contractimpl, contracttype, contracterror, xdr::ToXdr, Address, Env, Symbol, log, token, Vec, BytesN, Bytes, U256
 };
+use verifier::{Groth16Proof, Groth16VerifyingKey};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -24,6 +25,8 @@ pub enum Error {
     LoanCapExceeded = 13,
     PolicyAlreadyUsed = 14,
     CoverageCapExceeded = 15,
+    ZkNotConfigured = 16,
+    InvalidProof = 17,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -64,6 +67,8 @@ pub enum DataKey {
     ParametricBands(Symbol),            // region -> Vec<PayoutBand>
     OracleWindSpeed(Symbol, Symbol),    // Raw wind speed reported by Oracle: (typhoon_id, region) -> u32
     SolvencyCapBps,                     // DAO-adjustable max coverage ratio (basis points, u32)
+    ZkVerifyingKey,                     // Groth16 VK for the weather_threshold circuit
+    OracleZkKeyHash(Address),           // Poseidon(Ax, Ay) of the oracle's EdDSA signing key (U256)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -100,11 +105,24 @@ const PERSISTENT_TTL_EXTEND: u32 = 3_456_000;    // ~200 days
 const TEMP_TTL_THRESHOLD: u32 = 172_800;         // ~10 days
 const TEMP_TTL_EXTEND: u32 = 345_600;            // ~20 days
 
+/// Public inputs of the weather_threshold circuit:
+/// [oracle_key_hash, typhoon_id, region_id, wind_floor, damage_percentage]
+const ZK_PUBLIC_INPUTS: u32 = 5;
+
 /// Maximum per-farmer outstanding loan principal as a fraction of pool (20% = 2000 bps)
 const MAX_FARMER_LOAN_BPS: i128 = 2_000;
 
 pub fn bump_persistent(env: &Env, key: &DataKey) {
     env.storage().persistent().extend_ttl(key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND);
+}
+
+/// Maps a Symbol to a BN254 scalar for use as a circuit public input:
+/// `sha256(XDR(ScVal::Symbol))` with the top byte zeroed, so the value is
+/// always below the field modulus. The oracle uses the same encoding.
+pub fn symbol_to_field(env: &Env, symbol: &Symbol) -> U256 {
+    let mut digest = env.crypto().sha256(&symbol.clone().to_xdr(env)).to_array();
+    digest[0] = 0;
+    U256::from_be_bytes(env, &Bytes::from_array(env, &digest))
 }
 
 pub fn bump_temporary(env: &Env, key: &DataKey) {
@@ -138,6 +156,11 @@ pub fn require_multisig_auth(
         .instance()
         .get(&DataKey::AdminMultisig)
         .ok_or(Error::NotInitialized)?;
+
+    // Fail closed: a zero threshold would accept an empty signature list.
+    if multisig.threshold == 0 {
+        return Err(Error::Unauthorized);
+    }
 
     // Read the current nonce. Every successful call increments it, so each
     // (nonce, fn_name) pair is valid for exactly one invocation.
@@ -201,6 +224,14 @@ pub fn require_multisig_auth(
     Ok(())
 }
 
+/// A multisig needs at least one signer and cannot require more signers than it has keys.
+fn validate_multisig(keys: &Vec<BytesN<32>>, threshold: u32) -> Result<(), Error> {
+    if threshold == 0 || threshold > keys.len() {
+        return Err(Error::InsufficientSignatures);
+    }
+    Ok(())
+}
+
 /// Returns the current admin nonce. Callers use this to construct the
 /// message they must sign: `sha256(nonce_be_8_bytes || fn_name_bytes)`.
 pub fn get_admin_nonce(env: &Env) -> u64 {
@@ -248,6 +279,7 @@ impl TyphoonVault {
         if env.storage().instance().has(&DataKey::AdminMultisig) {
             return Err(Error::AlreadyInitialized);
         }
+        validate_multisig(&admin_keys, admin_threshold)?;
 
         let multisig = AdminMultisig { keys: admin_keys, threshold: admin_threshold };
         env.storage().instance().set(&DataKey::AdminMultisig, &multisig);
@@ -283,6 +315,34 @@ impl TyphoonVault {
 
     // --- Governance & Admin Functions ---
 
+    /// Replace the admin key set and threshold.
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"rotate_admin_multisig" )`
+    ///
+    /// Vaults initialized before threshold validation existed may hold a
+    /// zero-threshold multisig, which accepted any admin call. That state can
+    /// be repaired once without signatures; every later rotation needs the
+    /// configured quorum.
+    pub fn rotate_admin_multisig(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, keys: Vec<BytesN<32>>, threshold: u32) -> Result<(), Error> {
+        let current: AdminMultisig = env.storage().instance().get(&DataKey::AdminMultisig).ok_or(Error::NotInitialized)?;
+        if current.threshold == 0 {
+            let nonce = get_admin_nonce(&env);
+            env.storage().instance().set(&DataKey::AdminNonce, &(nonce + 1));
+        } else {
+            require_multisig_auth(&env, b"rotate_admin_multisig", signatures)?;
+        }
+        validate_multisig(&keys, threshold)?;
+
+        env.storage().instance().set(&DataKey::AdminMultisig, &AdminMultisig { keys, threshold });
+        log!(&env, "Admin multisig rotated. Threshold:", threshold);
+        Ok(())
+    }
+
+    pub fn get_admin_multisig(env: Env) -> Option<AdminMultisig> {
+        env.storage().instance().get(&DataKey::AdminMultisig)
+    }
+
     /// Set the active status of a weather oracle (Testnet consensus)
     ///
     /// Signers must produce ed25519 signatures over:
@@ -306,6 +366,44 @@ impl TyphoonVault {
         env.storage().instance().set(&DataKey::SingleOracle, &single_oracle);
         log!(&env, "Single oracle updated for mainnet", single_oracle);
         Ok(())
+    }
+
+    /// Install the Groth16 verifying key for the weather_threshold circuit.
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"set_zk_verifying_key" )`
+    pub fn set_zk_verifying_key(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, vk: Groth16VerifyingKey) -> Result<(), Error> {
+        require_multisig_auth(&env, b"set_zk_verifying_key", signatures)?;
+
+        // One IC point per public input, plus IC[0].
+        if vk.ic.len() != ZK_PUBLIC_INPUTS + 1 {
+            return Err(Error::InvalidAmount);
+        }
+        env.storage().instance().set(&DataKey::ZkVerifyingKey, &vk);
+        log!(&env, "ZK verifying key installed");
+        Ok(())
+    }
+
+    pub fn get_zk_verifying_key(env: Env) -> Option<Groth16VerifyingKey> {
+        env.storage().instance().get(&DataKey::ZkVerifyingKey)
+    }
+
+    /// Bind an oracle address to the Poseidon hash of its EdDSA signing key.
+    /// ZK reports from that oracle must be signed by this key.
+    ///
+    /// Signers must produce ed25519 signatures over:
+    ///   `sha256( nonce_be_8_bytes || b"set_oracle_zk_key" )`
+    pub fn set_oracle_zk_key(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, oracle: Address, key_hash: U256) -> Result<(), Error> {
+        require_multisig_auth(&env, b"set_oracle_zk_key", signatures)?;
+
+        env.storage().persistent().set(&DataKey::OracleZkKeyHash(oracle.clone()), &key_hash);
+        bump_persistent(&env, &DataKey::OracleZkKeyHash(oracle.clone()));
+        log!(&env, "Oracle ZK key registered", oracle);
+        Ok(())
+    }
+
+    pub fn get_oracle_zk_key(env: Env, oracle: Address) -> Option<U256> {
+        env.storage().persistent().get(&DataKey::OracleZkKeyHash(oracle))
     }
 
     /// Official KYC/RSBSA Verification of farmers
@@ -859,25 +957,43 @@ impl TyphoonVault {
         Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_speed)
     }
 
-    /// Submit weather report with Noir Zero-Knowledge proof verification.
+    /// Submit a weather report backed by a Groth16 proof (weather_threshold circuit).
     ///
-    /// The proof proves that the observed wind speed exceeds the payout threshold
-    /// for the specific typhoon and region without leaking private raw sensor feeds.
+    /// The proof shows the oracle's registered EdDSA key signed a wind reading
+    /// for this typhoon and region that is at least `wind_floor`, without
+    /// revealing the reading. The contract builds every public input itself,
+    /// so a proof only verifies for the exact (oracle key, typhoon, region,
+    /// wind_floor, damage) it was generated for. `wind_floor` is stored as the
+    /// attested wind speed, a lower bound that the payout bands compare against.
     pub fn submit_weather_report_zk(
         env: Env,
         oracle: Address,
         typhoon_id: Symbol,
         region: Symbol,
         damage_percentage: u32,
-        wind_speed: u32,
-        proof: Bytes,
-        public_inputs: Vec<soroban_sdk::Val>,
+        wind_floor: u32,
+        proof: Groth16Proof,
     ) -> Result<(), Error> {
         oracle.require_auth();
-        if !verifier::verify_zk_proof(&env, &proof, &public_inputs) {
-            return Err(Error::Unauthorized);
+
+        let vk: Groth16VerifyingKey = env.storage().instance().get(&DataKey::ZkVerifyingKey).ok_or(Error::ZkNotConfigured)?;
+        let key_hash: U256 = env.storage().persistent().get(&DataKey::OracleZkKeyHash(oracle.clone())).ok_or(Error::ZkNotConfigured)?;
+
+        let mut public_inputs: Vec<U256> = Vec::new(&env);
+        public_inputs.push_back(key_hash);
+        public_inputs.push_back(symbol_to_field(&env, &typhoon_id));
+        public_inputs.push_back(symbol_to_field(&env, &region));
+        public_inputs.push_back(U256::from_u32(&env, wind_floor));
+        public_inputs.push_back(U256::from_u32(&env, damage_percentage));
+
+        if !verifier::verify_groth16(&env, &vk, &proof, &public_inputs) {
+            return Err(Error::InvalidProof);
         }
-        Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_speed)
+        env.events().publish(
+            (Symbol::new(&env, "zk_report_verified"), typhoon_id.clone(), region.clone()),
+            (oracle.clone(), wind_floor, damage_percentage),
+        );
+        Self::process_weather_report(&env, &oracle, &typhoon_id, &region, damage_percentage, wind_floor)
     }
 
     fn process_weather_report(
@@ -1110,4 +1226,9 @@ mod test_auth;
 mod test_reinsurance;
 
 #[cfg(test)]
-mod test_security;
+mod test_security;
+#[cfg(test)]
+mod zk_fixture;
+
+#[cfg(test)]
+mod test_zk;

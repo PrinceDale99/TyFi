@@ -1,0 +1,10 @@
+[package]
+name = "weather_threshold_noir"
+type = "bin"
+authors = ["TyFi"]
+compiler_version = ">=1.0.0"
+
+[dependencies]
+# Vendored (Apache-2.0) at Noir-1.0-compatible revisions; see vendor/README.md.
+eddsa = { path = "vendor/eddsa" } # noir-lang/eddsa @ 1ed4e552 (main; no 1.0-compatible tag yet)
+poseidon = { path = "vendor/poseidon" } # noir-lang/poseidon v0.3.0

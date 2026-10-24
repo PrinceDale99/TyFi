@@ -1,0 +1,584 @@
+[
+ {
+  "scene": "00-title",
+  "start": 0.8,
+  "end": 2.16,
+  "text": "This is TyFi:"
+ },
+ {
+  "scene": "00-title",
+  "start": 2.16,
+  "end": 5.52,
+  "text": "parametric typhoon insurance for Filipino farmers,"
+ },
+ {
+  "scene": "00-title",
+  "start": 5.52,
+  "end": 6.96,
+  "text": "built on Stellar."
+ },
+ {
+  "scene": "00-title",
+  "start": 6.96,
+  "end": 8.4,
+  "text": "In the next four minutes,"
+ },
+ {
+  "scene": "00-title",
+  "start": 8.4,
+  "end": 10.96,
+  "text": "we run the whole pipeline live on testnet."
+ },
+ {
+  "scene": "01-overview",
+  "start": 12.8,
+  "end": 14.88,
+  "text": "A farmer signs in with a passkey,"
+ },
+ {
+  "scene": "01-overview",
+  "start": 14.88,
+  "end": 16.4,
+  "text": "with no seed phrase."
+ },
+ {
+  "scene": "01-overview",
+  "start": 16.4,
+  "end": 19.28,
+  "text": "The farming co-op governs the insurance vault"
+ },
+ {
+  "scene": "01-overview",
+  "start": 19.28,
+  "end": 20.56,
+  "text": "through a DAO."
+ },
+ {
+  "scene": "01-overview",
+  "start": 20.56,
+  "end": 22,
+  "text": "When a typhoon hits,"
+ },
+ {
+  "scene": "01-overview",
+  "start": 22,
+  "end": 24.4,
+  "text": "an oracle proves the storm crossed a"
+ },
+ {
+  "scene": "01-overview",
+  "start": 24.4,
+  "end": 26.64,
+  "text": "payout threshold with a zero-knowledge proof,"
+ },
+ {
+  "scene": "01-overview",
+  "start": 26.64,
+  "end": 29.12,
+  "text": "the vault verifies that proof on-chain,"
+ },
+ {
+  "scene": "01-overview",
+  "start": 29.12,
+  "end": 31.44,
+  "text": "and the payout lands in the farmer's wallet."
+ },
+ {
+  "scene": "02-wallet",
+  "start": 33.6,
+  "end": 34.88,
+  "text": "We start with the wallet."
+ },
+ {
+  "scene": "02-wallet",
+  "start": 34.88,
+  "end": 36.16,
+  "text": "On the passkey page,"
+ },
+ {
+  "scene": "02-wallet",
+  "start": 36.16,
+  "end": 38.72,
+  "text": "the farmer names the wallet and taps create."
+ },
+ {
+  "scene": "02-wallet",
+  "start": 38.72,
+  "end": 40.56,
+  "text": "The device creates a passkey,"
+ },
+ {
+  "scene": "02-wallet",
+  "start": 40.56,
+  "end": 42.64,
+  "text": "and our factory contract deploys a smart"
+ },
+ {
+  "scene": "02-wallet",
+  "start": 42.64,
+  "end": 43.92,
+  "text": "wallet bound to it."
+ },
+ {
+  "scene": "02-wallet",
+  "start": 43.92,
+  "end": 45.44,
+  "text": "There is no seed phrase,"
+ },
+ {
+  "scene": "02-wallet",
+  "start": 45.44,
+  "end": 47.52,
+  "text": "and no private key in the browser."
+ },
+ {
+  "scene": "02-wallet",
+  "start": 47.52,
+  "end": 48.56,
+  "text": "From here on,"
+ },
+ {
+  "scene": "02-wallet",
+  "start": 48.56,
+  "end": 50.64,
+  "text": "every transaction is approved with the same"
+ },
+ {
+  "scene": "02-wallet",
+  "start": 50.64,
+  "end": 52,
+  "text": "fingerprint or face,"
+ },
+ {
+  "scene": "02-wallet",
+  "start": 52,
+  "end": 54.88,
+  "text": "and checked on-chain by the wallet's own __check_auth."
+ },
+ {
+  "scene": "02-wallet",
+  "start": 54.88,
+  "end": 57.92,
+  "text": "Here is the deployment on Stellar Expert."
+ },
+ {
+  "scene": "03-membership",
+  "start": 61.6,
+  "end": 63.84,
+  "text": "The co-op funds the wallet and verifies"
+ },
+ {
+  "scene": "03-membership",
+  "start": 63.84,
+  "end": 66.8,
+  "text": "the farm through the vault's admin multisig."
+ },
+ {
+  "scene": "03-membership",
+  "start": 66.8,
+  "end": 69.36,
+  "text": "The farmer then joins the reinsurance pool"
+ },
+ {
+  "scene": "03-membership",
+  "start": 69.36,
+  "end": 70.8,
+  "text": "as a liquidity provider,"
+ },
+ {
+  "scene": "03-membership",
+  "start": 70.8,
+  "end": 74.24,
+  "text": "and insures a rice farm in Eastern Visayas."
+ },
+ {
+  "scene": "03-membership",
+  "start": 74.24,
+  "end": 75.92,
+  "text": "Each of those steps is signed with"
+ },
+ {
+  "scene": "03-membership",
+  "start": 75.92,
+  "end": 78.4,
+  "text": "the passkey and settled on testnet."
+ },
+ {
+  "scene": "04-dao",
+  "start": 80.6,
+  "end": 81.8,
+  "text": "Now, governance."
+ },
+ {
+  "scene": "04-dao",
+  "start": 81.8,
+  "end": 83.08,
+  "text": "In the DAO tab,"
+ },
+ {
+  "scene": "04-dao",
+  "start": 83.08,
+  "end": 85,
+  "text": "the farmer's voting power is read straight"
+ },
+ {
+  "scene": "04-dao",
+  "start": 85,
+  "end": 87.08,
+  "text": "from their liquidity shares in the vault."
+ },
+ {
+  "scene": "04-dao",
+  "start": 87.08,
+  "end": 88.44,
+  "text": "A new proposal is open,"
+ },
+ {
+  "scene": "04-dao",
+  "start": 88.44,
+  "end": 89.88,
+  "text": "and the farmer votes for it."
+ },
+ {
+  "scene": "04-dao",
+  "start": 89.88,
+  "end": 91.56,
+  "text": "The passkey signs the vote,"
+ },
+ {
+  "scene": "04-dao",
+  "start": 91.56,
+  "end": 93,
+  "text": "and the tally updates on-chain."
+ },
+ {
+  "scene": "04-dao",
+  "start": 93,
+  "end": 95.48,
+  "text": "Quorum is 30% of all shares,"
+ },
+ {
+  "scene": "04-dao",
+  "start": 95.48,
+  "end": 99.48,
+  "text": "and premium changes need a 60% supermajority."
+ },
+ {
+  "scene": "04-dao",
+  "start": 99.48,
+  "end": 101.8,
+  "text": "Earlier, the co-op passed proposal 6:"
+ },
+ {
+  "scene": "04-dao",
+  "start": 101.8,
+  "end": 107.32,
+  "text": "raise the Eastern Visayas premium multiplier to 125%."
+ },
+ {
+  "scene": "04-dao",
+  "start": 107.32,
+  "end": 109.24,
+  "text": "It then sat in a 12-hour timelock,"
+ },
+ {
+  "scene": "04-dao",
+  "start": 109.24,
+  "end": 111.64,
+  "text": "so members could react before anything changed."
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 114.6,
+  "end": 115.56,
+  "text": "The timelock is over."
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 115.56,
+  "end": 117.56,
+  "text": "The co-op made this farmer a DAO"
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 117.56,
+  "end": 119.96,
+  "text": "executor, so the farmer taps finalize,"
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 119.96,
+  "end": 121.4,
+  "text": "and signs with the passkey."
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 121.4,
+  "end": 124.28,
+  "text": "The DAO contract then calls the vault"
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 124.28,
+  "end": 124.84,
+  "text": "contract directly."
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 124.84,
+  "end": 128.2,
+  "text": "The vault only accepts parameter changes from"
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 128.2,
+  "end": 128.76,
+  "text": "its DAO."
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 128.76,
+  "end": 130.2,
+  "text": "In the invocation tree,"
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 130.2,
+  "end": 133.16,
+  "text": "you can see the DAO calling update_premium_rate"
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 133.16,
+  "end": 134.36,
+  "text": "on the vault,"
+ },
+ {
+  "scene": "05-cross-contract",
+  "start": 134.36,
+  "end": 139.48,
+  "text": "and the Eastern Visayas multiplier moving from 100 to 125."
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 142.6,
+  "end": 143.56,
+  "text": "Then the storm."
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 143.56,
+  "end": 145.24,
+  "text": "Typhoon Odette crosses Eastern Visayas,"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 145.24,
+  "end": 149.96,
+  "text": "and the oracle reads 172 km/h."
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 149.96,
+  "end": 151.4,
+  "text": "That number stays private."
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 151.4,
+  "end": 153,
+  "text": "The oracle signs the reading,"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 153,
+  "end": 155.16,
+  "text": "and generates a Groth16 proof that its"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 155.16,
+  "end": 156.92,
+  "text": "registered key signed a reading at or"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 156.92,
+  "end": 159.96,
+  "text": "above the 150 km/h band."
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 159.8,
+  "end": 162.84,
+  "text": "The vault rebuilds every public input itself:"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 162.84,
+  "end": 164.04,
+  "text": "the oracle's key,"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 164.04,
+  "end": 165.64,
+  "text": "the typhoon, the region,"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 165.16,
+  "end": 166.6,
+  "text": "the band, and the damage."
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 166.6,
+  "end": 171.08,
+  "text": "It checks the proof with Soroban's BN254"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 171.08,
+  "end": 174.12,
+  "text": "pairing functions, in about 30M instructions,"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 174.12,
+  "end": 176.28,
+  "text": "and stores only the band."
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 175.96,
+  "end": 177.72,
+  "text": "With consensus recorded,"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 177.72,
+  "end": 179,
+  "text": "the farmer claims,"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 179,
+  "end": 181.72,
+  "text": "and the vault pays 85% of the"
+ },
+ {
+  "scene": "06-zk-payout",
+  "start": 181.24,
+  "end": 183.16,
+  "text": "coverage straight to the passkey wallet."
+ },
+ {
+  "scene": "07-trust",
+  "start": 186.6,
+  "end": 188.04,
+  "text": "Forged proofs fail."
+ },
+ {
+  "scene": "07-trust",
+  "start": 188.04,
+  "end": 189.24,
+  "text": "Change the damage,"
+ },
+ {
+  "scene": "07-trust",
+  "start": 189.24,
+  "end": 190.92,
+  "text": "the region, the wind band,"
+ },
+ {
+  "scene": "07-trust",
+  "start": 190.92,
+  "end": 192.12,
+  "text": "or the oracle key,"
+ },
+ {
+  "scene": "07-trust",
+  "start": 192.12,
+  "end": 194.2,
+  "text": "and the pairing check rejects it."
+ },
+ {
+  "scene": "07-trust",
+  "start": 194.2,
+  "end": 197.08,
+  "text": "The contract test suite covers each case."
+ },
+ {
+  "scene": "07-trust",
+  "start": 197.08,
+  "end": 199.8,
+  "text": "The same statement is also written in"
+ },
+ {
+  "scene": "07-trust",
+  "start": 199.8,
+  "end": 203.4,
+  "text": "Noir, and one oracle signature satisfies both circuits."
+ },
+ {
+  "scene": "07-trust",
+  "start": 203.4,
+  "end": 206.52,
+  "text": "And admin calls now require the multisig,"
+ },
+ {
+  "scene": "07-trust",
+  "start": 206.52,
+  "end": 209.16,
+  "text": "closing a zero-threshold bypass we found this week."
+ },
+ {
+  "scene": "08-outro",
+  "start": 211.6,
+  "end": 213.84,
+  "text": "Every step has a testnet transaction you"
+ },
+ {
+  "scene": "08-outro",
+  "start": 213.84,
+  "end": 216.16,
+  "text": "can open on Stellar Expert."
+ },
+ {
+  "scene": "08-outro",
+  "start": 216.16,
+  "end": 217.84,
+  "text": "The contracts, the app,"
+ },
+ {
+  "scene": "08-outro",
+  "start": 217.84,
+  "end": 220.32,
+  "text": "the oracle and both circuits are open"
+ },
+ {
+  "scene": "08-outro",
+  "start": 220.32,
+  "end": 222.32,
+  "text": "source under the MIT license,"
+ },
+ {
+  "scene": "08-outro",
+  "start": 222.32,
+  "end": 224.24,
+  "text": "with a replication guide to run all"
+ },
+ {
+  "scene": "08-outro",
+  "start": 224.24,
+  "end": 225.68,
+  "text": "of it yourself."
+ },
+ {
+  "scene": "08-outro",
+  "start": 225.68,
+  "end": 226.56,
+  "text": "That's TyFi."
+ }
+]

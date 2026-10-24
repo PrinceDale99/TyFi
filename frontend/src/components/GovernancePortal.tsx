@@ -14,7 +14,7 @@ interface GovernancePortalProps {
 }
 
 import {
-  NETWORK_CONFIGS, voteOnDaoProposal, createDaoProposal, isUserRejection, describeDaoError,
+  NETWORK_CONFIGS, voteOnDaoProposal, createDaoProposal, settleDaoProposal, finalizeDaoProposal, isUserRejection, describeDaoError,
   DAO_ADMIN_ONLY_ACTIONS, DAO_MIN_PROPOSAL_SHARES,
   type DaoActionType, type DaoProposalStatus, type DaoRole,
 } from '../lib/stellar';
@@ -100,11 +100,8 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     endDate: '',
   });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const [daoMetrics, setDaoMetrics] = useState({
-    total_members: 1248,
-    weekly_growth: 12,
-    active_proposals: 1
-  });
+  /** Total LP shares in the vault (stroops): the DAO's voting supply. */
+  const [votingSupply, setVotingSupply] = useState<number | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
@@ -120,17 +117,24 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
   const fetchGenerationRef = useRef(0);
   const isPollingRef = useRef(false);
 
-  const loadDaoMetrics = useCallback(async () => {
+  const loadVotingSupply = useCallback(async () => {
     try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://tyfi-yzbn.onrender.com';
-      const metricsRes = await fetch(`${backendUrl}/api/dao/metrics`);
-      if (metricsRes.ok) {
-        setDaoMetrics(await metricsRes.json());
+      const config = NETWORK_CONFIGS[network];
+      const server = new rpc.Server(config.sorobanRpcUrl);
+      const dummyAccount = new Account('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF', '0');
+      const result = await server.simulateTransaction(
+        new TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: config.passphrase })
+          .addOperation(new Contract(config.vaultContractId).call('get_total_reinsurance_shares'))
+          .setTimeout(30)
+          .build()
+      );
+      if (rpc.Api.isSimulationSuccess(result) && result.result) {
+        setVotingSupply(Number(scValToNative(result.result.retval)));
       }
     } catch (e) {
-      console.error("Failed to fetch DAO metrics", e);
+      console.error("Failed to read the vault's total LP shares", e);
     }
-  }, []);
+  }, [network]);
 
   /** Returns the voter's LP-share voting power in XLM, or null if it could not be read. */
   const loadVotingPower = useCallback(async (): Promise<number | null> => {
@@ -281,8 +285,8 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
   }, [network, walletAddress]);
 
   const refreshGovernance = useCallback(async () => {
-    await Promise.all([loadProposals(), loadVotingPower(), loadDaoMetrics(), loadRole()]);
-  }, [loadProposals, loadVotingPower, loadDaoMetrics, loadRole]);
+    await Promise.all([loadProposals(), loadVotingPower(), loadVotingSupply(), loadRole()]);
+  }, [loadProposals, loadVotingPower, loadVotingSupply, loadRole]);
 
   useEffect(() => {
     fetchGenerationRef.current += 1;
@@ -336,7 +340,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
     }
 
     try {
-      showToast(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban Smart Contract... Please check Freighter.`, "info");
+      showToast(`Voting ${support ? 'FOR' : 'AGAINST'} proposal ${id} via Soroban smart contract... Approve it in your wallet or with your passkey.`, "info");
 
       const passphrase = NETWORK_CONFIGS[network].passphrase;
       await voteOnDaoProposal(id, support, network, walletAddress, xdr => signWithFreighter(xdr, passphrase));
@@ -355,6 +359,39 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
         isUserRejection(e) ? "Vote cancelled in wallet." : describeDaoError(e) ?? "Voting failed. Check console for details.",
         "error"
       );
+    }
+  };
+
+  const [finalizingId, setFinalizingId] = useState<number | null>(null);
+  const canExecute = daoRole === 'Executor' || daoRole === 'Admin';
+
+  /**
+   * Applies a passed proposal to the vault. finalize_proposal only accepts
+   * proposals that execute_proposal has settled, so settle first when needed.
+   */
+  const handleFinalize = async (id: number) => {
+    if (!walletAddress) return;
+    const passphrase = NETWORK_CONFIGS[network].passphrase;
+    const sign = (xdr: string) => signWithFreighter(xdr, passphrase);
+    setFinalizingId(id);
+    try {
+      showToast(`Applying proposal ${id} to the vault...`, "info");
+      try {
+        await finalizeDaoProposal(id, network, walletAddress, sign);
+      } catch (e) {
+        // DaoError::ProposalFailed (#10): not settled yet.
+        if (!/Error\(Contract, #10\)/.test(String((e as any)?.message ?? e))) throw e;
+        await settleDaoProposal(id, network, walletAddress, sign);
+        await finalizeDaoProposal(id, network, walletAddress, sign);
+      }
+      capturePostHogEvent('governance_proposal_finalized', { proposal_id: id, network });
+      showToast(`Proposal ${id} executed: the DAO updated the vault on-chain.`, "success");
+      refreshGovernance();
+    } catch (e) {
+      console.error("Finalize failed", e);
+      showToast(isUserRejection(e) ? "Finalize cancelled in wallet." : describeDaoError(e) ?? "Finalize failed. Check console for details.", "error");
+    } finally {
+      setFinalizingId(null);
     }
   };
 
@@ -405,7 +442,7 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
 
     setIsSubmittingProposal(true);
     try {
-      showToast("Submitting proposal via smart contract... Please check Freighter.", "info");
+      showToast("Submitting proposal via smart contract... Approve it in your wallet or with your passkey.", "info");
       const passphrase = NETWORK_CONFIGS[network].passphrase;
       await createDaoProposal(
         walletAddress,
@@ -457,10 +494,10 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Users size={48} />
           </div>
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Total DAO Members</p>
-          <div className="text-3xl font-black text-white">{daoMetrics.total_members.toLocaleString()}</div>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Voting Supply</p>
+          <div className="text-3xl font-black text-white">{votingSupply === null ? '—' : formatShares(votingSupply)}</div>
           <div className="text-xs text-emerald-400 font-bold mt-2 flex items-center gap-1">
-            <Activity size={12} /> +{daoMetrics.weekly_growth} this week
+            <Activity size={12} /> vTYFI · total LP shares in the vault
           </div>
         </div>
 
@@ -623,6 +660,30 @@ export function GovernancePortal({ walletAddress, network }: GovernancePortalPro
                         >
                           <XCircle size={16} /> Vote Against
                         </button>
+                      </div>
+                    )}
+
+                    {status === 'TimelockPending' && (
+                      <div className="mt-6 pt-6 border-t border-white/5 text-xs font-bold text-indigo-300 flex items-center gap-2">
+                        <Clock size={14} /> Passed — can be applied to the vault once the timelock ends.
+                      </div>
+                    )}
+
+                    {status === 'Passed' && (
+                      <div className="mt-6 pt-6 border-t border-white/5">
+                        {canExecute ? (
+                          <button
+                            onClick={() => handleFinalize(proposal.id)}
+                            disabled={finalizingId !== null}
+                            className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black uppercase tracking-wider text-xs transition-all flex justify-center items-center gap-2 disabled:opacity-50"
+                          >
+                            {finalizingId === proposal.id
+                              ? <><Loader2 size={16} className="animate-spin" /> Applying to vault…</>
+                              : <><ShieldCheck size={16} /> Finalize &amp; apply to vault</>}
+                          </button>
+                        ) : (
+                          <p className="text-xs font-bold text-slate-400">Timelock over — waiting for a DAO executor to apply it to the vault.</p>
+                        )}
                       </div>
                     )}
                   </div>

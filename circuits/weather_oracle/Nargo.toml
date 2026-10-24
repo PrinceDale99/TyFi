@@ -1,7 +1,0 @@
-[package]
-name = "weather_oracle"
-type = "bin"
-authors = ["TyFi Protocol"]
-compiler_version = "0.22.0"
-
-[dependencies]

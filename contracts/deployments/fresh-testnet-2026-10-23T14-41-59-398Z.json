@@ -1,0 +1,83 @@
+{
+  "network": "testnet",
+  "steps": [
+    {
+      "step": "deploy_vault",
+      "actor": "deployer",
+      "txHash": "38602862e4518da5888a201ca483af214a8d623f932e43c26166ae965c82c841",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/38602862e4518da5888a201ca483af214a8d623f932e43c26166ae965c82c841",
+      "contractId": "CCF6BMB3ASCP7Y5WYHGEM23VWJZ3LJAN2I4ELNXAZDBKFMAENOWWZYIJ",
+      "at": "2026-10-23T14:42:08.337Z"
+    },
+    {
+      "step": "initialize_vault",
+      "actor": "deployer",
+      "txHash": "31a1e5072d6f5870b07c737c02b57cc732856e06fa7f2906db3065e0c631b4db",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/31a1e5072d6f5870b07c737c02b57cc732856e06fa7f2906db3065e0c631b4db",
+      "at": "2026-10-23T14:42:18.348Z"
+    },
+    {
+      "step": "deploy_dao",
+      "actor": "deployer",
+      "txHash": "3d16f7175391e15c6d0e7d07e0f28b8a422894ee5e977204e23d96a6e4eb81bf",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/3d16f7175391e15c6d0e7d07e0f28b8a422894ee5e977204e23d96a6e4eb81bf",
+      "contractId": "CDVE6BQNJ5LAOGNS43XIKWURLMSOVCVDH2KUJFV6VK35R2RCLN4A7OYK",
+      "at": "2026-10-23T14:42:37.525Z"
+    },
+    {
+      "step": "initialize_dao",
+      "actor": "deployer",
+      "txHash": "dc243c55b2227023c748717a017b0ce29b755f3e13e44ed4611689f50e3d13a4",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/dc243c55b2227023c748717a017b0ce29b755f3e13e44ed4611689f50e3d13a4",
+      "at": "2026-10-23T14:42:44.174Z"
+    },
+    {
+      "step": "set_zk_verifying_key",
+      "actor": "deployer",
+      "txHash": "30750565b587f9bc80a3e0a63a591af1fc5fcf6e5f425c1edfdb35eece98b892",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/30750565b587f9bc80a3e0a63a591af1fc5fcf6e5f425c1edfdb35eece98b892",
+      "at": "2026-10-23T14:42:58.078Z"
+    },
+    {
+      "step": "set_oracle_active",
+      "actor": "deployer",
+      "txHash": "4611d61cfe0d292cb6b7f158fb4b3de9e619d3f0246d50ef5f1a81f3a831c21e",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/4611d61cfe0d292cb6b7f158fb4b3de9e619d3f0246d50ef5f1a81f3a831c21e",
+      "at": "2026-10-23T14:43:09.141Z"
+    },
+    {
+      "step": "set_oracle_zk_key",
+      "actor": "deployer",
+      "txHash": "087ceb7b164d57b149989d5832a2cebc0d8c9e3fb64557eea20e2e3889958d28",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/087ceb7b164d57b149989d5832a2cebc0d8c9e3fb64557eea20e2e3889958d28",
+      "at": "2026-10-23T14:43:26.182Z"
+    },
+    {
+      "step": "set_oracle_active",
+      "actor": "deployer",
+      "txHash": "6e876fdc3c42b862ec869fc8dd083e0eb080b45a2c66cf2bc4fa08745834e2a7",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/6e876fdc3c42b862ec869fc8dd083e0eb080b45a2c66cf2bc4fa08745834e2a7",
+      "at": "2026-10-23T14:44:44.469Z"
+    },
+    {
+      "step": "set_dao_address",
+      "actor": "deployer",
+      "txHash": "84c7239cede881bfe5b9fff0d05717894d56ddfc83ff7fabefce50b1e6ce0c44",
+      "explorerUrl": "https://stellar.expert/explorer/testnet/tx/84c7239cede881bfe5b9fff0d05717894d56ddfc83ff7fabefce50b1e6ce0c44",
+      "at": "2026-10-23T14:44:57.713Z"
+    }
+  ],
+  "vault": "CCF6BMB3ASCP7Y5WYHGEM23VWJZ3LJAN2I4ELNXAZDBKFMAENOWWZYIJ",
+  "dao": "CDVE6BQNJ5LAOGNS43XIKWURLMSOVCVDH2KUJFV6VK35R2RCLN4A7OYK",
+  "wasmHash": "9ec723fa422e3810d1dd5c23246452bcd4c72b0de146c814f5286daf3ea6f477",
+  "wasmSizeBytes": 54558,
+  "adminMultisig": {
+    "keys": [
+      "b86604caf8e86ba6c629125b188dbed86da9d901d3bb68c66e93bc440edc0a23"
+    ],
+    "threshold": 1,
+    "signer": "GC4GMBGK7DUGXJWGFEJFWGENX3MG3KOZAHJ3W2GGN2J3YRAO3QFCHNGC"
+  },
+  "oracle": "GAOYA37UORCXQSC2TIYL3OHUV3GSRXQY2JACGJ5OV3UWCF2TGO74Z4RQ",
+  "oracleZkKeyHash": "16903983959979666084249553466291075550611473209871867804533960125777664860862"
+}

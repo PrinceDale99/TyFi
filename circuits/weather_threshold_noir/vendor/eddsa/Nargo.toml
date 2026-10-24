@@ -1,0 +1,9 @@
+[package]
+name = "eddsa"
+type = "lib"
+authors = [""]
+compiler_version = ">=1.0.0"
+
+[dependencies]
+edwards = { path = "../edwards" } # vendored noir-lang/noir-edwards v0.2.5
+poseidon = { path = "../poseidon" } # vendored noir-lang/poseidon v0.3.0
