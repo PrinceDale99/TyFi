@@ -1,12 +1,13 @@
-// TyFi weather trigger circuit — Noir version.
+// TyFi weather trigger circuit, Noir version.
 //
 // Same statement, constraints and public-input order as the Circom circuit in
-// circuits/weather_threshold, which is the one the vault verifies on-chain
-// (Groth16). This version proves with UltraHonk (Barretenberg) and is verified
-// off-chain; see README.md for why both exist.
+// circuits/weather_threshold. The vault verifies both on-chain: Groth16 proofs
+// of the Circom circuit in submit_weather_report_zk, and UltraHonk proofs of
+// this circuit in submit_weather_report_noir (via contracts/noir_verifier).
 //
 // Proves that an authorized oracle signed a wind reading for (typhoon, region)
-// and that the reading meets the payout threshold, without revealing the reading.
+// and that the reading meets the payout threshold.
+// (Noir 1.0.0-beta.9 only allows ASCII in comments.)
 
 use eddsa::eddsa_verify;
 use poseidon::poseidon::{bn254, PoseidonHasher};

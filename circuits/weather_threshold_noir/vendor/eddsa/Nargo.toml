@@ -2,8 +2,8 @@
 name = "eddsa"
 type = "lib"
 authors = [""]
-compiler_version = ">=1.0.0"
+compiler_version = ">=0.36.0"
 
 [dependencies]
-edwards = { path = "../edwards" } # vendored noir-lang/noir-edwards v0.2.5
-poseidon = { path = "../poseidon" } # vendored noir-lang/poseidon v0.3.0
+ec = { path = "../ec" } # noir-lang/ec v0.1.2
+poseidon = { path = "../poseidon" } # noir-lang/poseidon v0.1.1

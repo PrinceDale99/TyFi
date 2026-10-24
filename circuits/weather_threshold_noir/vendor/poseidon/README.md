@@ -4,7 +4,7 @@ This package contains the Poseidon hashing interface, formerly in the Noir stand
 
 ## Noir version compatibility
 
-This library is tested to work as of Noir version 1.0.0.
+This library is tested to work as of Noir version 0.36.0.
 
 ## Benchmarks
 
@@ -24,5 +24,5 @@ In your _Nargo.toml_ file, add the version of this library you would like to ins
 
 ```toml
 [dependencies]
-poseidon = { tag = "v0.1.1", git = "https://github.com/noir-lang/poseidon" }
+poseidon = { tag = "v0.1.0", git = "https://github.com/noir-lang/poseidon" }
 ```
