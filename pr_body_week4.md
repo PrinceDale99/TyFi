@@ -16,7 +16,7 @@
   - **Cross-contract update:** the farmer's passkey wallet finalizes it; `tyfi_dao` calls `vault.update_premium_rate`, Eastern Visayas 100 → 125 ([finalize](https://stellar.expert/explorer/testnet/tx/7fd8c2a3204d3a3457bac478be6a6ac5e3e2e47579d99fbb5628f1ca8d611cdc))
   - **ZK verification on-chain:** `submit_weather_report_zk` verifies a Groth16 proof with BN254 pairings, 29.2M instructions ([report](https://stellar.expert/explorer/testnet/tx/98eee50cf45191c9b69334c33d4729565100bfd939399f84dbfb28fe4c8ee6af))
   - **Payout:** passkey-signed `claim_payout` pays 170 XLM ([claim](https://stellar.expert/explorer/testnet/tx/d9962ba020588862def4e25f6fc348cfd8f660516d336cc726a6f1ba7d497706))
-- [x] **Captioned walkthrough video (3:50):** _YouTube link added after upload_. Footage is the real app on testnet; burned-in captions + `.srt`.
+- [x] **Captioned walkthrough video (3:50):** [https://youtu.be/hQO7kVUe3_M](https://youtu.be/hQO7kVUe3_M). Footage is the real app on testnet; burned-in captions + `.srt`.
 - [x] **Docs:** [`docs/REPLICATION_GUIDE.md`](docs/REPLICATION_GUIDE.md), [`docs/INTEGRATION_GUIDE.md`](docs/INTEGRATION_GUIDE.md), circuit READMEs, one-command fresh deployment (verified: vault `CCF6BMB3…`, DAO `CDVE6BQN…`).
 - [x] **Open-source under MIT:** `LICENSE` + every npm package and Rust crate declares MIT; Soroban contracts, React frontend, integration bridges, Circom **and Noir** circuits.
 
