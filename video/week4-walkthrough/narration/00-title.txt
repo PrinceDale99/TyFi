@@ -1,0 +1,1 @@
+This is TyFi: parametric typhoon insurance for Filipino farmers, built on Stellar. In the next four minutes, we run the whole pipeline live on testnet.

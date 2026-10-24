@@ -10,12 +10,10 @@ const server = new rpc.Server('https://soroban-testnet.stellar.org');
 import { safeInitiatePayout } from './payoutService';
 import { sendSms } from './smsHandler';
 
-// Actual ZK dependencies
-// NOTE: For this to run, the circuit must be compiled to JSON first using nargo or a pre-compile script
-import { Noir } from '@noir-lang/noir_js';
-import { BarretenbergBackend } from '@noir-lang/backend_barretenberg';
-import fs from 'fs';
-import path from 'path';
+import { NETWORK_CONFIGS } from './config';
+import { loadOracleZkKey, proveWeatherReading } from './zk/prover';
+import { submitZkReport } from './zk/submit';
+import { parseWeatherTrigger } from './zk/request';
 
 // Helper to safely get Firestore
 function getDb(): FirebaseFirestore.Firestore | null {
@@ -213,93 +211,65 @@ oracleRouter.post('/api/v1/scraper-update', async (req, res) => {
 
 // ==========================================
 // POST /oracle/api/v1/weather-trigger
-// Manual weather trigger from frontend sandbox
+// Testnet sandbox: the oracle signs a wind reading, proves in Groth16 that it
+// meets a payout band, and submits the proof to the vault's on-chain verifier.
 // ==========================================
 oracleRouter.post('/api/v1/weather-trigger', async (req, res) => {
-  try {
-    const { lat, lon, severity, targetAddress, paymentPrefs, network = 'testnet' } = req.body;
-    await logEvent('INFO', `Weather trigger received on ${network}`, { lat, lon, severity, network });
-
-    // Mock the Stellar TX for the hackathon / test flow
-    let txHash = "MOCK_TX_" + Math.random().toString(36).substring(7);
-
-    // [ACTUAL ZK ORACLE INTEGRATION]
-    await logEvent('INFO', 'Generating REAL Noir ZK Proof for wind speed threshold', { severity });
-    
-    let mockZkProof = "";
-    try {
-      // 1. Load compiled circuit (we gracefully fallback to mock if compilation JSON doesn't exist yet)
-      const circuitPath = path.resolve(__dirname, '../../circuits/weather_oracle/target/weather_oracle.json');
-      if (fs.existsSync(circuitPath)) {
-        const circuit = JSON.parse(fs.readFileSync(circuitPath, 'utf8'));
-        const backend = new BarretenbergBackend(circuit);
-        const noir = new Noir(circuit);
-        
-        // 2. Define inputs matching main.nr
-        const inputs = {
-          wind_speed: 150, 
-          oracle_pub_key_x: "1",
-          oracle_pub_key_y: "2",
-          signature: Array(64).fill(0),
-          typhoon_id: 99,
-          region_id: 1,
-          payout_threshold: 100
-        };
-
-        // 3. Generate the actual Plonk proof
-        const { witness } = await noir.execute(inputs);
-        const proof = await backend.generateProof(witness);
-        mockZkProof = Buffer.from(proof.proof).toString('hex');
-        await logEvent('INFO', 'Real ZK Proof Generated Successfully', { proofLength: proof.proof.length });
-      } else {
-        await logEvent('WARNING', 'Compiled circuit not found, falling back to mock proof.');
-        await new Promise(resolve => setTimeout(resolve, 1200));
-        mockZkProof = Buffer.from("NOIR_ZK_PROOF_" + Math.random().toString(36)).toString('hex');
-      }
-    } catch (zkErr: any) {
-      await logEvent('ERROR', 'ZK Proof Generation failed', { error: zkErr.message });
-      throw new Error("ZK Proof generation failed");
-    }
-
-    // Simulate Soroban contract execution time with ZK Verifier
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const amountPHP = req.body.amountPHP || 15000;
-    
-    // PROACTIVE SMS ALERTS for Sandbox Simulation
-    const db = getDb();
-    if (db) {
-      try {
-        const farmersSnapshot = await db.collection('farmers').get();
-        for (const doc of farmersSnapshot.docs) {
-          const farmer = doc.data();
-          if (farmer.phoneNumber) {
-            const dynamicPayout = farmer.insuredValue || 15000;
-            const msg = `🚨 TyFi Alert: A severe typhoon has been detected in your registered region. Your estimated farm damage compensation is PHP ${dynamicPayout}. \n\nType CLAIM to begin assessment, or type AUTO CLAIM for instant payout. Stay safe!`;
-            await sendSms(farmer.phoneNumber, msg).catch(e => console.error("Proactive SMS failed", e));
-          }
-        }
-      } catch (e) {
-        console.error("Failed to query farmers for proactive SMS", e);
-      }
-    }
-
-    let pdaxTxId = "PENDING";
-    try {
-      await logEvent('INFO', 'Initiating payout via safeInitiatePayout', { amountPHP, paymentPrefs });
-      const result = await safeInitiatePayout(amountPHP, paymentPrefs, {
-        source: 'WEATHER_TRIGGER_SANDBOX'
-      });
-      pdaxTxId = result.txId;
-      await logEvent('INFO', `Payout result: ${result.mode}`, { txId: result.txId });
-    } catch (pdaxError: any) {
-      await logEvent('ERROR', 'Payout failed unexpectedly', { error: pdaxError.message });
-      pdaxTxId = 'FAILED';
-    }
-
-    res.json({ status: 'success', txHash, pdaxTxId, amountPHP, zkProof: mockZkProof });
-  } catch (err: any) {
-    await logEvent('ERROR', 'Oracle failure', { error: err.message });
-    res.status(500).json({ error: 'Failed to trigger parametric contract' });
+  const { network = 'testnet' } = req.body;
+  const parsed = parseWeatherTrigger(req.body);
+  if ('error' in parsed) {
+    return res.status(400).json({ error: parsed.error });
   }
+  if (network !== 'testnet') {
+    return res.status(403).json({ error: 'The weather sandbox only runs on testnet' });
+  }
+  const oracleSecret = process.env.ORACLE_SECRET_KEY;
+  if (!oracleSecret) {
+    return res.status(503).json({ error: 'Oracle signing key is not configured' });
+  }
+
+  let txHash: string;
+  let zk: { proof: string; publicSignals: string[]; provingMs: number; cpuInstructions?: number; ledger: number };
+  try {
+    await logEvent('INFO', 'Weather trigger received', { ...parsed, windSpeed: undefined, network });
+
+    const key = await loadOracleZkKey();
+    const proven = await proveWeatherReading(parsed, key);
+    await logEvent('INFO', 'Groth16 weather proof generated', { provingMs: proven.provingMs });
+
+    const config = NETWORK_CONFIGS.testnet;
+    const submitted = await submitZkReport(
+      { typhoonId: parsed.typhoonId, region: parsed.region, windFloor: parsed.windFloor, damagePercentage: parsed.damagePercentage, proof: proven.proof },
+      { rpcUrl: config.rpcUrl, passphrase: config.passphrase, vaultContractId: config.vaultContractId, oracle: Keypair.fromSecret(oracleSecret) },
+    );
+    txHash = submitted.txHash;
+    zk = {
+      proof: Buffer.concat([proven.proof.a, proven.proof.b, proven.proof.c]).toString('hex'),
+      publicSignals: proven.publicSignals,
+      provingMs: proven.provingMs,
+      cpuInstructions: submitted.cpuInstructions,
+      ledger: submitted.ledger,
+    };
+    await logEvent('INFO', 'ZK weather report verified on-chain', { txHash, ledger: submitted.ledger });
+  } catch (err: any) {
+    await logEvent('ERROR', 'ZK weather report failed', { error: err.message });
+    const rejected = /Error\(Contract, #17\)/.test(err.message);
+    return res.status(rejected ? 422 : 502).json({
+      error: rejected ? 'The vault rejected the proof' : 'Could not prove or submit the weather report',
+      detail: err.message,
+    });
+  }
+
+  // The payout itself is the farmer's on-chain claim_payout against this
+  // consensus. The sandbox no longer texts every registered farmer or queues
+  // a fiat sweep on each trigger: the endpoint is public.
+  res.json({
+    status: 'success',
+    txHash,
+    typhoonId: parsed.typhoonId,
+    region: parsed.region,
+    windFloor: parsed.windFloor,
+    damagePercentage: parsed.damagePercentage,
+    zk,
+  });
 });

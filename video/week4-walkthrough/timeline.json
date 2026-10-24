@@ -1,0 +1,17 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "voice": "af_heart",
+  "scenes": [
+    { "id": "00-title",          "start": 0,   "duration": 12, "voAt": 0.8 },
+    { "id": "01-overview",       "start": 12,  "duration": 21, "voAt": 0.8 },
+    { "id": "02-wallet",         "start": 33,  "duration": 28, "voAt": 0.6, "footage": "02-wallet.mp4" },
+    { "id": "03-membership",     "start": 61,  "duration": 19, "voAt": 0.6 },
+    { "id": "04-dao",            "start": 80,  "duration": 34, "voAt": 0.6, "footage": "04-dao.mp4" },
+    { "id": "05-cross-contract", "start": 114, "duration": 28, "voAt": 0.6, "footage": "05-finalize.mp4" },
+    { "id": "06-zk-payout",      "start": 142, "duration": 44, "voAt": 0.6, "footage": "06-zk.mp4" },
+    { "id": "07-trust",          "start": 186, "duration": 25, "voAt": 0.6 },
+    { "id": "08-outro",          "start": 211, "duration": 19, "voAt": 0.6 }
+  ]
+}

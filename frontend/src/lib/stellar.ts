@@ -43,11 +43,12 @@ export const NETWORK_CONFIGS: Record<'testnet' | 'mainnet', NetworkConfig> = {
   testnet: {
     name: 'Testnet',
     xlmTokenId: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
-    vaultContractId: 'CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR',
+    // Overridable so reviewers can point the app at their own deployment (docs/REPLICATION_GUIDE.md).
+    vaultContractId: import.meta.env.VITE_TESTNET_VAULT_ID || 'CARODUWJWUBI5UPKQCAVGT7GXKJN65ZDVEOPSYCWPBGC6F5MYQJXCQZR',
     horizonUrl: 'https://horizon-testnet.stellar.org',
     sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
     passphrase: Networks.TESTNET,
-    daoContractId: 'CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY', // Week 2 testnet DAO (see contracts/deployments/testnet.json)
+    daoContractId: import.meta.env.VITE_TESTNET_DAO_ID || 'CB3A3IZMHF7EUM75CP5FFA6XZNABLRZAT5JL6XC4SZX3FWGRVMQM6KPY', // Week 2 testnet DAO (see contracts/deployments/testnet.json)
   },
   mainnet: {
     name: 'Mainnet',
@@ -329,7 +330,8 @@ export const registerPolicyOnChain = async (
   network: 'testnet' | 'mainnet' = 'testnet'
 ) => {
   try {
-    await executeTrackedTx(
+    // Returns the tx hash (truthy, so existing `if (await ...)` callers still work).
+    return await executeTrackedTx(
       { action: 'subscribe_policy', network, walletAddress: farmer, region, season },
       async (server, config) => {
         // subscribe(farmer, farm_id, region, season, premium)
@@ -350,7 +352,6 @@ export const registerPolicyOnChain = async (
           .build();
       }
     );
-    return true;
   } catch (error: any) {
     console.error(`[${network.toUpperCase()}] Blockchain registration error:`, error);
     throw error;
@@ -409,19 +410,16 @@ export const claimPayoutOnChain = async (
         const farmerAddress = Address.fromString(farmer);
         const contract = new Contract(config.vaultContractId);
         const account = await server.getAccount(farmer);
-        const operation = network === 'testnet'
-          ? contract.call(
-              "testnet_claim_payout",
-              farmerAddress.toScVal(),
-              nativeToScVal(BigInt(Math.floor(amount * 10000000)), { type: 'i128' })
-            )
-          : contract.call(
-              "claim_payout",
-              farmerAddress.toScVal(),
-              xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
-              xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
-              xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId))
-            );
+        // The vault has no testnet-only claim: both networks pay from the
+        // on-chain consensus for (typhoon, policy region), and the contract
+        // computes the amount. `amount` is only used for analytics.
+        const operation = contract.call(
+          "claim_payout",
+          farmerAddress.toScVal(),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(season)),
+          xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId))
+        );
         return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
           .addOperation(operation)
           .setTimeout(300)
@@ -812,6 +810,59 @@ export async function createDaoProposal(
     }
   );
 };
+
+/**
+ * Settle a proposal after its voting deadline (execute_proposal). Permissionless;
+ * records the pass and starts the timelock, or marks it failed.
+ */
+export async function settleDaoProposal(
+  proposalId: number,
+  network: 'testnet' | 'mainnet',
+  walletAddress: string,
+  sign?: (xdr: string) => Promise<string>
+): Promise<string> {
+  const config = NETWORK_CONFIGS[network];
+  return executeTrackedTx(
+    { action: 'dao_execute_proposal', network, walletAddress, contractId: config.daoContractId, context: { proposal_id: proposalId }, sign },
+    async (server) => {
+      const account = await server.getAccount(walletAddress);
+      return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+        .addOperation(new Contract(config.daoContractId).call('execute_proposal', nativeToScVal(proposalId, { type: 'u64' })))
+        .setTimeout(300)
+        .build();
+    }
+  );
+}
+
+/**
+ * Finalize a passed proposal after its timelock (finalize_proposal). The DAO then
+ * calls the vault (update_premium_rate, dao_update_quorum_threshold, ...).
+ * Requires the Executor or Admin role.
+ */
+export async function finalizeDaoProposal(
+  proposalId: number,
+  network: 'testnet' | 'mainnet',
+  walletAddress: string,
+  sign?: (xdr: string) => Promise<string>
+): Promise<string> {
+  const config = NETWORK_CONFIGS[network];
+  return executeTrackedTx(
+    { action: 'dao_finalize_proposal', network, walletAddress, contractId: config.daoContractId, context: { proposal_id: proposalId }, sign },
+    async (server) => {
+      const account = await server.getAccount(walletAddress);
+      return new TransactionBuilder(account, { fee: '1000000', networkPassphrase: config.passphrase })
+        .addOperation(
+          new Contract(config.daoContractId).call(
+            'finalize_proposal',
+            nativeToScVal(Address.fromString(walletAddress), { type: 'address' }),
+            nativeToScVal(proposalId, { type: 'u64' })
+          )
+        )
+        .setTimeout(300)
+        .build();
+    }
+  );
+}
 
 export interface LedgerTx {
   hash: string;

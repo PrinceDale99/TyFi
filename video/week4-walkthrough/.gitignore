@@ -1,0 +1,6 @@
+footage/
+renders/
+audio/
+*.wav
+proofs/
+.hyperframes/

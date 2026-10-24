@@ -1,0 +1,1 @@
+Forged proofs fail. Change the damage, the region, the wind band, or the oracle key, and the pairing check rejects it. The contract test suite covers each case. The same statement is also written in Noir, and one oracle signature satisfies both circuits. And admin calls now require the multisig, closing a zero-threshold bypass we found this week.
