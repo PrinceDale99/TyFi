@@ -16,6 +16,9 @@
 //             the farmer (not an operator key) applies the decision
 //   finalize  after the timelock: finalize_proposal -> vault update_premium_rate
 //   payout    oracle proves the storm on-chain, the farmer claims
+//   noir-payout  same wallet insures a second farm; the oracle proves a new
+//             storm with the Noir circuit (UltraHonk), the vault verifies it
+//             through contracts/noir_verifier, the farmer claims
 //
 // Every step is written to contracts/deployments/week4-e2e-testnet.json.
 // The wallet's virtual-authenticator credential is kept in
@@ -42,6 +45,8 @@ const LP_XLM = 1_500;
 const PROPOSAL = { multiplier: 125, votingLedgers: 180 }; // ~15 min voting window
 const WIND_KMH = 172; // private reading; only the 150 km/h band is published
 const DAMAGE_PCT = 85;
+// Noir path: a second farm and a storm of its own, so it gets its own consensus.
+const NOIR = { farmId: 'TYFI_COOP_FARM_02', typhoon: 'KRISTINE_2026' };
 
 const log = new TxLog(LOG_FILE, {
   network: 'testnet',
@@ -272,7 +277,52 @@ async function payout() {
   }
 }
 
-const phases = { stage, settle, 'grant-executor': grantExecutor, finalize, payout, status };
+async function noirPayout() {
+  const state = loadState();
+  if (!state.wallet) throw new Error('Run the stage phase first');
+  if (!log.has('passkey_subscribe_policy_noir')) {
+    const { browser, page } = await openApp(state);
+    try {
+      const hash = await inApp(page, 'registerPolicyOnChain', state.wallet, NOIR.farmId, REGION, Number(PREMIUM_STROOPS), SEASON, 'testnet');
+      log.record('passkey_subscribe_policy_noir', { hash, actor: 'passkey wallet', farmId: NOIR.farmId, region: REGION, premiumStroops: String(PREMIUM_STROOPS) });
+    } finally {
+      await browser.close();
+    }
+  }
+  if (!log.has('noir_weather_report')) {
+    const res = await fetch(`${BACKEND_URL}/oracle/api/v1/weather-trigger`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ typhoonId: NOIR.typhoon, region: REGION, windSpeed: WIND_KMH, damagePercentage: DAMAGE_PCT, network: 'testnet', proofSystem: 'noir' }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(`Oracle: ${JSON.stringify(body)}`);
+    log.record('noir_weather_report', {
+      hash: body.txHash,
+      actor: 'ZK oracle (tyfi_zk_oracle)',
+      proofSystem: body.zk.proofSystem,
+      typhoon: NOIR.typhoon,
+      windFloor: body.windFloor,
+      damagePercentage: body.damagePercentage,
+      provingMs: body.zk.provingMs,
+      cpuInstructions: body.zk.cpuInstructions,
+      proofBytes: body.zk.proof.length / 2,
+    });
+  }
+  if (!log.has('passkey_claim_payout_noir')) {
+    const { browser, page } = await openApp(state);
+    try {
+      const before = view(XLM_SAC, 'balance', ['--id', state.wallet]);
+      const hash = await inApp(page, 'claimPayoutOnChain', state.wallet, NOIR.farmId, SEASON, 'testnet', NOIR.typhoon);
+      const after = view(XLM_SAC, 'balance', ['--id', state.wallet]);
+      log.record('passkey_claim_payout_noir', { hash, actor: 'passkey wallet', balanceBeforeStroops: before.replace(/"/g, ''), balanceAfterStroops: after.replace(/"/g, '') });
+    } finally {
+      await browser.close();
+    }
+  }
+}
+
+const phases = { stage, settle, 'grant-executor': grantExecutor, finalize, payout, 'noir-payout': noirPayout, status };
 const phase = process.argv[2];
 if (!phases[phase]) {
   console.error(`usage: node scripts/week4/e2e_pipeline.mjs <${Object.keys(phases).join('|')}>`);
