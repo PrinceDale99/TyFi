@@ -3,7 +3,7 @@
 > **Expected output (SOW):** execute the full end-to-end integration flow — *co-op votes via DAO → passkey wallet signs → vault verifies ZK proof → payout executes* — with verifiable Stellar Testnet transaction hashes for every key action; record and publish a captioned 3–5 minute walkthrough of wallet creation, DAO voting, cross-contract parameter updates and ZK-proof payout execution; publish setup documentation, an integration guide and payload snippets that let SDF reviewers replicate the testnet environment; release all source code — Soroban contracts, React frontend, integration bridges and Noir ZK circuits — under the MIT License.
 >
 > **Network:** Stellar Testnet (`Test SDF Network ; September 2015`)  
-> **Soroban SDK:** `27.0.0-rc.1` · **Stellar CLI:** `27.0.0` · **circom** `2.2.3` + **snarkjs** `0.7.6` · **Noir** `1.0.0-rc.6` + **bb.js** `5.2.1`  
+> **Soroban SDK:** `27.0.0-rc.1` · **Stellar CLI:** `27.0.0` · **circom** `2.2.3` + **snarkjs** `0.7.6` · **Noir** `1.0.0-beta.9` + **Barretenberg** `0.87.0` (bb.js) · **noir_verifier:** `soroban-sdk 28` + `ultrahonk_soroban_verifier 0.1.0`  
 > **Branch:** `week4/zk-groth16-verifier` → `master`
 
 ---
@@ -15,6 +15,7 @@
 | End-to-end flow: DAO vote → passkey signature → on-chain ZK verification → payout | ✅ | §1B |
 | Testnet tx hash for every key action, linked to Stellar Expert | ✅ | §1, `contracts/deployments/week4-*.json` |
 | Vault verifies **real** Groth16 proofs on-chain (BN254 pairing) | ✅ | §2, §1A |
+| Vault verifies the **Noir** proof on-chain (UltraHonk verifier contract) | ✅ | §2, §1C |
 | Cross-contract parameter update (DAO → vault) | ✅ | §1B `finalize` |
 | Captioned 3–5 min walkthrough video | ✅ | §5 |
 | Setup docs, integration guide, payload snippets, replication path | ✅ | §6 |
@@ -60,6 +61,25 @@ Passkey wallet: [`CCMMEA3XNM2OMEOBRU7PO2ZWQUD4BD3NQDPLPMM6MGMFRRASK4CPFIB5`](htt
 | Wallet created on camera | passkey | [`e9b247d6…1a9ece`](https://stellar.expert/explorer/testnet/tx/e9b247d6434592918f120228c10c4eccc328f609916b41d3d1df0dcb961a9ece) |
 | Live proposal for the video vote | co-op member | [`d35864da…fdaf79`](https://stellar.expert/explorer/testnet/tx/d35864daefe825ca82cacd3da1e8233a5faf96567173d1fe2dee912845fdaf79) |
 | Vote cast on camera | passkey wallet | [`af87d974…797c33`](https://stellar.expert/explorer/testnet/tx/af87d9742b693d769f812cb89e6eebe2815944bfb23dab952a3db47ecd797c33) |
+
+### C. Noir proof verified on-chain
+
+Verifier: [`CBOR46OZEO26T7HWG7SG7WZB34ZBPJXTO2F5EUJLXQGUVC3MSB2LERW6`](https://stellar.expert/explorer/testnet/contract/CBOR46OZEO26T7HWG7SG7WZB34ZBPJXTO2F5EUJLXQGUVC3MSB2LERW6) (VK sha256 `b5b701cf639cfb14…`)
+
+| Step | Transaction |
+|---|---|
+| Upload vault wasm with `submit_weather_report_noir` | [`6c263fe7…bc9929`](https://stellar.expert/explorer/testnet/tx/6c263fe7dfd49f0121ab9c8348fc4ad1953d8b60d3acba37c5b5183b41bc9929) |
+| Upgrade vault in place | [`38cffc1b…1f42f1`](https://stellar.expert/explorer/testnet/tx/38cffc1b88a500eaae5027e43c1b422b25d124ee5889dc0d501c3f380e1f42f1) |
+| Deploy `noir_verifier` with the circuit's UltraHonk VK | [`4a4eeeff…8d0577`](https://stellar.expert/explorer/testnet/tx/4a4eeeff659f49a405af36f59800f9e3b84c2b82ca5fc73cf12dc5c49a8d0577) |
+| Point the vault at the verifier | [`090faf32…dcc304`](https://stellar.expert/explorer/testnet/tx/090faf32e881e3ead1af797fbf7a57b056d1070e6e853a8028c9e9273bdcc304) |
+
+The same passkey wallet insures a second farm, and the oracle proves a new storm (`KRISTINE_2026`) with the Noir circuit:
+
+| Step | Signed by | Transaction |
+|---|---|---|
+| Second farm insured (Eastern Visayas) | passkey wallet | [`4c3eaa74…652270`](https://stellar.expert/explorer/testnet/tx/4c3eaa74eada9ea9243d0a748ce03f5beed8f1373286087feabd14ef2b652270) |
+| Noir (UltraHonk) weather proof verified by the vault (87.4M instructions, 14,592-byte proof) | ZK oracle | [`6fe00c6d…18736b`](https://stellar.expert/explorer/testnet/tx/6fe00c6dbd575d190e7fca544e9846adfca2280a6b1ba405f4391c44f818736b) |
+| Payout claimed (+212.50 XLM) | passkey wallet | [`194bb2bd…25053d`](https://stellar.expert/explorer/testnet/tx/194bb2bd96d8facc3605be4fc7675aa717c34936d510adc80f9e5654f525053d) |
 <!-- evidence:end -->
 
 ### C. Reviewer-reproducible fresh deployment
@@ -84,18 +104,38 @@ replaces both:
 | On-chain check | none (stub) | `e(-A,B)·e(α,β)·e(vk_x,γ)·e(C,δ) == 1` via `env.crypto().bn254()` |
 | Public inputs | caller-supplied | **rebuilt by the vault**: key hash, `symbol_to_field(typhoon)`, `symbol_to_field(region)`, band, damage |
 | What goes on-chain | raw wind speed | only the payout band (100/120/150 km/h) |
-| Cost | — | ~30.4M CPU instructions on testnet (limit 100M), 256-byte proof, ~1.4 s proving |
+| Cost | — | ~30.4M CPU instructions on testnet (per-transaction limit 400M), 256-byte proof, ~1.4 s proving |
 
 Rejection cases covered by `contracts/typhoon_resilience_vault/src/test_zk.rs`
 against a real proof: tampered damage, inflated band, replay to another
 region, unregistered oracle key, swapped and off-curve points, unconfigured
 verifier, inactive oracle.
 
-**Noir.** The same statement is implemented in Noir
-(`circuits/weather_threshold_noir`, UltraHonk). One circomlibjs oracle
-signature satisfies both circuits (tested). The vault verifies the Groth16
-version because an UltraHonk verifier does not fit Soroban's per-transaction
-limits today; the Noir version is proven and verified off-chain with bb.js.
+**Noir, also verified on-chain.** The same statement is implemented in Noir
+(`circuits/weather_threshold_noir`), and the vault verifies its UltraHonk
+proofs too: `submit_weather_report_noir` rebuilds the same five public inputs
+(32-byte big-endian) and calls `contracts/noir_verifier`, which holds the
+circuit's verification key, fixed at deployment, and checks the proof with
+Soroban's BN254 host functions via
+[`ultrahonk_soroban_verifier`](https://github.com/NethermindEth/rs-soroban-ultrahonk)
+(NethermindEth, MIT/Apache-2.0). One circomlibjs oracle signature satisfies
+both circuits (tested), and the oracle proves with either
+(`"proofSystem": "noir"` on the weather trigger). §1C has the full run on
+testnet: a passkey-insured farm, a Noir report verified by the vault and the
+passkey claim.
+
+| | Groth16 (Circom) | UltraHonk (Noir) |
+|---|---|---|
+| Vault entry point | `submit_weather_report_zk` | `submit_weather_report_noir` → `noir_verifier.verify_proof` |
+| Proof size | 256 bytes | 14,592 bytes |
+| CPU instructions (whole report tx, testnet; limit 400M) | ~30.4M | ~87.4M (verifier alone: 57.7M in the host test) |
+| Proving (oracle, laptop) | ~1.4 s | ~6 s |
+| Hides the wind reading | yes (zero-knowledge) | **no**: the on-chain verifier supports Barretenberg's non-ZK Keccak flavor, so the proof shows the statement holds but does not hide private inputs |
+| Trusted setup | circuit-specific, single-party | none (universal SRS) |
+
+Groth16 stays the oracle's default because it hides the raw reading and is
+cheaper; the Noir path proves the same statement without a circuit-specific
+setup.
 
 **Trust assumptions.** Single-party trusted setup (testnet only; mainnet needs
 a multi-party phase 2). The proof shows the oracle *signed* the reading;
@@ -120,9 +160,10 @@ oracle honesty is addressed by multi-oracle quorum.
 
 | Suite | Result |
 |---|---|
-| Contracts (`cargo test`, vault + DAO + wallets) | **134 passed** |
-| Backend (`functions`, prover/encoding/request/passkey) | **41 passed** |
-| Noir circuit (`circuits/weather_threshold_noir`, UltraHonk) | **6 passed** |
+| Contracts (`cargo test`, vault + DAO + wallets) | **139 passed** |
+| Noir verifier (`contracts/noir_verifier`, real proof in the Soroban host) | **3 passed** |
+| Backend (`functions`, Groth16 + Noir provers, encoding, request, passkey) | **43 passed** |
+| Noir circuit (`circuits/weather_threshold_noir`: `nargo test` + bb.js prove/verify) | **1 + 7 passed** |
 | Frontend type check + production build | clean |
 
 ---
@@ -155,15 +196,17 @@ Published (YouTube): [https://youtu.be/hQO7kVUe3_M](https://youtu.be/hQO7kVUe3_M
 `LICENSE` is MIT, and every package declares it: all npm packages
 (`package.json`, `frontend`, `functions`, `oracle-scraper`, both circuits, the
 video project) and every Rust crate (`typhoon_resilience_vault`, `tyfi_dao`,
-`smart_wallet`, `smart_wallet_factory`, `zk_weather_consensus`). Vendored Noir
-libraries keep their upstream Apache-2.0 licenses
-(`circuits/weather_threshold_noir/vendor/`).
+`smart_wallet`, `smart_wallet_factory`, `noir_verifier`, `zk_weather_consensus`),
+and the Noir circuit's `Nargo.toml`. Vendored Noir libraries keep their
+upstream Apache-2.0 licenses (`circuits/weather_threshold_noir/vendor/`), and
+`ultrahonk_soroban_verifier` is a crates.io dependency (MIT OR Apache-2.0).
 
 ---
 
 ## 8. Known limitations
 
 - Groth16 trusted setup is single-party (testnet only).
-- The Noir circuit is verified off-chain; the vault verifies the equivalent Groth16 circuit.
-- The passkey relayer sponsors fees up to 1 XLM per transaction (`PASSKEY_MAX_FEE_STROOPS`).
+- The on-chain Noir path uses Barretenberg's non-zero-knowledge UltraHonk flavor (the one the Soroban verifier supports), so it does not hide the wind reading; the Groth16 path does.
+- Noir proving peaked at about 520 MB in the oracle process (measured locally), too close to Render's free 512 MB instance; Groth16 is the default there.
+- The passkey relayer sponsors fees up to `PASSKEY_MAX_FEE_STROOPS` per transaction (default 1 XLM; the TyFi testnet backend uses 5 XLM).
 - The DAO timelock is 8,640 ledgers (~12 h), so a full pipeline run takes half a day.

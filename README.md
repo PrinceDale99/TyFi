@@ -155,6 +155,7 @@ graph TD
 ### Layer 1 — Stellar Soroban Smart Contract
 - **Parametric Actuarial Engine** — Non-custodial XLM vault iterating dynamic `ParametricBands` strictly on-chain
 - **ZK Verifier** — Verifies Groth16 weather proofs with Soroban's BN254 pairing host functions (~27.7M CPU instructions per proof)
+- **Noir Verifier** — `contracts/noir_verifier` checks UltraHonk proofs of the Noir version of the same circuit; the vault calls it from `submit_weather_report_noir`
 - **Enterprise Multi-Sig** — DAO governance controls on `update_parametric_bands` — parameters cannot be manipulated maliciously
 
 ### Layer 2 — Off-Chain Infrastructure & ZK Proving
@@ -172,7 +173,7 @@ graph TD
 
 ## 🔐 Zero-Knowledge Proof Integration
 
-Weather triggers are proven with **Groth16 over BN254** and verified **on-chain** by the vault.
+Weather triggers are proven with **Groth16 over BN254** and verified **on-chain** by the vault. The same statement is also written in **Noir**, and the vault verifies those **UltraHonk** proofs on-chain too, through [`contracts/noir_verifier`](contracts/noir_verifier) (testnet run: [`6fe00c6d…`](https://stellar.expert/explorer/testnet/tx/6fe00c6dbd575d190e7fca544e9846adfca2280a6b1ba405f4391c44f818736b)).
 
 ```
 Step 1: Circuit (circuits/weather_threshold)
@@ -191,6 +192,7 @@ Step 3: On-chain verification (contracts/typhoon_resilience_vault/src/verifier.r
 ```
 
 Details, constraint list and trust assumptions: [`circuits/weather_threshold/README.md`](circuits/weather_threshold/README.md).
+The Noir version, its on-chain verifier and how the two compare: [`circuits/weather_threshold_noir/README.md`](circuits/weather_threshold_noir/README.md).
 
 ---
 
@@ -202,7 +204,7 @@ Details, constraint list and trust assumptions: [`circuits/weather_threshold/REA
 | **Backend** | Node.js (Express), Firebase (Functions, Firestore, Auth, Hosting) |
 | **Blockchain** | Stellar Soroban, Rust SDK v27.0.0-rc.1, XLM, Fee Bump, Multi-Sig, Account Abstraction |
 | **AI/ML** | Gemini 2.5 Flash & Pro, Google Cloud Vision API |
-| **ZK Proofs** | Circom 2.2 + snarkjs (Groth16 / BN254), Soroban BN254 host functions |
+| **ZK Proofs** | Circom 2.2 + snarkjs (Groth16 / BN254); Noir 1.0.0-beta.9 + Barretenberg 0.87 (UltraHonk) with `ultrahonk_soroban_verifier`; Soroban BN254 host functions |
 | **Data** | PAGASA, NOAA/NASA EONET, OpenWeatherMap |
 | **Storage** | Pinata IPFS, Supabase |
 | **Comms** | Twilio (SMS/MMS), Firebase Cloud Messaging |
