@@ -139,6 +139,9 @@ oracle keys):
 { "typhoonId": "E2E_CHECK_1", "region": "Week4_Test", "windSpeed": 163, "damagePercentage": 70, "network": "testnet" }
 ```
 
+Optional `"proofSystem"`: `"groth16"` (default) or `"noir"` (§1.8). The
+response's `zk.proofSystem` is `groth16-circom` or `ultrahonk-noir`.
+
 Response from a live testnet run
 ([tx `eeae878f…`](https://stellar.expert/explorer/testnet/tx/eeae878fe0d4bd90b679078e75c740273d29fcce80b7db5187af020d259c82c3)):
 
@@ -168,7 +171,7 @@ Response from a live testnet run
 
 | Status | When |
 |---|---|
-| 400 | invalid typhoon/region symbol, wind not an integer in 0–500, damage not 1–100, or wind below 100 km/h |
+| 400 | invalid typhoon/region symbol, wind not an integer in 0–500, damage not 1–100, wind below 100 km/h, or an unknown `proofSystem` |
 | 403 | `network` is not `testnet` |
 | 422 | the vault rejected the proof (`InvalidProof`) |
 | 502 | proving or submission failed (e.g. consensus already reached for that typhoon/region) |
@@ -189,6 +192,48 @@ set_oracle_zk_key  --signatures … --oracle G… --key_hash <decimal Poseidon(A
 [`scripts/week4/zk_testnet_rollout.mjs`](../scripts/week4/zk_testnet_rollout.mjs)
 builds the signatures (`adminSigs` in [`lib.mjs`](../scripts/week4/lib.mjs)) and
 the VK JSON from `functions/zk/artifacts/verification_key.json`.
+
+### 1.8 The Noir path (UltraHonk, verified on-chain)
+
+The same statement, proven with the Noir circuit
+([`circuits/weather_threshold_noir`](../circuits/weather_threshold_noir)) and
+checked by the vault through [`contracts/noir_verifier`](../contracts/noir_verifier):
+
+```rust
+pub fn submit_weather_report_noir(
+    env: Env,
+    oracle: Address,
+    typhoon_id: Symbol,
+    region: Symbol,
+    damage_percentage: u32,
+    wind_floor: u32,
+    proof: Bytes,             // 14,592-byte UltraHonk proof (bb 0.87.0, Keccak transcript)
+) -> Result<(), Error>
+
+pub fn set_noir_verifier(env: Env, signatures: Vec<(BytesN<32>, BytesN<64>)>, verifier: Address) -> Result<(), Error>
+pub fn get_noir_verifier(env: Env) -> Option<Address>
+```
+
+The vault concatenates the same five public inputs as 32-byte big-endian
+values (`key hash ‖ typhoon ‖ region ‖ wind_floor ‖ damage`, 160 bytes) and
+calls `verify_proof(public_inputs, proof)` on the verifier set by
+`set_noir_verifier`. A failed verification is `InvalidProof` (#17); no
+verifier or oracle key hash is `ZkNotConfigured` (#16). It emits
+`("noir_report_verified", typhoon_id, region) → (oracle, wind_floor, damage)`.
+
+```ts
+import { proveWeatherReadingNoir } from './functions/zk/noirProver';
+import { submitNoirReport } from './functions/zk/submit';
+
+const { proof } = await proveWeatherReadingNoir(reading, key);   // @aztec/bb.js 0.87.0, { keccak: true }
+const { txHash } = await submitNoirReport({ typhoonId, region, windFloor, damagePercentage, proof }, submitConfig);
+```
+
+Testnet run: [`6fe00c6d…`](https://stellar.expert/explorer/testnet/tx/6fe00c6dbd575d190e7fca544e9846adfca2280a6b1ba405f4391c44f818736b)
+(87.4M CPU instructions; the per-transaction limit is 400M). The verifier
+supports Barretenberg's non-zero-knowledge flavor, so a Noir proof does not
+hide the wind reading; the Groth16 path does. Proving peaks at about 520 MB in
+the oracle process.
 
 ---
 

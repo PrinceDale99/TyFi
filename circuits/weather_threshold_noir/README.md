@@ -1,31 +1,43 @@
-# weather_threshold_noir — the weather trigger statement in Noir
+# weather_threshold_noir: the weather trigger statement in Noir
 
 The same statement as [`../weather_threshold`](../weather_threshold) (Circom):
 **an authorized oracle signed a wind reading for a typhoon and region, and the
-reading meets a payout band**, without revealing the reading.
+reading meets a payout band**. The vault verifies both versions on-chain.
 
 | | Circom (`weather_threshold`) | Noir (this folder) |
 |---|---|---|
-| Proof system | Groth16 / BN254 | UltraHonk (Barretenberg) |
-| Verified by | **the vault, on-chain** (`submit_weather_report_zk`) | `bb.js` off-chain |
-| Proving time (laptop) | ~1.4–2.5 s | ~1 s |
+| Proof system | Groth16 / BN254 | UltraHonk (Barretenberg 0.87.0, Keccak transcript) |
+| Verified by | the vault, `submit_weather_report_zk` | the vault, `submit_weather_report_noir` → [`contracts/noir_verifier`](../../contracts/noir_verifier) |
+| CPU instructions per report (testnet, limit 400M) | ~30.4M | ~87.4M (verifier alone: 57.7M) |
+| Proof size | 256 bytes | 14,592 bytes |
+| Proving time (laptop) | ~1.4 s | ~6 s |
+| Hides the wind reading | yes | **no** (see below) |
+| Trusted setup | circuit-specific, single-party | none (universal SRS) |
 | Signature | EdDSA-Poseidon over Baby Jubjub | same |
 | Public inputs | key hash, typhoon, region, threshold, damage | same, same order |
 
-### Which one does the vault use, and why both?
+### How the vault verifies it
 
-Soroban verifies proofs with its BN254 host functions. A Groth16 proof is three
-curve points and one 4-pair pairing check (~30M CPU instructions on testnet,
-under a third of the per-transaction limit), so that is what the vault
-verifies. An UltraHonk verifier needs far more field and curve work per proof
-and does not fit Soroban's limits today, so the Noir version is proven and
-verified off-chain.
+`contracts/noir_verifier` stores this circuit's verification key
+([`artifacts/vk`](artifacts/vk), from `bb write_vk --oracle_hash keccak`) at
+deployment and verifies proofs with Soroban's BN254 host functions through
+[`ultrahonk_soroban_verifier`](https://github.com/NethermindEth/rs-soroban-ultrahonk)
+(NethermindEth, MIT OR Apache-2.0). The vault rebuilds the five public inputs
+from the oracle's registered key hash and the report's typhoon, region, band
+and damage, so a proof only verifies for the exact report it was made for. The
+testnet run (second farm, storm `KRISTINE_2026`, passkey claim) is in
+[`week4.md` §1C](../../week4.md).
 
-The two circuits are kept equivalent on purpose: they use the same Poseidon
-parameters and the same EdDSA construction, so **one oracle signature
-satisfies both** (the tests sign with circomlibjs, the oracle's signer, and
-prove here). If an on-chain UltraHonk verifier becomes practical, the oracle
-can switch proof systems without changing what it signs.
+### Not zero-knowledge
+
+The Soroban verifier implements Barretenberg's **non-ZK** UltraHonk flavor
+(`UltraKeccakFlavor`). A proof shows the statement is true, but its protocol
+messages depend on the witness, so it does not hide the private inputs (the
+raw wind reading and the signature). The Groth16 path does hide them, which is
+why it stays the oracle's default; use the Noir path when a circuit-specific
+trusted setup is the bigger concern. The two circuits use the same Poseidon
+parameters and EdDSA construction, so **one oracle signature satisfies both**
+(the tests sign with circomlibjs, the oracle's signer).
 
 ## Constraints
 
@@ -40,14 +52,31 @@ can switch proof systems without changing what it signs.
 
 ## Build and test
 
-Needs `nargo` 1.0.0-rc.6 ([noirup](https://noir-lang.org/docs/getting_started/noir_installation)).
-Noir has no Windows build, so on Windows the compile script runs nargo in WSL.
+Toolchain: `nargo` **1.0.0-beta.9** and `bb` **0.87.0**, the versions the
+on-chain verifier supports. Install them with
+`noirup -v 1.0.0-beta.9` and `bbup -v 0.87.0`. `bb` also needs `jq`. Noir has
+no Windows build, so on Windows the compile script runs them in WSL.
 
 ```bash
 npm install
-npm run compile   # nargo compile + nargo test -> target/weather_threshold_noir.json
-npm test          # UltraHonk prove/verify + rejection tests (bb.js, no nargo needed)
+npm run compile         # nargo compile + nargo test, bb write_vk -> artifacts/vk,
+                        # and copies the circuit to functions/zk/artifacts for the oracle
+npm test                # bb.js prove/verify (Keccak) + rejection tests, no nargo needed
+npm run prove-fixture   # artifacts/proof + artifacts/public_inputs for the verifier tests
 ```
 
-`target/weather_threshold_noir.json` is committed, so `npm test` works without
-nargo. Library dependencies are vendored; see [`vendor/README.md`](vendor/README.md).
+Set `NARGO=/path/to/nargo` and `BB=/path/to/bb` to use binaries that are not on
+`PATH`. `target/weather_threshold_noir.json` and `artifacts/` are committed, so
+`npm test` and the contract tests work without nargo or bb. Library
+dependencies are vendored; see [`vendor/README.md`](vendor/README.md).
+
+The verifier contract's own tests check the committed proof in the Soroban host:
+
+```bash
+cd ../../contracts/noir_verifier && cargo test -- --nocapture   # prints the CPU instruction count
+```
+
+## License
+
+MIT (see the repository [`LICENSE`](../../LICENSE)). Vendored libraries keep
+their Apache-2.0 licenses.
