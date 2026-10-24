@@ -1252,6 +1252,7 @@ function App() {
       paymentPlan: 'full'
     };
     
+    let insuredOnChain = false;
     if (profileForm.isSeekingAssistance) {
       addNotification('Registering farm for Subsidy Marketplace...', 'info');
       try {
@@ -1267,16 +1268,17 @@ function App() {
       try {
         await registerPolicyOnChain(
           walletAddress,
-          newFarm.farmName.replace(/\s+/g, '_'),
+          newFarm.id, // claim_payout looks the policy up by farm.id
           profileForm.region,
           newFarm.totalCropValue,
           'Wet Season 2026',
           network
         );
+        insuredOnChain = true;
         addNotification('Stellar ledger transaction confirmed!', 'success');
       } catch (err: any) {
         console.error('Error registering policy on chain:', err);
-        addNotification(`Blockchain registration warning: ${err.message || 'connection timeout'}. Local policy saved.`, 'warning');
+        addNotification(`On-chain insurance failed: ${err.message || 'connection timeout'}. The farm was saved locally but is not insured yet.`, 'warning');
       }
     }
 
@@ -1297,7 +1299,9 @@ function App() {
     setModalUploadedLandDoc(null);
     setModalLandDocType('land_title');
     
-    addNotification(`Successfully registered and insured '${newFarm.farmName}' on-chain!`, 'success');
+    if (insuredOnChain) {
+      addNotification(`Successfully registered and insured '${newFarm.farmName}' on-chain!`, 'success');
+    }
   };
 
   const formatAddress = (addr: string | null) => {
@@ -1449,7 +1453,7 @@ function App() {
           addNotification(`Payout Failed: ${err.message || "Could not execute smart contract or fiat bridge."}`, 'warning');
         }
       };
-      processClaim();
+      return processClaim();
     } else {
       // Offline / Unconnected Demo mode claim logic
       setFarms(prev => prev.map(f => f.id === farm.id ? { 
@@ -2679,6 +2683,7 @@ function App() {
                   farms={farms}
                   onClaim={handleClaim}
                   network={network}
+                  walletAddress={isWalletConnected ? walletAddress : null}
                 />
               )}
 

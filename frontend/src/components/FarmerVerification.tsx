@@ -395,7 +395,7 @@ const FarmerVerification: React.FC<FarmerVerificationProps> = ({ onVerificationC
           for (const farm of enrichedFarms) {
             await registerPolicyOnChain(
               walletAddress,
-              farm.farmName.replace(/\s+/g, '_'),
+              farm.id || farm.farmName.replace(/\s+/g, '_'), // claims look the policy up by farm.id
               farm.region || 'Albay',
               installmentAmount, // Pay the first installment
               farm.season || 'Wet Season 2026',

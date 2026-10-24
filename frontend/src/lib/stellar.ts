@@ -432,6 +432,54 @@ export const claimPayoutOnChain = async (
   }
 };
 
+export interface ClaimEligibility {
+  /** An active (unpaid) policy exists on-chain for this farm and season. */
+  policyActive: boolean;
+  /** The vault has oracle consensus for this typhoon in the policy's region. */
+  consensusReached: boolean;
+}
+
+/**
+ * Mirrors the checks `claim_payout` makes before paying, so the UI only offers
+ * a claim the contract will accept (PolicyNotActive / NoConsensus otherwise).
+ */
+export const getClaimEligibility = async (
+  farmer: string,
+  farmId: string,
+  typhoonId: string,
+  season: string = 'Wet Season 2026',
+  network: 'testnet' | 'mainnet' = 'testnet'
+): Promise<ClaimEligibility> => {
+  const config = NETWORK_CONFIGS[network];
+  const server = new rpc.Server(config.sorobanRpcUrl);
+  const contract = new Contract(config.vaultContractId);
+  const dummyAccount = new Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0");
+  const read = async (method: string, ...args: xdr.ScVal[]) => {
+    const tx = new TransactionBuilder(dummyAccount, { fee: '1000000', networkPassphrase: config.passphrase })
+      .addOperation(contract.call(method, ...args))
+      .setTimeout(300)
+      .build();
+    const result = await server.simulateTransaction(tx);
+    if (!rpc.Api.isSimulationSuccess(result)) throw new Error(`${method} simulation failed`);
+    return result.result?.retval ? scValToNative(result.result.retval) : undefined;
+  };
+
+  const policy = await read(
+    'get_farm_policy',
+    Address.fromString(farmer).toScVal(),
+    xdr.ScVal.scvSymbol(sanitizeSymbol(farmId)),
+    xdr.ScVal.scvSymbol(sanitizeSymbol(season))
+  ) as { is_active?: boolean; region?: string } | undefined;
+  if (!policy?.is_active || !policy.region) return { policyActive: false, consensusReached: false };
+
+  const damage = await read(
+    'get_consensus_damage_percentage',
+    xdr.ScVal.scvSymbol(sanitizeSymbol(typhoonId)),
+    xdr.ScVal.scvSymbol(policy.region)
+  );
+  return { policyActive: true, consensusReached: damage !== undefined && damage !== null };
+};
+
 export const getContractTvl = async (network: 'testnet' | 'mainnet' = 'testnet'): Promise<number> => {
   try {
     const config = NETWORK_CONFIGS[network];
