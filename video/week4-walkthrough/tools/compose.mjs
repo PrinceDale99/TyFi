@@ -173,26 +173,29 @@ function callout(at, dur, html, cls = '') {
 { // 05 Cross-contract
   const s = scene['05-cross-contract'];
   chapter('05-cross-contract', '05', 'DAO → vault, cross-contract');
-  const f = footage('05-cross-contract');
-  callout(s.start + 4, 6, `The farmer is a DAO <b>executor</b>: finalize is passkey-signed`);
+  // Skip 4s of idle so the Finalize click lands on "taps finalize".
+  footage('05-cross-contract', { from: 4 });
+  callout(s.start + 1.5, 5.5, `The farmer is a DAO <b>executor</b>: finalize is passkey-signed`);
+  callout(s.start + 7.5, 7, `The vault accepts parameter changes <b>only from its DAO</b>`);
   const fin = step('finalize_proposal_cross_contract');
   const before = fin?.premiumRateBefore ?? 100;
   const after = fin?.premiumRateAfter ?? 125;
-  const end = Math.max(f.at + 8, Math.min(f.end, s.start + s.duration - 9));
-  proof('finalize_proposal_cross_contract', end, s.start + s.duration - end - 0.2, 'tyfi_dao → vault.update_premium_rate', { cropH: 700 });
-  callout(s.start + s.duration - 6.5, 6.3, `<div class="big-delta">Eastern Visayas premium <b>${before}%</b> → <b class="em">${after}%</b></div>`, 'wide');
+  // The expanded invocation tree: finalize_proposal → passkey __check_auth → vault.update_premium_rate.
+  proof('finalize_proposal_cross_contract', s.start + 15.8, s.duration - 16, `tyfi_dao → vault.update_premium_rate · Eastern Visayas ${before} → ${after}`, { cropY: 425, cropH: 600 });
 }
 
 { // 06 ZK payout
   const s = scene['06-zk-payout'];
   chapter('06-zk-payout', '06', 'ZK-verified payout');
-  const f = footage('06-zk-payout');
-  const zk = step('zk_weather_report');
-  callout(s.start + 4, 7, `Raw reading <b>172 km/h</b> stays with the oracle`, 'amber');
-  callout(s.start + 12, 8, `Proof attests only <b>wind ≥ 150 km/h</b> · signed by the registered oracle key`);
-  callout(s.start + 21, 8, `Vault rebuilds all 5 public inputs · BN254 pairing check · ~30M CPU instructions`);
-  const end = Math.max(f.at + 10, Math.min(f.end, s.start + s.duration - 7));
-  if (zk?.txHash) proof('zk_weather_report', end, 6.8, 'submit_weather_report_zk — Groth16 verified on-chain', { cropH: 700 });
+  // From 2s in, "Proof verified" lands on "the vault rebuilds…" and the paid
+  // card on "the vault pays 85%"; nothing covers the scene's last seconds.
+  footage('06-zk-payout', { from: 2 });
+  callout(s.start + 3, 6.5, `Raw reading <b>172 km/h</b> stays with the oracle`, 'amber');
+  callout(s.start + 10, 8, `Proof attests only <b>wind ≥ 150 km/h</b> · signed by the registered oracle key`);
+  callout(s.start + 18.5, 5.5, `Vault rebuilds all <b>5 public inputs</b> itself`);
+  if (step('zk_weather_report')?.txHash) {
+    proof('zk_weather_report', s.start + 24.5, 9.5, 'submit_weather_report_zk · Groth16 verified · 29.2M instructions', { cropY: 425, cropH: 600 });
+  }
 }
 
 { // 07 Trust
