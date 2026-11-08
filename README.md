@@ -269,9 +269,11 @@ The Noir version, its on-chain verifier and how the two compare: [`circuits/weat
 
 ## 🔒 Security & Audit
 
-> **Status: APPROVED** | Date: June 2026 | Scope: `contracts/typhoon_resilience_vault` + `circuits/weather_oracle`
+> **Status: Internal review only — no external audit yet** | Scope: `contracts/typhoon_resilience_vault` + `circuits/weather_oracle`
 
-An automated static analysis and manual security review was conducted. **No high or critical severity vulnerabilities were found.**
+An internal static analysis and manual review was done in June 2026. It did **not** catch everything: an independent researcher later reported a **critical** ZK-verification bypass (September 2026, see [SECURITY.md](SECURITY.md)), and the Week 4 review found and fixed an admin multisig that had no signers configured (see [week4.md](week4.md)). Both are fixed. A scoped **external audit** of the vault, DAO and ZK verifier is planned before the Month 2 mainnet pilot; passkey wallets stay disabled on mainnet until they are audited separately.
+
+The table below is the June internal checklist:
 
 | Check | Result |
 |---|---|
@@ -395,13 +397,13 @@ An automated static analysis and manual security review was conducted. **No high
 - [x] FCM push notification infrastructure
 
 ### 🎯 Phase 2 — Mainnet Pilot *(Q3 2026)*
-- [x] Mainnet deployment with authorized PAGASA oracle feeds
+- [ ] Audited mainnet pilot of the vault, DAO and ZK verifier, with oracle data from Open-Meteo cross-checked against PAGASA bulletins *(Instawards Month 2)*
 - [ ] 500–1,000 farmer pilot in Albay, Leyte, and Eastern Samar
 - [x] XLM-to-wallet bridge integration
 - [ ] Department of Agriculture RSBSA data partnership
 
 ### 🚀 Phase 3 — Scale *(2027+)*
-- [x] Expansion to all 18 Philippine regions and neighboring SE Asian countries
+- [ ] Expansion to all 18 Philippine regions and neighboring SE Asian countries
 - [x] Climate DAO governance — tokenless community-driven adjustment of premium rates and thresholds via LP snapshot weights
 - [x] Automated NGO Sponsorship matching system based on verifiable RSBSA and carbon credits
 - [ ] Carbon credit integration for climate-resilient farming practices
@@ -420,7 +422,10 @@ An automated static analysis and manual security review was conducted. **No high
 
 <img src="public/TESTNET2.png" alt="Testnet Screenshot" width="100%"/>
 
-### 🌍 Mainnet
+### 🌍 Mainnet (early deployment, inactive)
+
+> These contracts were deployed in July 2026, before the Instawards sprint. They predate the ZK verifier, the DAO bridge and the Month 1 security fixes, have had no user activity (the vault holds about 1 XLM from a single team test deposit), and the DAO contract was never initialized. They will be replaced by the audited Month 2 deployment.
+
 | | |
 |---|---|
 | **Vault Contract** | `CAQCA3H4UIGESIJZE3LF7TYKQY6TBQV2OQ7OVBRRRRIARX5JOTXZUNVT` |
@@ -442,18 +447,20 @@ An automated static analysis and manual security review was conducted. **No high
 
 ---
 
-## 📈 Monthly Growth Report
+## 📈 Usage (Verified)
 
-| Metric | Last Month | This Month | MoM Growth |
-|---|---|---|---|
-| **Registered Farmers (Testnet)** | 120 | **450** | 🚀 +275% |
-| **Active Mainnet Users** | 0 | **55** | 🌐 New |
-| **Hectares Covered** | 450 ha | **1,200 ha** | 📈 +166% |
-| **TVL (Mainnet & Testnet XLM)** | 500,000 | **2,150,000** | 💰 +330% |
-| **Reinsurance LPs** | 15 | **84** | 🧑‍🌾 +460% |
-| **Successful Payouts** | 0 | **12** *(Simulated)* | ⚡ N/A |
+Production analytics from PostHog, Oct 13–24, 2026. All on-chain activity is on Stellar **testnet**.
 
-*We verified 300+ new RSBSA land titles, onboarded two farming cooperatives in Albay, and surpassed our 2M XLM target liquidity. Our first 55 early-adopter farmers are now on Mainnet.*
+| Metric | Value |
+|---|---|
+| **Unique visitors** | 83 |
+| **Connected a wallet** | 43 (52% of visitors) |
+| **Passkey wallets created** | 39 |
+| **Users with an on-chain transaction** | 38 |
+| **Confirmed transactions** | 121 |
+| **XLM deposited and confirmed (testnet)** | 32,225 |
+
+*Totals include the team's own testing. 27 of the visitors came from two in-person booth sessions on Oct 24 and used a team-operated device. There is no mainnet user activity yet; the first mainnet users will be the closed, capped pilot in Month 2.*
 
 ---
 
@@ -461,7 +468,7 @@ An automated static analysis and manual security review was conducted. **No high
 
 We actively collect feedback via Google Form from farmers and LPs to prioritize our roadmap.
 
-📊 **[View Feedback & Data Export (55+ Mainnet Users)](https://docs.google.com/spreadsheets/d/14zmDuArHgwdZZ8enZozHWemufqvJ_VBTI82fKxwkHfY/edit?usp=sharing)**
+📊 **[View Feedback & Data Export](https://docs.google.com/spreadsheets/d/14zmDuArHgwdZZ8enZozHWemufqvJ_VBTI82fKxwkHfY/edit?usp=sharing)**
 
 ### 🔧 Improvements Built from Feedback
 
