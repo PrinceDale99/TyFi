@@ -269,9 +269,9 @@ The Noir version, its on-chain verifier and how the two compare: [`circuits/weat
 
 ## 🔒 Security & Audit
 
-> **Status: Internal review only — no external audit yet** | Scope: `contracts/typhoon_resilience_vault` + `circuits/weather_oracle`
+> **Status: Internal review only** | Scope: `contracts/typhoon_resilience_vault` + `circuits/weather_oracle`
 
-An internal static analysis and manual review was done in June 2026. It did **not** catch everything: an independent researcher later reported a **critical** ZK-verification bypass (September 2026, see [SECURITY.md](SECURITY.md)), and the Week 4 review found and fixed an admin multisig that had no signers configured (see [week4.md](week4.md)). Both are fixed. A scoped **external audit** of the vault, DAO and ZK verifier is planned before the Month 2 mainnet pilot; passkey wallets stay disabled on mainnet until they are audited separately.
+An internal static analysis and manual review was done in June 2026. It did **not** catch everything: an independent researcher later reported a **critical** ZK-verification bypass (September 2026, see [SECURITY.md](SECURITY.md)), and the Week 4 review found and fixed an admin multisig that had no signers configured (see [week4.md](week4.md)). Both are fixed. A **quick audit** of the vault, DAO and ZK verifier is planned before the Month 2 mainnet pilot; passkey wallets stay disabled on mainnet.
 
 The table below is the June internal checklist:
 
@@ -397,7 +397,7 @@ The table below is the June internal checklist:
 - [x] FCM push notification infrastructure
 
 ### 🎯 Phase 2 — Mainnet Pilot *(Q3 2026)*
-- [ ] Audited mainnet pilot of the vault, DAO and ZK verifier, with oracle data from Open-Meteo cross-checked against PAGASA bulletins *(Instawards Month 2)*
+- [ ] Closed mainnet pilot of the vault, DAO and ZK verifier after a quick audit, with oracle data from Open-Meteo cross-checked against PAGASA bulletins *(Instawards Month 2)*
 - [ ] 500–1,000 farmer pilot in Albay, Leyte, and Eastern Samar
 - [x] XLM-to-wallet bridge integration
 - [ ] Department of Agriculture RSBSA data partnership
@@ -424,7 +424,7 @@ The table below is the June internal checklist:
 
 ### 🌍 Mainnet (early deployment, inactive)
 
-> These contracts were deployed in July 2026, before the Instawards sprint. They predate the ZK verifier, the DAO bridge and the Month 1 security fixes, have had no user activity (the vault holds about 1 XLM from a single team test deposit), and the DAO contract was never initialized. They will be replaced by the audited Month 2 deployment.
+> These contracts were deployed in July 2026, before the Instawards sprint. They predate the ZK verifier, the DAO bridge and the Month 1 security fixes, have had no user activity (the vault holds about 1 XLM from a single team test deposit), and the DAO contract was never initialized. They will be replaced by the Month 2 mainnet pilot.
 
 | | |
 |---|---|
