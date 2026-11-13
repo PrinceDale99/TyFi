@@ -75,7 +75,7 @@ export const PasskeyOnboarding: React.FC<PasskeyOnboardingProps> = ({ onConnecte
     try {
       const name = nickname.trim() || `TyFi wallet ${new Date().toLocaleDateString()}`;
       const created = await createSeedlessWallet(name, stage => setBusy({ kind: 'create', stage }));
-      capturePostHogEvent('passkey_wallet_created', { funded: !!created.fundingTxHash });
+      capturePostHogEvent('passkey_wallet_created', { funded: !!created.fundingTxHash, funding_error: created.fundingError });
       onConnected(created.session, created);
     } catch (err) {
       capturePostHogEvent('passkey_wallet_create_failed', { reason: (err as Error)?.name });

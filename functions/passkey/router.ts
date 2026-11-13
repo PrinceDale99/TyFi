@@ -123,7 +123,7 @@ export function createPasskeyRouter(): Router {
     }
   });
 
-  router.post('/wallets/:address/fund', limiter(60 * 60_000, 5, 'Too many funding requests, try again later'), async (req: Request, res: Response) => {
+  router.post('/wallets/:address/fund', limiter(60 * 60_000, config.fundLimitPerHour, 'Too many funding requests, try again later'), async (req: Request, res: Response) => {
     try {
       const address = String(req.params.address);
       if (!StrKey.isValidContract(address)) {

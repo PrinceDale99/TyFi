@@ -111,6 +111,7 @@ import {
   loadPasskeySession,
   onApprovalModeChange,
   signInWithPasskey,
+  type CreatedWallet,
   type PasskeySession,
 } from './lib/passkey';
 import { PasskeyLinkCard } from './components/PasskeyLinkCard';
@@ -972,7 +973,7 @@ function App() {
   };
 
   /** A seedless passkey wallet was created or signed in (see PasskeyOnboarding). */
-  const handlePasskeyConnected = async (session: PasskeySession) => {
+  const handlePasskeyConnected = async (session: PasskeySession, created?: CreatedWallet) => {
     clearDemoWallet();
     localStorage.setItem('typhoon_vault_walletId', PASSKEY_WALLET_ID);
     setWalletAddress(session.walletAddress);
@@ -987,6 +988,9 @@ function App() {
     }
     await loadProfile(session.walletAddress, network);
     addNotification('Seedless passkey wallet connected. Transactions are approved with your biometrics.', 'success');
+    if (created?.fundingError) {
+      addNotification(`Your wallet has no test XLM yet, so deposits will fail. ${created.fundingError}`, 'warning');
+    }
   };
 
   const handleConnectWallet = async (walletId: string) => {

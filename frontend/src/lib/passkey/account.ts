@@ -2,6 +2,7 @@ import { fromBase64Url, toBase64Url } from './base64url';
 import { getRelayerConfig, relayerApi } from './api';
 import { findWallet, getWalletSignerKey } from './chain';
 import { lookupWalletForKey } from './devices';
+import { describePasskeyError } from './errors';
 import { savePasskeySession, type PasskeySession } from './session';
 import { assertPasskey, recoverPublicKeys, registerPasskey } from './webauthn';
 
@@ -12,6 +13,8 @@ export interface CreatedWallet {
   session: PasskeySession;
   deployTxHash?: string;
   fundingTxHash?: string;
+  /** Why the testnet welcome XLM was not sent; the wallet then starts with 0 XLM. */
+  fundingError?: string;
 }
 
 const equalBytes = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((v, i) => v === b[i]);
@@ -52,17 +55,19 @@ export async function createSeedlessWallet(userName: string, onStage: (s: Create
   savePasskeySession(session);
 
   let fundingTxHash: string | undefined;
+  let fundingError: string | undefined;
   if (config.network === 'testnet' && config.welcomeFundingXlm > 0) {
     onStage('funding');
     try {
       fundingTxHash = (await relayerApi.fundWallet(deployed.walletAddress)).hash;
-    } catch {
-      // Funding is a convenience; the wallet is fully usable without it.
+    } catch (err) {
+      // The wallet still works, but with 0 XLM every deposit fails, so say why.
+      fundingError = describePasskeyError(err);
     }
   }
 
   onStage('done');
-  return { session, deployTxHash: deployed.hash, fundingTxHash };
+  return { session, deployTxHash: deployed.hash, fundingTxHash, fundingError };
 }
 
 /**
