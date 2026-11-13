@@ -111,6 +111,8 @@ import {
   loadPasskeySession,
   onApprovalModeChange,
   signInWithPasskey,
+  isPasskeyWalletAddress,
+  topUpEmptyWallet,
   type CreatedWallet,
   type PasskeySession,
 } from './lib/passkey';
@@ -303,6 +305,9 @@ function App() {
           setWalletAddress(session.walletAddress);
           setIsWalletConnected(true);
           await loadProfile(session.walletAddress, network);
+          topUpPasskeyWallet(session.walletAddress).then(added => {
+            if (added > 0) addNotification(`Your wallet had no test XLM, so TyFi added ${added} XLM.`, 'success');
+          });
         }
         return;
       }
@@ -804,7 +809,18 @@ function App() {
 
       console.log(`[${network.toUpperCase()}] Transaction confirmed on ledger. Tx Hash: ${txHash}`);
     } catch (e: any) {
-      addNotification(`Operation failed: ${e.message || 'Cancelled'}`, 'warning');
+      // Contract #10 on a deposit is the XLM token refusing the transfer: the wallet holds too little.
+      if (/Error\(Contract, #10\)/.test(String(e?.message))) {
+        const added = network === 'testnet' && isPasskeyWalletAddress(walletAddress) ? await topUpPasskeyWallet(walletAddress) : 0;
+        addNotification(
+          added > 0
+            ? `Your wallet had no test XLM. TyFi added ${added} XLM — try again with up to ${added} XLM.`
+            : `Not enough XLM in your wallet for ${amountXlm.toLocaleString()} XLM. Try a smaller amount.`,
+          'warning'
+        );
+      } else {
+        addNotification(`Operation failed: ${e.message || 'Cancelled'}`, 'warning');
+      }
     } finally {
       setProcessingPayment(null);
     }
@@ -972,6 +988,16 @@ function App() {
     return true;
   };
 
+  /** Testnet: refill a passkey wallet that never got its welcome XLM. Resolves to the XLM added. */
+  const topUpPasskeyWallet = async (address: string) => {
+    try {
+      return await topUpEmptyWallet(address);
+    } catch (e) {
+      console.warn('Could not top up passkey wallet', e);
+      return 0;
+    }
+  };
+
   /** A seedless passkey wallet was created or signed in (see PasskeyOnboarding). */
   const handlePasskeyConnected = async (session: PasskeySession, created?: CreatedWallet) => {
     clearDemoWallet();
@@ -989,7 +1015,10 @@ function App() {
     await loadProfile(session.walletAddress, network);
     addNotification('Seedless passkey wallet connected. Transactions are approved with your biometrics.', 'success');
     if (created?.fundingError) {
-      addNotification(`Your wallet has no test XLM yet, so deposits will fail. ${created.fundingError}`, 'warning');
+      addNotification(`Your wallet has no test XLM yet: ${created.fundingError} TyFi will try again if your first deposit fails.`, 'warning');
+    } else if (!created && network === 'testnet') {
+      const added = await topUpPasskeyWallet(session.walletAddress);
+      if (added > 0) addNotification(`Your wallet had no test XLM, so TyFi added ${added} XLM.`, 'success');
     }
   };
 

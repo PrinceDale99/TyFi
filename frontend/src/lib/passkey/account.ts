@@ -1,6 +1,6 @@
 import { fromBase64Url, toBase64Url } from './base64url';
 import { getRelayerConfig, relayerApi } from './api';
-import { findWallet, getWalletSignerKey } from './chain';
+import { findWallet, getWalletSignerKey, getXlmBalance } from './chain';
 import { lookupWalletForKey } from './devices';
 import { describePasskeyError } from './errors';
 import { savePasskeySession, type PasskeySession } from './session';
@@ -68,6 +68,19 @@ export async function createSeedlessWallet(userName: string, onStage: (s: Create
 
   onStage('done');
   return { session, deployTxHash: deployed.hash, fundingTxHash, fundingError };
+}
+
+/**
+ * Testnet only: give a passkey wallet its welcome XLM if it has (almost) none,
+ * e.g. because the top-up failed when it was created. The relayer only funds
+ * TyFi wallets under 1 XLM. Resolves to the XLM added (0 if nothing was sent).
+ */
+export async function topUpEmptyWallet(wallet: string): Promise<number> {
+  const config = await getRelayerConfig();
+  if (config.network !== 'testnet' || config.welcomeFundingXlm <= 0) return 0;
+  if ((await getXlmBalance(wallet)) >= 1) return 0;
+  const result = await relayerApi.fundWallet(wallet);
+  return result.funded ? config.welcomeFundingXlm : 0;
 }
 
 /**
