@@ -5,14 +5,14 @@ import { ALBEDO_ID } from '@creit.tech/stellar-wallets-kit/modules/albedo';
 import { WALLET_CONNECT_ID } from '@creit.tech/stellar-wallets-kit/modules/wallet-connect';
 import { capturePostHogEvent, logPostHogInfo } from '../lib/posthog';
 import { PasskeyOnboarding } from './PasskeyOnboarding';
-import type { PasskeySession } from '../lib/passkey';
+import type { CreatedWallet, PasskeySession } from '../lib/passkey';
 
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConnect: (walletId: string) => void;
   /** Called when a seedless passkey wallet is created or signed in (testnet). */
-  onPasskeyConnected?: (session: PasskeySession) => void;
+  onPasskeyConnected?: (session: PasskeySession, created?: CreatedWallet) => void;
   /** Demo version 1 (testnet): explore with a simulated account, no wallet, no Didit. */
   onDemoSandbox?: () => void;
   /** Demo version 2 (testnet): connect a real wallet via the Stellar Wallets Kit, no Didit. */
@@ -120,8 +120,8 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onConnect, o
           {!isMainnet && onPasskeyConnected && (
             <div className="w-full text-left">
               <PasskeyOnboarding
-                onConnected={session => {
-                  onPasskeyConnected(session);
+                onConnected={(session, created) => {
+                  onPasskeyConnected(session, created);
                   onClose();
                 }}
               />

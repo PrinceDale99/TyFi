@@ -302,6 +302,11 @@ await claimPayoutOnChain(wallet, 'TYFI_COOP_FARM_01', 'Wet Season 2026', 'testne
 The relayer refuses transactions whose prepared fee exceeds
 `PASSKEY_MAX_FEE_STROOPS` (default 1 XLM).
 
+On testnet each new passkey wallet gets `PASSKEY_WELCOME_XLM` (default 5) from
+the sponsor. The relayer allows `PASSKEY_FUND_LIMIT_PER_HOUR` (default 5) of
+these per client IP per hour, so a booth demoing on one network should raise it
+for the event; a wallet created past the limit starts with 0 XLM.
+
 ---
 
 ## 4. Payout

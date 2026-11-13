@@ -21,6 +21,8 @@ export interface PasskeyConfig {
   maxFeeStroops: number;
   /** Testnet only: XLM sent to each new wallet so it can be used immediately. */
   welcomeFundingStroops: bigint;
+  /** Welcome-funding requests allowed per client IP per hour. Raise it for a booth on one network. */
+  fundLimitPerHour: number;
   /** WebAuthn relying-party ids and origins accepted for server-side passkey proofs. */
   allowedRpIds: string[];
   allowedOrigins: string[];
@@ -31,6 +33,10 @@ export interface PasskeyConfig {
 // 1 XLM. A DAO vote (cross-contract LP-share lookup + vote record writes)
 // prepares at ~0.59 XLM including the 0.1 XLM inclusion fee, over the old 0.5 cap.
 const DEFAULT_MAX_FEE_STROOPS = 10_000_000;
+
+// Every booth visitor shares the booth's IP, so a demo of more than 5 new
+// wallets an hour needs PASSKEY_FUND_LIMIT_PER_HOUR raised on the server.
+const DEFAULT_FUND_LIMIT_PER_HOUR = 5;
 
 export type ConfigResult = { ok: true; config: PasskeyConfig } | { ok: false; reason: string };
 
@@ -85,6 +91,11 @@ export function loadPasskeyConfig(env: NodeJS.ProcessEnv = process.env): ConfigR
     return { ok: false, reason: 'PASSKEY_WELCOME_XLM must be between 0 and 100' };
   }
 
+  const fundLimitPerHour = Number(env.PASSKEY_FUND_LIMIT_PER_HOUR || DEFAULT_FUND_LIMIT_PER_HOUR);
+  if (!Number.isInteger(fundLimitPerHour) || fundLimitPerHour < 1 || fundLimitPerHour > 1000) {
+    return { ok: false, reason: 'PASSKEY_FUND_LIMIT_PER_HOUR must be an integer between 1 and 1000' };
+  }
+
   return {
     ok: true,
     config: {
@@ -97,6 +108,7 @@ export function loadPasskeyConfig(env: NodeJS.ProcessEnv = process.env): ConfigR
       allowedContracts: new Set([factoryId, ...extraContracts]),
       maxFeeStroops,
       welcomeFundingStroops: BigInt(Math.round(welcomeXlm * 10_000_000)),
+      fundLimitPerHour,
       allowedRpIds: list(env.PASSKEY_RP_IDS, ['www.tyfi.site', 'tyfi.site', 'localhost']),
       allowedOrigins: list(env.PASSKEY_ALLOWED_ORIGINS, ['https://www.tyfi.site', 'https://tyfi.site', 'http://localhost:5173']),
       sessionSecret: env.PASSKEY_SESSION_SECRET,
