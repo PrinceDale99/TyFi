@@ -5,7 +5,7 @@
  *   invokeWithPasskey                         — biometric transaction authorization (authorize.ts)
  *   relayerApi                                — fee-sponsored submission (api.ts)
  */
-export { createSeedlessWallet, signInWithPasskey, type CreateStage, type SignInStage, type CreatedWallet } from './account';
+export { createSeedlessWallet, signInWithPasskey, topUpEmptyWallet, type CreateStage, type SignInStage, type CreatedWallet } from './account';
 export { invokeWithPasskey, hostFunctionOf, PasskeyAuthorizationError, type AuthorizeStage } from './authorize';
 export { getRelayerConfig, onServiceWaking, PasskeyApiError, relayerApi, type RelayerConfig } from './api';
 export { getXlmBalance } from './chain';
