@@ -463,7 +463,6 @@ Production analytics from PostHog, Oct 13 – Nov 13, 2026 (32 days). All on-cha
 
 *40 of the visitors used a team-operated laptop during in-person demos (28 on Oct 24, 12 on Nov 13), each with a fresh passkey wallet. One visitor is the team's own testing. There is no mainnet user activity yet; Month 2 brings a capped, team-run mainnet launch.*
 
-
 ---
 
 ## 📋 User Feedback & Iteration
