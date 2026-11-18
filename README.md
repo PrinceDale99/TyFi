@@ -449,10 +449,21 @@ The table below is the June internal checklist:
 
 ## 📈 Usage (Verified)
 
-Production analytics from PostHog, Oct 13–24, 2026. All on-chain activity is on Stellar **testnet**.
+Production analytics from PostHog, Oct 13 – Nov 13, 2026 (32 days). All on-chain activity is on Stellar **testnet**.
 
 | Metric | Value |
 |---|---|
+| **Unique visitors** | 124 |
+| **Connected a wallet** | 70 (56% of visitors) |
+| **Passkey wallets created** | 65 |
+| **Users with an on-chain transaction** | 51 |
+| **Confirmed transactions** | 134 (122 fee-sponsored by the passkey relayer) |
+| **XLM deposited and confirmed (testnet)** | 32,267 |
+| **Users in the Philippines** | 95 |
+
+*40 of the visitors used a team-operated laptop during in-person demos (28 on Oct 24, 12 on Nov 13), each with a fresh passkey wallet. One visitor is the team's own testing. There is no mainnet user activity yet; Month 2 brings a capped, team-run mainnet launch.*
+
+---|---|
 | **Unique visitors** | 83 |
 | **Connected a wallet** | 43 (52% of visitors) |
 | **Passkey wallets created** | 39 |
